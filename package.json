@@ -1,8 +1,11 @@
 {
-  "name": "my-v0-project",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "build": "echo 'no build script'"
-  }
+  "version": 2,
+  "public": true,
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
+

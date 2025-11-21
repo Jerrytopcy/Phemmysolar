@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News & Blog - PhemmySolar Nigeria</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header / Navbar -->
+    <header class="header">
+        <div class="container">
+            <div class="nav-wrapper">
+                <a href="index.html" class="logo">
+                    <img src="images/logo.jpg" alt="PhemmySolar Logo">
+                    <span>PhemmySolar</span>
+                </a>
+                <nav class="nav" id="navMenu">
+                    <a href="index.html" class="nav-link">Home</a>
+                    <div class="nav-dropdown">
+                        <button class="nav-link dropdown-toggle">Products ▼</button>
+                        <div class="dropdown-menu">
+                            <a href="products.html" class="dropdown-item">All Products</a>
+                            <a href="products.html?category=batteries" class="dropdown-item">Batteries</a>
+                            <a href="products.html?category=inverters" class="dropdown-item">Inverters</a>
+                            <a href="products.html?category=panels" class="dropdown-item">Solar Panels</a>
+                            <a href="products.html?category=controllers" class="dropdown-item">Charge Controllers</a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown">
+                        <button class="nav-link dropdown-toggle">Services ▼</button>
+                        <div class="dropdown-menu">
+                            <a href="services.html" class="dropdown-item">All Services</a>
+                            <a href="services.html#residential" class="dropdown-item">Residential</a>
+                            <a href="services.html#commercial" class="dropdown-item">Commercial</a>
+                            <a href="services.html#maintenance" class="dropdown-item">Maintenance</a>
+                        </div>
+                    </div>
+                    <a href="about.html" class="nav-link">About</a>
+                    <a href="news.html" class="nav-link active">News & Blog</a>
+                    <a href="contact.html" class="nav-link">Contact</a>
+                    <a href="admin.html" class="nav-link admin-link pro-badge">Pro Dashboard</a>
+                </nav>
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="nav-overlay" id="navOverlay"></div>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="container">
+            <h1>News & Blog</h1>
+            <p>Stay updated with the latest in solar energy</p>
+        </div>
+    </section>
+
+    <!-- News Grid -->
+    <section class="news-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Latest Articles</h2>
+                <p class="section-subtitle">Industry insights and solar energy tips</p>
+            </div>
+            <div class="news-full-grid" id="newsGrid">
+                <!-- News articles loaded dynamically -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Subscribe Section -->
+    <section class="subscribe-section">
+        <div class="container">
+            <div class="subscribe-content">
+                <h2>Stay Informed</h2>
+                <p>Subscribe to our newsletter for latest updates on solar energy and exclusive offers</p>
+                <form class="subscribe-form" id="subscribeForm">
+                    <input type="email" placeholder="Enter your email" required>
+                    <button type="submit" class="btn btn-primary">Subscribe</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>PhemmySolar Nigeria</h3>
+                    <p>Leading provider of premium solar energy solutions across Nigeria.</p>
+                    <div class="social-links">
+                        <a href="#" target="_blank" title="Facebook">f</a>
+                        <a href="#" target="_blank" title="Instagram">📷</a>
+                        <a href="https://wa.me/2348012345678" target="_blank" title="WhatsApp">💬</a>
+                        <a href="#" target="_blank" title="LinkedIn">in</a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="products.html">Products</a></li>
+                        <li><a href="services.html">Services</a></li>
+                        <li><a href="about.html">About Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Products</h4>
+                    <ul>
+                        <li><a href="products.html?category=batteries">Batteries</a></li>
+                        <li><a href="products.html?category=inverters">Inverters</a></li>
+                        <li><a href="products.html?category=panels">Solar Panels</a></li>
+                        <li><a href="products.html?category=controllers">Controllers</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Info</h4>
+                    <ul>
+                        <li><a href="tel:+2348012345678">+234 801 234 5678</a></li>
+                        <li><a href="mailto:info@phemmysolar.ng">info@phemmysolar.ng</a></li>
+                        <li>Lagos, Nigeria</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 PhemmySolar Nigeria. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- WhatsApp Button -->
+    <a href="https://wa.me/2348012345678" class="whatsapp-float" target="_blank" title="Chat on WhatsApp">
+        <span class="whatsapp-icon">💬</span>
+    </a>
+
+    <!-- Alert Modal -->
+    <div class="modal-overlay" id="alertModal">
+        <div class="modal-container alert-modal">
+            <div class="alert-content">
+                <div class="alert-icon" id="alertIcon">✓</div>
+                <h3 id="alertTitle">Success</h3>
+                <p id="alertMessage">Thank you for subscribing!</p>
+                <button class="btn btn-primary" id="alertOk">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Article Full-View Modal -->
+    <div class="modal-overlay" id="articleModal">
+        <div class="modal-container">
+            <button class="modal-close" onclick="closeArticleModal()">&times;</button>
+            <div class="article-modal-content">
+                <div class="article-header">
+                    <h2 id="articleTitle"></h2>
+                    <div class="article-meta">
+                        <span id="articleDate"></span>
+                    </div>
+                </div>
+                <img id="articleImage" src="/placeholder.svg" alt="" class="article-image">
+                <div id="articleBody" class="article-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Load news on page
+        function loadNewsPage() {
+            const newsGrid = document.getElementById("newsGrid")
+            const news = JSON.parse(localStorage.getItem("news") || "[]")
+
+            if (news.length === 0) {
+                newsGrid.innerHTML = '<p class="empty-state">No articles available</p>'
+                return
+            }
+
+            newsGrid.innerHTML = news
+                .map(
+                    (article) => `
+                    <div class="news-full-card">
+                        <img src="${article.image}" alt="${article.title}" class="news-full-image">
+                        <div class="news-full-content">
+                            <p class="news-full-date">${article.date}</p>
+                            <h2>${article.title}</h2>
+                            <p class="news-full-description">${article.description}</p>
+                            <button class="btn btn-primary btn-sm" onclick="viewFullArticle(${article.id})">Read Full Article</button>
+                        </div>
+                    </div>
+                `,
+                )
+                .join("")
+        }
+
+        // Subscribe form
+        const subscribeForm = document.getElementById("subscribeForm")
+        if (subscribeForm) {
+            subscribeForm.addEventListener("submit", (e) => {
+                e.preventDefault()
+                const alertModal = document.getElementById("alertModal")
+                alertModal.classList.add("active")
+                document.body.style.overflow = "hidden"
+                subscribeForm.reset()
+            })
+        }
+
+        const alertOk = document.getElementById("alertOk")
+        if (alertOk) {
+            alertOk.addEventListener("click", () => {
+                document.getElementById("alertModal").classList.remove("active")
+                document.body.style.overflow = ""
+            })
+        }
+
+        // Article Modal Functions
+        function viewFullArticle(articleId) {
+            const articleModal = document.getElementById("articleModal")
+            const news = JSON.parse(localStorage.getItem("news") || "[]")
+            const article = news.find(article => article.id === articleId)
+
+            if (article) {
+                document.getElementById("articleTitle").innerText = article.title
+                document.getElementById("articleDate").innerText = article.date
+                document.getElementById("articleImage").src = article.image
+                document.getElementById("articleBody").innerHTML = article.body
+                articleModal.classList.add("active")
+                document.body.style.overflow = "hidden"
+            }
+        }
+
+        function closeArticleModal() {
+            const articleModal = document.getElementById("articleModal")
+            articleModal.classList.remove("active")
+            document.body.style.overflow = ""
+        }
+
+        // Initialize
+        document.addEventListener("DOMContentLoaded", () => {
+            loadNewsPage()
+            initMobileMenu()
+        })
+    </script>
+</body>
+</html>

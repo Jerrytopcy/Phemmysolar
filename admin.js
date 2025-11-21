@@ -2,6 +2,8 @@
 let isAuthenticated = false
 let currentEditingProductId = null
 let productImages = []
+let testimonialImage = ""
+let newsImage = ""
 
 // Custom Alert Modal
 function showAdminAlert(message, title = "Alert") {
@@ -314,6 +316,7 @@ async function handleProductSubmit(e) {
     description: document.getElementById("productDescription").value,
     images: finalImages,
     image: finalImages[0],
+    category: document.getElementById("productCategory").value,
   }
 
   if (productId) {
@@ -342,6 +345,7 @@ function editProduct(productId) {
     document.getElementById("productName").value = product.name
     document.getElementById("productPrice").value = product.price
     document.getElementById("productDescription").value = product.description
+    document.getElementById("productCategory").value = product.category || ""
 
     if (product.images && product.images.length > 0) {
       // If images are URLs, populate URL inputs
@@ -408,8 +412,323 @@ function handleNavigation(e) {
   const titles = {
     products: "Product Management",
     settings: "Settings",
+    testimonials: "Testimonial Management",
+    news: "News Management",
   }
   document.getElementById("pageTitle").textContent = titles[targetSection]
+}
+
+// Handle testimonial form submission
+async function handleTestimonialSubmit(e) {
+  e.preventDefault()
+
+  const testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
+  const testimonialId = document.getElementById("testimonialId").value
+
+  let finalImage = testimonialImage || document.getElementById("testimonialImageUrl").value || ""
+
+  const testimonialData = {
+    id: testimonialId ? Number.parseInt(testimonialId) : Date.now(),
+    name: document.getElementById("testimonialName").value,
+    role: document.getElementById("testimonialRole").value,
+    text: document.getElementById("testimonialText").value,
+    rating: Number.parseInt(document.getElementById("testimonialRating").value),
+    image: finalImage, // Updated to include profile image
+  }
+
+  if (testimonialId) {
+    const index = testimonials.findIndex((t) => t.id === Number.parseInt(testimonialId))
+    if (index !== -1) {
+      testimonials[index] = testimonialData
+    }
+  } else {
+    testimonials.push(testimonialData)
+  }
+
+  localStorage.setItem("testimonials", JSON.stringify(testimonials))
+  loadTestimonials()
+  hideTestimonialForm()
+  await showAdminAlert(testimonialId ? "Testimonial updated!" : "Testimonial added!", "Success")
+}
+
+function editTestimonial(testimonialId) {
+  const testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
+  const testimonial = testimonials.find((t) => t.id === testimonialId)
+
+  if (testimonial) {
+    document.getElementById("testimonialId").value = testimonial.id
+    document.getElementById("testimonialName").value = testimonial.name
+    document.getElementById("testimonialRole").value = testimonial.role
+    document.getElementById("testimonialText").value = testimonial.text
+    document.getElementById("testimonialRating").value = testimonial.rating
+    
+    if (testimonial.image) {
+      if (testimonial.image.startsWith("http") || testimonial.image.startsWith("/")) {
+        document.getElementById("testimonialImageUrl").value = testimonial.image
+        testimonialImage = ""
+      } else {
+        testimonialImage = testimonial.image
+        updateTestimonialImagePreview()
+      }
+    }
+    
+    document.getElementById("testimonialFormTitle").textContent = "Edit Testimonial"
+    document.getElementById("testimonialFormContainer").style.display = "block"
+  }
+}
+
+// Load testimonials
+function loadTestimonials() {
+  const testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
+  const tableBody = document.getElementById("testimonialsTableBody")
+
+  if (testimonials.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="5" class="empty-state"><p>No testimonials found.</p></td></tr>`
+    return
+  }
+
+  tableBody.innerHTML = testimonials
+    .map(
+      (t) => `
+      <tr>
+        <td>${t.name}</td>
+        <td>${t.role}</td>
+        <td>${t.text.substring(0, 50)}...</td>
+        <td>${"⭐".repeat(t.rating)}</td>
+        <td>
+          <div class="product-actions">
+            <button class="btn-edit" onclick="editTestimonial(${t.id})">Edit</button>
+            <button class="btn-delete" onclick="deleteTestimonial(${t.id})">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `,
+    )
+    .join("")
+}
+
+// Delete testimonial
+async function deleteTestimonial(testimonialId) {
+  const confirmed = await showAdminConfirm("Delete this testimonial?", "Delete Testimonial")
+  if (confirmed) {
+    let testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
+    testimonials = testimonials.filter((t) => t.id !== testimonialId)
+    localStorage.setItem("testimonials", JSON.stringify(testimonials))
+    loadTestimonials()
+    await showAdminAlert("Testimonial deleted!", "Success")
+  }
+}
+
+// Hide testimonial form
+function hideTestimonialForm() {
+  document.getElementById("testimonialFormContainer").style.display = "none"
+  document.getElementById("testimonialForm").reset()
+  document.getElementById("testimonialId").value = ""
+  testimonialImage = ""
+  updateTestimonialImagePreview()
+}
+
+// Show testimonial form
+function showTestimonialForm() {
+  document.getElementById("testimonialFormTitle").textContent = "Add Testimonial"
+  document.getElementById("testimonialFormContainer").style.display = "block"
+  document.getElementById("testimonialForm").reset()
+}
+
+function handleTestimonialImageSelect(e) {
+  const files = e.target.files
+  if (files.length > 0 && files[0].type.startsWith("image/")) {
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      testimonialImage = event.target.result
+      updateTestimonialImagePreview()
+    }
+    reader.readAsDataURL(files[0])
+  }
+  e.target.value = ""
+}
+
+function updateTestimonialImagePreview() {
+  const container = document.getElementById("testimonialImagePreview")
+  if (testimonialImage) {
+    container.innerHTML = `
+      <div class="profile-image-preview-item">
+        <img src="${testimonialImage}" alt="Testimonial image">
+        <button type="button" class="image-preview-remove" onclick="removeTestimonialImage()">×</button>
+      </div>
+    `
+  } else {
+    container.innerHTML = ""
+  }
+}
+
+function removeTestimonialImage() {
+  testimonialImage = ""
+  updateTestimonialImagePreview()
+  document.getElementById("testimonialImageUrl").value = ""
+}
+
+// Handle news form submission
+async function handleNewsSubmit(e) {
+  e.preventDefault()
+
+  const newsList = JSON.parse(localStorage.getItem("news") || "[]")
+  const newsId = document.getElementById("newsId").value
+
+  let finalImage = newsImage || document.getElementById("newsImage").value || ""
+
+  const newsData = {
+    id: newsId ? Number.parseInt(newsId) : Date.now(),
+    title: document.getElementById("newsTitle").value,
+    description: document.getElementById("newsDescription").value,
+    fullContent: document.getElementById("newsContent").value, // Save full content
+    body: document.getElementById("newsContent").value, // Also save as 'body' for compatibility
+    image: finalImage,
+    date: formatDate(document.getElementById("newsDate").value),
+  }
+
+  if (newsId) {
+    const index = newsList.findIndex((n) => n.id === Number.parseInt(newsId))
+    if (index !== -1) {
+      newsList[index] = newsData
+    }
+  } else {
+    newsList.push(newsData)
+  }
+
+  localStorage.setItem("news", JSON.stringify(newsList))
+  loadNews()
+  hideNewsForm()
+  await showAdminAlert(newsId ? "Article updated!" : "Article added!", "Success")
+}
+
+// Load news
+function loadNews() {
+  const newsList = JSON.parse(localStorage.getItem("news") || "[]")
+  const tableBody = document.getElementById("newsTableBody")
+
+  if (newsList.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="4" class="empty-state"><p>No articles found.</p></td></tr>`
+    return
+  }
+
+  tableBody.innerHTML = newsList
+    .map(
+      (n) => `
+      <tr>
+        <td>${n.title}</td>
+        <td>${n.date}</td>
+        <td>${n.description.substring(0, 50)}...</td>
+        <td>
+          <div class="product-actions">
+            <button class="btn-edit" onclick="editNews(${n.id})">Edit</button>
+            <button class="btn-delete" onclick="deleteNews(${n.id})">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `,
+    )
+    .join("")
+}
+
+// Edit news
+function editNews(newsId) {
+  const newsList = JSON.parse(localStorage.getItem("news") || "[]")
+  const news = newsList.find((n) => n.id === newsId)
+
+  if (news) {
+    document.getElementById("newsId").value = news.id
+    document.getElementById("newsTitle").value = news.title
+    document.getElementById("newsDescription").value = news.description
+    document.getElementById("newsContent").value = news.fullContent || news.body || news.description
+    document.getElementById("newsImage").value = news.image || ""
+    document.getElementById("newsDate").value = reverseDateFormat(news.date)
+    document.getElementById("newsFormTitle").textContent = "Edit Article"
+    document.getElementById("newsFormContainer").style.display = "block"
+    
+    if (news.image) {
+      if (news.image.startsWith("http") || news.image.startsWith("/")) {
+        document.getElementById("newsImage").value = news.image
+        newsImage = ""
+      } else {
+        newsImage = news.image
+        updateNewsImagePreview()
+      }
+    }
+  }
+}
+
+// Delete news
+async function deleteNews(newsId) {
+  const confirmed = await showAdminConfirm("Delete this article?", "Delete Article")
+  if (confirmed) {
+    let newsList = JSON.parse(localStorage.getItem("news") || "[]")
+    newsList = newsList.filter((n) => n.id !== newsId)
+    localStorage.setItem("news", JSON.stringify(newsList))
+    loadNews()
+    await showAdminAlert("Article deleted!", "Success")
+  }
+}
+
+// Hide news form
+function hideNewsForm() {
+  document.getElementById("newsFormContainer").style.display = "none"
+  document.getElementById("newsForm").reset()
+  document.getElementById("newsId").value = ""
+  newsImage = ""
+  updateNewsImagePreview()
+}
+
+// Show news form
+function showNewsForm() {
+  document.getElementById("newsFormTitle").textContent = "Add News Article"
+  document.getElementById("newsFormContainer").style.display = "block"
+  document.getElementById("newsForm").reset()
+}
+
+function handleNewsImageSelect(e) {
+  const files = e.target.files
+  if (files.length > 0 && files[0].type.startsWith("image/")) {
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      newsImage = event.target.result
+      updateNewsImagePreview()
+    }
+    reader.readAsDataURL(files[0])
+  }
+  e.target.value = ""
+}
+
+function updateNewsImagePreview() {
+  const container = document.getElementById("newsImagePreview")
+  if (newsImage) {
+    container.innerHTML = `
+      <div class="image-preview-item">
+        <img src="${newsImage}" alt="News image">
+        <button type="button" class="image-preview-remove" onclick="removeNewsImage()">×</button>
+      </div>
+    `
+  } else {
+    container.innerHTML = ""
+  }
+}
+
+function removeNewsImage() {
+  newsImage = ""
+  updateNewsImagePreview()
+  document.getElementById("newsImage").value = ""
+}
+
+// Date formatting utilities
+function formatDate(dateString) {
+  const date = new Date(dateString)
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
+}
+
+function reverseDateFormat(formattedDate) {
+  const date = new Date(formattedDate)
+  return date.toISOString().split("T")[0]
 }
 
 // Initialize admin panel
@@ -468,4 +787,69 @@ document.addEventListener("DOMContentLoaded", () => {
 
     imageInput.addEventListener("change", handleImageSelect)
   }
+
+  const addTestimonialBtn = document.getElementById("addTestimonialBtn")
+  if (addTestimonialBtn) {
+    addTestimonialBtn.addEventListener("click", showTestimonialForm)
+  }
+
+  const closeTestimonialFormBtn = document.getElementById("closeTestimonialFormBtn")
+  if (closeTestimonialFormBtn) {
+    closeTestimonialFormBtn.addEventListener("click", hideTestimonialForm)
+  }
+
+  const cancelTestimonialFormBtn = document.getElementById("cancelTestimonialFormBtn")
+  if (cancelTestimonialFormBtn) {
+    cancelTestimonialFormBtn.addEventListener("click", hideTestimonialForm)
+  }
+
+  const testimonialForm = document.getElementById("testimonialForm")
+  if (testimonialForm) {
+    testimonialForm.addEventListener("submit", handleTestimonialSubmit)
+  }
+
+  const selectTestimonialImageBtn = document.getElementById("selectTestimonialImageBtn")
+  const testimonialImageInput = document.getElementById("testimonialImageInput")
+
+  if (selectTestimonialImageBtn && testimonialImageInput) {
+    selectTestimonialImageBtn.addEventListener("click", () => {
+      testimonialImageInput.click()
+    })
+    testimonialImageInput.addEventListener("change", handleTestimonialImageSelect)
+  }
+
+  const addNewsBtn = document.getElementById("addNewsBtn")
+  if (addNewsBtn) {
+    addNewsBtn.addEventListener("click", showNewsForm)
+  }
+
+  const closeNewsFormBtn = document.getElementById("closeNewsFormBtn")
+  if (closeNewsFormBtn) {
+    closeNewsFormBtn.addEventListener("click", hideNewsForm)
+  }
+
+  const cancelNewsFormBtn = document.getElementById("cancelNewsFormBtn")
+  if (cancelNewsFormBtn) {
+    cancelNewsFormBtn.addEventListener("click", hideNewsForm)
+  }
+
+  const newsForm = document.getElementById("newsForm")
+  if (newsForm) {
+    newsForm.addEventListener("submit", handleNewsSubmit)
+  }
+
+  const selectNewsImageBtn = document.getElementById("selectNewsImageBtn")
+  const newsImageInput = document.getElementById("newsImageInput")
+
+  if (selectNewsImageBtn && newsImageInput) {
+    selectNewsImageBtn.addEventListener("click", () => {
+      newsImageInput.click()
+    })
+    newsImageInput.addEventListener("change", handleNewsImageSelect)
+  }
+
+  // Load all data
+  loadProducts()
+  loadTestimonials()
+  loadNews()
 })

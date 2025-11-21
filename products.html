@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Products - PhemmySolar Nigeria</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header / Navbar -->
+    <header class="header">
+        <div class="container">
+            <div class="nav-wrapper">
+                <a href="index.html" class="logo">
+                    <img src="images/logo.jpg" alt="PhemmySolar Logo">
+                    <span>PhemmySolar</span>
+                </a>
+                <nav class="nav" id="navMenu">
+                    <a href="index.html" class="nav-link">Home</a>
+                    <div class="nav-dropdown">
+                        <button class="nav-link dropdown-toggle">Products ▼</button>
+                        <div class="dropdown-menu">
+                            <a href="products.html" class="dropdown-item active">All Products</a>
+                            <a href="products.html?category=batteries" class="dropdown-item">Batteries</a>
+                            <a href="products.html?category=inverters" class="dropdown-item">Inverters</a>
+                            <a href="products.html?category=panels" class="dropdown-item">Solar Panels</a>
+                            <a href="products.html?category=controllers" class="dropdown-item">Charge Controllers</a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown">
+                        <button class="nav-link dropdown-toggle">Services ▼</button>
+                        <div class="dropdown-menu">
+                            <a href="services.html" class="dropdown-item">All Services</a>
+                            <a href="services.html#residential" class="dropdown-item">Residential</a>
+                            <a href="services.html#commercial" class="dropdown-item">Commercial</a>
+                            <a href="services.html#maintenance" class="dropdown-item">Maintenance</a>
+                        </div>
+                    </div>
+                    <a href="about.html" class="nav-link">About</a>
+                    <a href="news.html" class="nav-link">News & Blog</a>
+                    <a href="contact.html" class="nav-link">Contact</a>
+                    <a href="admin.html" class="nav-link admin-link pro-badge">Pro Dashboard</a>
+                </nav>
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="nav-overlay" id="navOverlay"></div>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="container">
+            <h1>Our Solar Products</h1>
+            <p>Premium quality products for all your solar energy needs</p>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section class="products-section">
+        <div class="container">
+            <!-- Filters & Search -->
+            <div class="products-filters">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search products..." class="search-input">
+                    <span class="search-icon">🔍</span>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="categoryFilter">Category:</label>
+                    <select id="categoryFilter" class="filter-select">
+                        <option value="">All Categories</option>
+                        <option value="batteries">Batteries</option>
+                        <option value="inverters">Inverters</option>
+                        <option value="panels">Solar Panels</option>
+                        <option value="controllers">Charge Controllers</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="sortSelect">Sort by:</label>
+                    <select id="sortSelect" class="filter-select">
+                        <option value="default">Default</option>
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                        <option value="price-asc">Price (Low to High)</option>
+                        <option value="price-desc">Price (High to Low)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Products Grid -->
+            <div class="products-grid" id="productsGrid">
+                <!-- Products loaded dynamically -->
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Need Help Choosing?</h2>
+                <p>Our experts are ready to help you find the perfect solar solution</p>
+                <a href="contact.html" class="btn btn-primary btn-lg">Contact Us Today</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>PhemmySolar Nigeria</h3>
+                    <p>Leading provider of premium solar energy solutions across Nigeria.</p>
+                    <div class="social-links">
+                        <a href="#" target="_blank" title="Facebook">f</a>
+                        <a href="#" target="_blank" title="Instagram">📷</a>
+                        <a href="https://wa.me/2348012345678" target="_blank" title="WhatsApp">💬</a>
+                        <a href="#" target="_blank" title="LinkedIn">in</a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="products.html">Products</a></li>
+                        <li><a href="services.html">Services</a></li>
+                        <li><a href="about.html">About Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Products</h4>
+                    <ul>
+                        <li><a href="products.html?category=batteries">Batteries</a></li>
+                        <li><a href="products.html?category=inverters">Inverters</a></li>
+                        <li><a href="products.html?category=panels">Solar Panels</a></li>
+                        <li><a href="products.html?category=controllers">Controllers</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Info</h4>
+                    <ul>
+                        <li><a href="tel:+2348012345678">+234 801 234 5678</a></li>
+                        <li><a href="mailto:info@phemmysolar.ng">info@phemmysolar.ng</a></li>
+                        <li>Lagos, Nigeria</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 PhemmySolar Nigeria. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- WhatsApp Button -->
+    <a href="https://wa.me/2348012345678" class="whatsapp-float" target="_blank" title="Chat on WhatsApp">
+        <span class="whatsapp-icon">💬</span>
+    </a>
+
+    <!-- Product Modal -->
+    <div class="modal-overlay" id="productModal">
+        <div class="modal-container">
+            <button class="modal-close" id="closeModal">&times;</button>
+            <div class="modal-content">
+                <div class="modal-gallery">
+                    <div class="main-image-container">
+                        <img src="/placeholder.svg" alt="" id="modalMainImage" class="modal-main-image">
+                        <button class="gallery-nav prev" id="prevImage">‹</button>
+                        <button class="gallery-nav next" id="nextImage">›</button>
+                    </div>
+                    <div class="thumbnail-container" id="thumbnailContainer"></div>
+                </div>
+                <div class="modal-details">
+                    <h2 id="modalProductName" class="modal-product-name"></h2>
+                    <p id="modalProductPrice" class="modal-product-price"></p>
+                    <div class="modal-description">
+                        <h3>Description</h3>
+                        <p id="modalProductDescription"></p>
+                    </div>
+                    <div class="modal-actions">
+                        <a href="https://wa.me/2348012345678" target="_blank" class="btn btn-primary modal-btn">
+                            <span>💬</span> Order Now
+                        </a>
+                        <a href="contact.html" class="btn btn-contact  modal-btn">
+                            <span>✉️</span> Request Quote
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="alertModal">
+        <div class="modal-container alert-modal">
+            <div class="alert-content">
+                <div class="alert-icon" id="alertIcon">✓</div>
+                <h3 id="alertTitle">Success</h3>
+                <p id="alertMessage">Operation completed successfully!</p>
+                <button class="btn btn-primary" id="alertOk">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        let pageProducts = []
+        let pageFilteredProducts = []
+
+        function initProductsPage() {
+            console.log("[v0] Initializing products page")
+            initializeData()
+            
+            // Get products from localStorage
+            const storedProducts = JSON.parse(localStorage.getItem("solarProducts") || "[]")
+            console.log("[v0] Retrieved products:", storedProducts.length)
+            
+            pageProducts = [...storedProducts]
+            pageFilteredProducts = [...storedProducts]
+
+            // Check for category filter in URL
+            const urlParams = new URLSearchParams(window.location.search)
+            const categoryFilter = urlParams.get("category")
+            
+            if (categoryFilter) {
+                console.log("[v0] Filtering by category:", categoryFilter)
+                pageFilteredProducts = pageFilteredProducts.filter(p => p.category === categoryFilter)
+            }
+
+            // Display initial products
+            displayProductsOnPage()
+        }
+
+        function displayProductsOnPage() {
+            console.log("[v0] Displaying products:", pageFilteredProducts.length)
+            const productsGrid = document.getElementById("productsGrid")
+
+            if (!productsGrid) {
+                console.log("[v0] Products grid not found")
+                return
+            }
+
+            if (pageFilteredProducts.length === 0) {
+                productsGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                        <p style="font-size: 1.125rem; color: #666;">No products found matching your criteria.</p>
+                        <p style="color: #666;">Try adjusting your search or filters.</p>
+                    </div>
+                `
+                return
+            }
+
+            productsGrid.innerHTML = pageFilteredProducts
+                .map((product) => {
+                    const imageUrl = product.images?.[0] || product.image || "/placeholder.svg?height=300&width=300"
+                    return `
+                        <div class="product-card">
+                            <img src="${imageUrl}" alt="${product.name}" class="product-image">
+                            <div class="product-info">
+                                <h3 class="product-name">${product.name}</h3>
+                                <p class="product-price">${product.price}</p>
+                                <p class="product-description">${product.description.substring(0, 100)}...</p>
+                                <button class="btn product-btn" onclick="viewProduct(${product.id})">View Details</button>
+                            </div>
+                        </div>
+                    `
+                })
+                .join("")
+        }
+
+        function handlePageSearch(e) {
+            const searchTerm = e.target.value.toLowerCase()
+
+            pageFilteredProducts = pageProducts.filter(
+                (product) =>
+                    product.name.toLowerCase().includes(searchTerm) ||
+                    product.description.toLowerCase().includes(searchTerm),
+            )
+
+            applySorting()
+        }
+
+        function handlePageCategoryFilter(e) {
+            const category = e.target.value
+
+            pageFilteredProducts = category
+                ? pageProducts.filter((product) => product.category === category)
+                : [...pageProducts]
+
+            applySorting()
+        }
+
+        function applySorting() {
+            const sortValue = document.getElementById("sortSelect").value
+
+            switch (sortValue) {
+                case "name-asc":
+                    pageFilteredProducts.sort((a, b) => a.name.localeCompare(b.name))
+                    break
+                case "name-desc":
+                    pageFilteredProducts.sort((a, b) => b.name.localeCompare(a.name))
+                    break
+                case "price-asc":
+                    pageFilteredProducts.sort((a, b) => {
+                        const priceA = parseInt(a.price.replace(/[^0-9]/g, "")) || 0
+                        const priceB = parseInt(b.price.replace(/[^0-9]/g, "")) || 0
+                        return priceA - priceB
+                    })
+                    break
+                case "price-desc":
+                    pageFilteredProducts.sort((a, b) => {
+                        const priceA = parseInt(a.price.replace(/[^0-9]/g, "")) || 0
+                        const priceB = parseInt(b.price.replace(/[^0-9]/g, "")) || 0
+                        return priceB - priceA
+                    })
+                    break
+                default:
+                    pageFilteredProducts.sort((a, b) => a.id - b.id)
+            }
+
+            displayProductsOnPage()
+        }
+
+        // Initialize on DOM ready
+        document.addEventListener("DOMContentLoaded", () => {
+            initProductsPage()
+
+            // Setup event listeners
+            const searchInput = document.getElementById("searchInput")
+            if (searchInput) {
+                searchInput.addEventListener("input", handlePageSearch)
+            }
+
+            const categoryFilter = document.getElementById("categoryFilter")
+            if (categoryFilter) {
+                categoryFilter.addEventListener("change", handlePageCategoryFilter)
+            }
+
+            const sortSelect = document.getElementById("sortSelect")
+            if (sortSelect) {
+                sortSelect.addEventListener("change", applySorting)
+            }
+
+            // Initialize mobile menu
+            initMobileMenu()
+
+            // Modal listeners
+            const closeModal = document.getElementById("closeModal")
+            if (closeModal) {
+                closeModal.addEventListener("click", closeProductModal)
+            }
+
+            document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+                overlay.addEventListener("click", (e) => {
+                    if (e.target === overlay) {
+                        overlay.classList.remove("active")
+                        document.body.style.overflow = ""
+                    }
+                })
+            })
+
+            const alertOk = document.getElementById("alertOk")
+            if (alertOk) {
+                alertOk.addEventListener("click", () => {
+                    document.getElementById("alertModal").classList.remove("active")
+                    document.body.style.overflow = ""
+                })
+            }
+
+            document.addEventListener("keydown", (e) => {
+                if (document.getElementById("productModal")?.classList.contains("active")) {
+                    if (e.key === "ArrowLeft") navigateGallery(-1)
+                    if (e.key === "ArrowRight") navigateGallery(1)
+                    if (e.key === "Escape") closeProductModal()
+                }
+            })
+        })
+    </script>
+</body>
+</html>

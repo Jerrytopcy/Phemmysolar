@@ -46,12 +46,21 @@
                     <span class="nav-icon">📦</span>
                     <span>Products</span>
                 </a>
+                <a href="#" class="nav-item" data-section="testimonials">
+                    <span class="nav-icon">⭐</span>
+                    <span>Testimonials</span>
+                </a>
+                <a href="#" class="nav-item" data-section="news">
+                    <span class="nav-icon">📰</span>
+                    <span>News & Blog</span>
+                </a>
                 <a href="#" class="nav-item" data-section="settings">
                     <span class="nav-icon">⚙️</span>
                     <span>Settings</span>
                 </a>
             </nav>
             <div class="sidebar-footer">
+                <a href="index.html" class="btn btn-secondary btn-sm" style="margin-bottom: 1rem; text-decoration: none;">← Back to Website</a>
                 <button class="btn btn-logout" id="logoutBtn">Logout</button>
             </div>
         </aside>
@@ -88,6 +97,16 @@
                                 <label for="productPrice">Price *</label>
                                 <input type="text" id="productPrice" placeholder="₦50,000" required>
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="productCategory">Category *</label>
+                            <select id="productCategory" required>
+                                <option value="">Select a Category</option>
+                                <option value="panels">Solar Panels</option>
+                                <option value="batteries">Batteries</option>
+                                <option value="inverters">Inverters</option>
+                                <option value="controllers">Charge Controllers</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="productDescription">Description *</label>
@@ -138,6 +157,149 @@
                         </thead>
                         <tbody id="productsTableBody">
                             <!-- Products will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Testimonials Section -->
+            <section class="content-section" id="testimonialsSection" style="display: none;">
+                <div class="section-actions">
+                    <button class="btn btn-primary" id="addTestimonialBtn">+ Add Testimonial</button>
+                </div>
+
+                <!-- Add/Edit Testimonial Form -->
+                <div class="product-form-container" id="testimonialFormContainer" style="display: none;">
+                    <div class="form-header">
+                        <h2 id="testimonialFormTitle">Add Testimonial</h2>
+                        <button class="btn-close" id="closeTestimonialFormBtn">×</button>
+                    </div>
+                    <form class="product-form" id="testimonialForm">
+                        <input type="hidden" id="testimonialId">
+                        <div class="form-group">
+                            <label for="testimonialName">Customer Name *</label>
+                            <input type="text" id="testimonialName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="testimonialRole">Role/Title *</label>
+                            <input type="text" id="testimonialRole" placeholder="e.g., Homeowner, Lagos" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="testimonialText">Testimonial Text *</label>
+                            <textarea id="testimonialText" rows="4" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="testimonialRating">Rating *</label>
+                            <select id="testimonialRating" required>
+                                <option value="5">5 Stars</option>
+                                <option value="4">4 Stars</option>
+                                <option value="3">3 Stars</option>
+                            </select>
+                        </div>
+                        <!-- Updated testimonial form to support image uploads -->
+                        <div class="form-group">
+                            <label>Profile Image (Optional)</label>
+                            <div class="image-upload-container">
+                                <input type="file" id="testimonialImageInput" accept="image/*" style="display: none;">
+                                <button type="button" class="btn btn-secondary" id="selectTestimonialImageBtn">
+                                    📁 Select Image from Device
+                                </button>
+                                <p class="upload-hint">Or enter image URL below</p>
+                            </div>
+                            <div id="testimonialImagePreview" class="profile-image-preview"></div>
+                            <input type="text" id="testimonialImageUrl" class="image-url-input" placeholder="Image URL (optional)">
+                        </div>
+                        <!-- End of updated testimonial form to support image uploads -->
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Save Testimonial</button>
+                            <button type="button" class="btn btn-secondary" id="cancelTestimonialFormBtn">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Testimonials Table -->
+                <div class="products-table-container">
+                    <table class="products-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Testimonial</th>
+                                <th>Rating</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="testimonialsTableBody">
+                            <!-- Testimonials will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- News Section -->
+            <section class="content-section" id="newsSection" style="display: none;">
+                <div class="section-actions">
+                    <button class="btn btn-primary" id="addNewsBtn">+ Add News Article</button>
+                </div>
+
+                <!-- Add/Edit News Form -->
+                <div class="product-form-container" id="newsFormContainer" style="display: none;">
+                    <div class="form-header">
+                        <h2 id="newsFormTitle">Add News Article</h2>
+                        <button class="btn-close" id="closeNewsFormBtn">×</button>
+                    </div>
+                    <form class="product-form" id="newsForm">
+                        <input type="hidden" id="newsId">
+                        <div class="form-group">
+                            <label for="newsTitle">Article Title *</label>
+                            <input type="text" id="newsTitle" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newsDescription">Description (Short Summary) *</label>
+                            <textarea id="newsDescription" rows="2" required></textarea>
+                        </div>
+                        <!-- Added full content field for complete article text -->
+                        <div class="form-group">
+                            <label for="newsContent">Full Article Content *</label>
+                            <textarea id="newsContent" rows="5" required placeholder="Write your complete article here..."></textarea>
+                        </div>
+                        <!-- Added image upload support for news articles -->
+                        <div class="form-group">
+                            <label>Article Image (Optional)</label>
+                            <div class="image-upload-container">
+                                <input type="file" id="newsImageInput" accept="image/*" style="display: none;">
+                                <button type="button" class="btn btn-secondary" id="selectNewsImageBtn">
+                                    📁 Select Image from Device
+                                </button>
+                                <p class="upload-hint">Or enter image URL below</p>
+                            </div>
+                            <div id="newsImagePreview" class="testimonial-image-preview"></div>
+                            <input type="text" id="newsImage" class="image-url-input" placeholder="Image URL (optional)">
+                        </div>
+                        <div class="form-group">
+                            <label for="newsDate">Date *</label>
+                            <input type="date" id="newsDate" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Save Article</button>
+                            <button type="button" class="btn btn-secondary" id="cancelNewsFormBtn">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- News Table -->
+                <div class="products-table-container">
+                    <table class="products-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="newsTableBody">
+                            <!-- News articles will be loaded here -->
                         </tbody>
                     </table>
                 </div>

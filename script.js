@@ -1,147 +1,37 @@
-// Initialize products from localStorage or use default products
-function initializeData() {
-  const existingProducts = localStorage.getItem("solarProducts")
-  const existingTestimonials = localStorage.getItem("testimonials")
-  const existingNews = localStorage.getItem("news")
-
-  if (!existingProducts) {
-    const defaultProducts = [
-      {
-        id: 1,
-        name: "220Ah Tubular Battery",
-        price: "₦85,000",
-        category: "batteries",
-        description:
-          "High-capacity deep cycle battery perfect for solar systems. Long-lasting and reliable with excellent performance in various weather conditions.",
-        images: ["images/sample-product1.jpg", "/solar-charge-controller-device.jpg", "/solar-panel-on-roof.png"],
-      },
-      {
-        id: 2,
-        name: "5KVA Solar Inverter",
-        price: "₦320,000",
-        category: "inverters",
-        description:
-          "Pure sine wave inverter with MPPT charge controller. Efficient and durable with advanced protection features.",
-        images: ["images/sample-product2.jpg", "/solar-panel-on-roof.png", "/solar-charge-controller-device.jpg"],
-      },
-      {
-        id: 3,
-        name: "250W Solar Panel",
-        price: "₦45,000",
-        category: "panels",
-        description:
-          "Monocrystalline solar panel with high efficiency rating. Weather-resistant design for long-term outdoor use.",
-        images: ["/solar-panel-on-roof.png", "images/sample-product1.jpg"],
-      },
-      {
-        id: 4,
-        name: "Solar Charge Controller 60A",
-        price: "₦28,000",
-        category: "controllers",
-        description:
-          "MPPT charge controller for optimal battery charging. LCD display included with multiple protection features.",
-        images: ["/solar-charge-controller-device.jpg", "images/sample-product2.jpg"],
-      },
-    ]
-    localStorage.setItem("solarProducts", JSON.stringify(defaultProducts))
-  }
-
-  if (!existingTestimonials) {
-    const defaultTestimonials = [
-      {
-        id: 1,
-        name: "Aisha Johnson",
-        role: "Homeowner, Lagos",
-        text: "PhemmySolar transformed our energy bills. The installation was professional and the system has been running flawlessly.",
-        rating: 5,
-        image: "images/aisha-johnson.jpg",
-      },
-      {
-        id: 2,
-        name: "Emeka Okafor",
-        role: "Business Owner, Ibadan",
-        text: "Best investment for my business. Their support team is always available and the system efficiency is outstanding.",
-        rating: 5,
-        image: "images/emeka-okafor.jpg",
-      },
-      {
-        id: 3,
-        name: "Zainab Hassan",
-        role: "School Principal, Kano",
-        text: "Reliable energy solution for our institution. PhemmySolar's professionalism and quality are unmatched.",
-        rating: 5,
-        image: "images/zainab-hassan.jpg",
-      },
-      {
-        id: 4,
-        name: "Chisom Nwankwo",
-        role: "Factory Manager, Onitsha",
-        text: "Reduced our operational costs significantly. The solar system pays for itself through energy savings.",
-        rating: 5,
-        image: "images/chisom-nwankwo.jpg",
-      },
-    ]
-    localStorage.setItem("testimonials", JSON.stringify(defaultTestimonials))
-  }
-
-  if (!existingNews) {
-    const defaultNews = [
-      {
-        id: 1,
-        title: "Solar Energy Adoption Surges in Nigeria",
-        description:
-          "Recent reports show a 40% increase in solar energy adoption across Nigerian homes and businesses in 2024.",
-        image: "/solar-energy-statistics.jpg",
-        date: "Dec 15, 2024",
-      },
-      {
-        id: 2,
-        title: "New Solar Technology Breaks Efficiency Records",
-        description:
-          "Latest monocrystalline panels achieve 23% efficiency, offering better performance and faster ROI for customers.",
-        image: "/advanced-solar-panel-technology.jpg",
-        date: "Dec 10, 2024",
-      },
-      {
-        id: 3,
-        title: "Government Incentives for Solar Installation",
-        description:
-          "Federal government announces tax breaks and subsidies to encourage more Nigerian businesses to go solar.",
-        image: "/government-solar-incentives.jpg",
-        date: "Dec 5, 2024",
-      },
-      {
-        id: 4,
-        title: "Energy Independence Becomes Reality",
-        description:
-          "More Nigerian families achieve complete energy independence with advanced solar battery storage solutions.",
-        image: "/solar-energy-independence-home.jpg",
-        date: "Nov 28, 2024",
-      },
-    ]
-    localStorage.setItem("news", JSON.stringify(defaultNews))
-  }
-}
+const API_BASE_URL = "https://phemmy-backend.onrender.com/api"
 
 // Global variables for search and sort
-let allProducts = []
+const allProducts = []
 let filteredProducts = []
 let currentProductInModal = null
 let currentImageIndex = 0
 
+// Fetch data from backend
+async function fetchData(endpoint) {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`)
+    if (!response.ok) throw new Error(`Failed to fetch from ${endpoint}`)
+    return await response.json()
+  } catch (error) {
+    console.error(`[v0] Error fetching ${endpoint}:`, error)
+    return []
+  }
+}
+
 // Load and display featured products
-function loadFeaturedProducts() {
+async function loadFeaturedProducts() {
   const featuredContainer = document.getElementById("featuredProducts")
   if (!featuredContainer) return
 
-  const products = JSON.parse(localStorage.getItem("solarProducts") || "[]").slice(0, 3)
+  const products = await fetchData("/products")
+  const featured = products.slice(0, 3)
 
-  if (products.length === 0) {
+  if (featured.length === 0) {
     featuredContainer.innerHTML = '<p class="empty-state">No products available</p>'
     return
   }
 
-  featuredContainer.innerHTML = products
+  featuredContainer.innerHTML = featured
     .map(
       (product) => `
         <div class="product-card">
@@ -159,11 +49,11 @@ function loadFeaturedProducts() {
 }
 
 // Load and display testimonials
-function loadTestimonials() {
+async function loadTestimonials() {
   const testimonialContainer = document.getElementById("testimonialsGrid")
   if (!testimonialContainer) return
 
-  const testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
+  const testimonials = await fetchData("/testimonials")
 
   if (testimonials.length === 0) {
     testimonialContainer.innerHTML = '<p class="empty-state">No testimonials available</p>'
@@ -190,18 +80,19 @@ function loadTestimonials() {
 }
 
 // Load and display latest news
-function loadLatestNews() {
+async function loadLatestNews() {
   const newsContainer = document.getElementById("latestNews")
   if (!newsContainer) return
 
-  const news = JSON.parse(localStorage.getItem("news") || "[]").slice(0, 4)
+  const news = await fetchData("/news")
+  const latest = news.slice(0, 4)
 
-  if (news.length === 0) {
+  if (latest.length === 0) {
     newsContainer.innerHTML = '<p class="empty-state">No news available</p>'
     return
   }
 
-  newsContainer.innerHTML = news
+  newsContainer.innerHTML = latest
     .map(
       (article) => `
         <div class="news-card">
@@ -219,7 +110,7 @@ function loadLatestNews() {
 }
 
 // Search functionality
-function handleSearch(e) {
+async function handleSearch(e) {
   const searchTerm = e.target.value.toLowerCase()
 
   filteredProducts = allProducts.filter(
@@ -265,6 +156,32 @@ function applySorting() {
       // Default order (by ID)
       filteredProducts.sort((a, b) => a.id - b.id)
   }
+}
+
+function displayProducts(products) {
+  const container = document.getElementById("productsGrid")
+  if (!container) return
+
+  if (products.length === 0) {
+    container.innerHTML = '<p class="empty-state">No products found</p>'
+    return
+  }
+
+  container.innerHTML = products
+    .map(
+      (product) => `
+        <div class="product-card">
+          <img src="${product.images?.[0] || product.image}" alt="${product.name}" class="product-image">
+          <div class="product-info">
+            <h3 class="product-name">${product.name}</h3>
+            <p class="product-price">${product.price}</p>
+            <p class="product-description">${product.description.substring(0, 80)}...</p>
+            <button class="btn product-btn" onclick="viewProduct(${product.id})">View Details</button>
+          </div>
+        </div>
+      `,
+    )
+    .join("")
 }
 
 // Custom modal functions
@@ -316,8 +233,8 @@ function showCustomConfirm(message, title = "Confirm Action", onConfirm) {
 }
 
 // View product details in modal
-function viewProduct(productId) {
-  const products = JSON.parse(localStorage.getItem("solarProducts") || "[]")
+async function viewProduct(productId) {
+  const products = await fetchData("/products")
   const product = products.find((p) => p.id === productId)
 
   if (product) {
@@ -390,7 +307,7 @@ function navigateGallery(direction) {
   if (!currentProductInModal) return
 
   const newIndex = currentImageIndex + direction
-  
+
   if (newIndex >= 0 && newIndex < currentProductInModal.images.length) {
     currentImageIndex = newIndex
     const mainImage = document.getElementById("modalMainImage")
@@ -453,7 +370,7 @@ function initMobileMenu() {
         e.preventDefault()
         const dropdown = toggle.closest(".nav-dropdown")
         const isActive = dropdown.classList.contains("active")
-        
+
         document.querySelectorAll(".nav-dropdown.active").forEach((d) => {
           if (d !== dropdown) d.classList.remove("active")
         })
@@ -481,11 +398,10 @@ function initMobileMenu() {
 }
 
 // Initialize everything when DOM is loaded
-document.addEventListener("DOMContentLoaded", () => {
-  initializeData()
-  loadFeaturedProducts()
-  loadTestimonials()
-  loadLatestNews()
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadFeaturedProducts()
+  await loadTestimonials()
+  await loadLatestNews()
   initMobileMenu()
 
   // Modal event listeners
@@ -530,8 +446,8 @@ document.addEventListener("DOMContentLoaded", () => {
   })
 })
 
-function viewFullArticle(articleId) {
-  const newsList = JSON.parse(localStorage.getItem("news") || "[]")
+async function viewFullArticle(articleId) {
+  const newsList = await fetchData("/news")
   const article = newsList.find((n) => n.id === articleId)
 
   if (article) {
@@ -541,7 +457,8 @@ function viewFullArticle(articleId) {
     document.getElementById("articleTitle").textContent = article.title
     document.getElementById("articleDate").textContent = article.date
     document.getElementById("articleImage").src = article.image || "/placeholder.svg"
-    document.getElementById("articleBody").innerHTML = `<p>${(article.fullContent || article.body || article.description).replace(/\n/g, "</p><p>")}</p>`
+    document.getElementById("articleBody").innerHTML =
+      `<p>${(article.fullContent || article.body || article.description).replace(/\n/g, "</p><p>")}</p>`
 
     modal.classList.add("active")
     document.body.style.overflow = "hidden"
@@ -555,78 +472,3 @@ function closeArticleModal() {
     document.body.style.overflow = ""
   }
 }
-
-
-function initMobileMenu() {
-  const mobileMenuBtn = document.getElementById("mobileMenuBtn")
-  const navMenu = document.getElementById("navMenu")
-  const navOverlay = document.getElementById("navOverlay")
-  const dropdownToggles = document.querySelectorAll(".dropdown-toggle")
-
-  // Toggle mobile menu
-  mobileMenuBtn.addEventListener("click", () => {
-    mobileMenuBtn.classList.toggle("active")
-    navMenu.classList.toggle("active")
-    navOverlay.classList.toggle("active")
-  })
-
-  // Close menu when clicking overlay
-  navOverlay.addEventListener("click", () => {
-    mobileMenuBtn.classList.remove("active")
-    navMenu.classList.remove("active")
-    navOverlay.classList.remove("active")
-  })
-
-  dropdownToggles.forEach((toggle) => {
-    toggle.addEventListener("click", (e) => {
-      // Only prevent default on mobile view (when mobile menu button is visible)
-      if (window.innerWidth <= 768) {
-        e.preventDefault()
-        const dropdown = toggle.closest(".nav-dropdown")
-        const isActive = dropdown.classList.contains("active")
-
-        // Close all other dropdowns
-        document.querySelectorAll(".nav-dropdown.active").forEach((item) => {
-          if (item !== dropdown) {
-            item.classList.remove("active")
-          }
-        })
-
-        // Toggle current dropdown
-        if (isActive) {
-          dropdown.classList.remove("active")
-        } else {
-          dropdown.classList.add("active")
-        }
-      }
-    })
-  })
-
-  // Close dropdowns when clicking on a link
-  const dropdownItems = document.querySelectorAll(".dropdown-item")
-  dropdownItems.forEach((item) => {
-    item.addEventListener("click", () => {
-      mobileMenuBtn.classList.remove("active")
-      navMenu.classList.remove("active")
-      navOverlay.classList.remove("active")
-      document.querySelectorAll(".nav-dropdown.active").forEach((dropdown) => {
-        dropdown.classList.remove("active")
-      })
-    })
-  })
-
-  // Handle window resize to clean up classes
-  window.addEventListener("resize", () => {
-    if (window.innerWidth > 768) {
-      mobileMenuBtn.classList.remove("active")
-      navMenu.classList.remove("active")
-      navOverlay.classList.remove("active")
-      document.querySelectorAll(".nav-dropdown.active").forEach((dropdown) => {
-        dropdown.classList.remove("active")
-      })
-    }
-  })
-}
-
-// Initialize on page load
-document.addEventListener("DOMContentLoaded", initMobileMenu)

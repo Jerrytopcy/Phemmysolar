@@ -1,9 +1,34 @@
+const API_BASE_URL = "https://phemmy-backend.onrender.com/api"
+
 // Authentication state
 let isAuthenticated = false
 let currentEditingProductId = null
 let productImages = []
 let testimonialImage = ""
 let newsImage = ""
+
+async function apiRequest(method, endpoint, data = null) {
+  try {
+    const options = {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+
+    if (data) {
+      options.body = JSON.stringify(data)
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, options)
+    if (!response.ok) throw new Error(`API error: ${response.status}`)
+
+    return await response.json()
+  } catch (error) {
+    console.error(`[v0] API request failed:`, error)
+    throw error
+  }
+}
 
 // Custom Alert Modal
 function showAdminAlert(message, title = "Alert") {
@@ -112,10 +137,12 @@ function showLogin() {
 }
 
 // Show dashboard
-function showDashboard() {
+async function showDashboard() {
   document.getElementById("loginContainer").style.display = "none"
   document.getElementById("dashboardContainer").style.display = "flex"
-  loadProducts()
+  await loadProducts()
+  await loadTestimonials()
+  await loadNews()
 }
 
 // Handle login
@@ -148,8 +175,8 @@ async function handleLogout() {
 }
 
 // Load products into table
-function loadProducts() {
-  const products = JSON.parse(localStorage.getItem("solarProducts") || "[]")
+async function loadProducts() {
+  const products = await apiRequest("GET", "/products")
   const tableBody = document.getElementById("productsTableBody")
 
   if (products.length === 0) {
@@ -293,7 +320,6 @@ function populateImageUrlInputs(images) {
 async function handleProductSubmit(e) {
   e.preventDefault()
 
-  const products = JSON.parse(localStorage.getItem("solarProducts") || "[]")
   const productId = document.getElementById("productId").value
 
   let finalImages = []
@@ -310,7 +336,6 @@ async function handleProductSubmit(e) {
   }
 
   const productData = {
-    id: productId ? Number.parseInt(productId) : Date.now(),
     name: document.getElementById("productName").value,
     price: document.getElementById("productPrice").value,
     description: document.getElementById("productDescription").value,
@@ -319,25 +344,25 @@ async function handleProductSubmit(e) {
     category: document.getElementById("productCategory").value,
   }
 
-  if (productId) {
-    const index = products.findIndex((p) => p.id === Number.parseInt(productId))
-    if (index !== -1) {
-      products[index] = productData
+  try {
+    if (productId) {
+      await apiRequest("PUT", `/products/${productId}`, productData)
+      await showAdminAlert("Product updated successfully!", "Success")
+    } else {
+      await apiRequest("POST", "/products", productData)
+      await showAdminAlert("Product added successfully!", "Success")
     }
-  } else {
-    products.push(productData)
+
+    await loadProducts()
+    hideProductForm()
+  } catch (error) {
+    await showAdminAlert(`Error saving product: ${error.message}`, "Error")
   }
-
-  localStorage.setItem("solarProducts", JSON.stringify(products))
-  loadProducts()
-  hideProductForm()
-
-  await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success")
 }
 
 // Edit product
-function editProduct(productId) {
-  const products = JSON.parse(localStorage.getItem("solarProducts") || "[]")
+async function editProduct(productId) {
+  const products = await apiRequest("GET", "/products")
   const product = products.find((p) => p.id === productId)
 
   if (product) {
@@ -383,11 +408,13 @@ async function deleteProduct(productId) {
   )
 
   if (confirmed) {
-    let products = JSON.parse(localStorage.getItem("solarProducts") || "[]")
-    products = products.filter((p) => p.id !== productId)
-    localStorage.setItem("solarProducts", JSON.stringify(products))
-    loadProducts()
-    await showAdminAlert("Product deleted successfully!", "Success")
+    try {
+      await apiRequest("DELETE", `/products/${productId}`)
+      await loadProducts()
+      await showAdminAlert("Product deleted successfully!", "Success")
+    } catch (error) {
+      await showAdminAlert(`Error deleting product: ${error.message}`, "Error")
+    }
   }
 }
 
@@ -422,37 +449,36 @@ function handleNavigation(e) {
 async function handleTestimonialSubmit(e) {
   e.preventDefault()
 
-  const testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
   const testimonialId = document.getElementById("testimonialId").value
 
-  let finalImage = testimonialImage || document.getElementById("testimonialImageUrl").value || ""
+  const finalImage = testimonialImage || document.getElementById("testimonialImageUrl").value || ""
 
   const testimonialData = {
-    id: testimonialId ? Number.parseInt(testimonialId) : Date.now(),
     name: document.getElementById("testimonialName").value,
     role: document.getElementById("testimonialRole").value,
     text: document.getElementById("testimonialText").value,
     rating: Number.parseInt(document.getElementById("testimonialRating").value),
-    image: finalImage, // Updated to include profile image
+    image: finalImage,
   }
 
-  if (testimonialId) {
-    const index = testimonials.findIndex((t) => t.id === Number.parseInt(testimonialId))
-    if (index !== -1) {
-      testimonials[index] = testimonialData
+  try {
+    if (testimonialId) {
+      await apiRequest("PUT", `/testimonials/${testimonialId}`, testimonialData)
+      await showAdminAlert("Testimonial updated!", "Success")
+    } else {
+      await apiRequest("POST", "/testimonials", testimonialData)
+      await showAdminAlert("Testimonial added!", "Success")
     }
-  } else {
-    testimonials.push(testimonialData)
-  }
 
-  localStorage.setItem("testimonials", JSON.stringify(testimonials))
-  loadTestimonials()
-  hideTestimonialForm()
-  await showAdminAlert(testimonialId ? "Testimonial updated!" : "Testimonial added!", "Success")
+    await loadTestimonials()
+    hideTestimonialForm()
+  } catch (error) {
+    await showAdminAlert(`Error saving testimonial: ${error.message}`, "Error")
+  }
 }
 
-function editTestimonial(testimonialId) {
-  const testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
+async function editTestimonial(testimonialId) {
+  const testimonials = await apiRequest("GET", "/testimonials")
   const testimonial = testimonials.find((t) => t.id === testimonialId)
 
   if (testimonial) {
@@ -461,7 +487,7 @@ function editTestimonial(testimonialId) {
     document.getElementById("testimonialRole").value = testimonial.role
     document.getElementById("testimonialText").value = testimonial.text
     document.getElementById("testimonialRating").value = testimonial.rating
-    
+
     if (testimonial.image) {
       if (testimonial.image.startsWith("http") || testimonial.image.startsWith("/")) {
         document.getElementById("testimonialImageUrl").value = testimonial.image
@@ -471,15 +497,15 @@ function editTestimonial(testimonialId) {
         updateTestimonialImagePreview()
       }
     }
-    
+
     document.getElementById("testimonialFormTitle").textContent = "Edit Testimonial"
     document.getElementById("testimonialFormContainer").style.display = "block"
   }
 }
 
 // Load testimonials
-function loadTestimonials() {
-  const testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
+async function loadTestimonials() {
+  const testimonials = await apiRequest("GET", "/testimonials")
   const tableBody = document.getElementById("testimonialsTableBody")
 
   if (testimonials.length === 0) {
@@ -511,11 +537,13 @@ function loadTestimonials() {
 async function deleteTestimonial(testimonialId) {
   const confirmed = await showAdminConfirm("Delete this testimonial?", "Delete Testimonial")
   if (confirmed) {
-    let testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
-    testimonials = testimonials.filter((t) => t.id !== testimonialId)
-    localStorage.setItem("testimonials", JSON.stringify(testimonials))
-    loadTestimonials()
-    await showAdminAlert("Testimonial deleted!", "Success")
+    try {
+      await apiRequest("DELETE", `/testimonials/${testimonialId}`)
+      await loadTestimonials()
+      await showAdminAlert("Testimonial deleted!", "Success")
+    } catch (error) {
+      await showAdminAlert(`Error deleting testimonial: ${error.message}`, "Error")
+    }
   }
 }
 
@@ -572,39 +600,38 @@ function removeTestimonialImage() {
 async function handleNewsSubmit(e) {
   e.preventDefault()
 
-  const newsList = JSON.parse(localStorage.getItem("news") || "[]")
   const newsId = document.getElementById("newsId").value
 
-  let finalImage = newsImage || document.getElementById("newsImage").value || ""
+  const finalImage = newsImage || document.getElementById("newsImage").value || ""
 
   const newsData = {
-    id: newsId ? Number.parseInt(newsId) : Date.now(),
     title: document.getElementById("newsTitle").value,
     description: document.getElementById("newsDescription").value,
-    fullContent: document.getElementById("newsContent").value, // Save full content
-    body: document.getElementById("newsContent").value, // Also save as 'body' for compatibility
+    fullContent: document.getElementById("newsContent").value,
+    body: document.getElementById("newsContent").value,
     image: finalImage,
     date: formatDate(document.getElementById("newsDate").value),
   }
 
-  if (newsId) {
-    const index = newsList.findIndex((n) => n.id === Number.parseInt(newsId))
-    if (index !== -1) {
-      newsList[index] = newsData
+  try {
+    if (newsId) {
+      await apiRequest("PUT", `/news/${newsId}`, newsData)
+      await showAdminAlert("Article updated!", "Success")
+    } else {
+      await apiRequest("POST", "/news", newsData)
+      await showAdminAlert("Article added!", "Success")
     }
-  } else {
-    newsList.push(newsData)
-  }
 
-  localStorage.setItem("news", JSON.stringify(newsList))
-  loadNews()
-  hideNewsForm()
-  await showAdminAlert(newsId ? "Article updated!" : "Article added!", "Success")
+    await loadNews()
+    hideNewsForm()
+  } catch (error) {
+    await showAdminAlert(`Error saving article: ${error.message}`, "Error")
+  }
 }
 
 // Load news
-function loadNews() {
-  const newsList = JSON.parse(localStorage.getItem("news") || "[]")
+async function loadNews() {
+  const newsList = await apiRequest("GET", "/news")
   const tableBody = document.getElementById("newsTableBody")
 
   if (newsList.length === 0) {
@@ -632,8 +659,8 @@ function loadNews() {
 }
 
 // Edit news
-function editNews(newsId) {
-  const newsList = JSON.parse(localStorage.getItem("news") || "[]")
+async function editNews(newsId) {
+  const newsList = await apiRequest("GET", "/news")
   const news = newsList.find((n) => n.id === newsId)
 
   if (news) {
@@ -645,7 +672,7 @@ function editNews(newsId) {
     document.getElementById("newsDate").value = reverseDateFormat(news.date)
     document.getElementById("newsFormTitle").textContent = "Edit Article"
     document.getElementById("newsFormContainer").style.display = "block"
-    
+
     if (news.image) {
       if (news.image.startsWith("http") || news.image.startsWith("/")) {
         document.getElementById("newsImage").value = news.image
@@ -662,11 +689,13 @@ function editNews(newsId) {
 async function deleteNews(newsId) {
   const confirmed = await showAdminConfirm("Delete this article?", "Delete Article")
   if (confirmed) {
-    let newsList = JSON.parse(localStorage.getItem("news") || "[]")
-    newsList = newsList.filter((n) => n.id !== newsId)
-    localStorage.setItem("news", JSON.stringify(newsList))
-    loadNews()
-    await showAdminAlert("Article deleted!", "Success")
+    try {
+      await apiRequest("DELETE", `/news/${newsId}`)
+      await loadNews()
+      await showAdminAlert("Article deleted!", "Success")
+    } catch (error) {
+      await showAdminAlert(`Error deleting article: ${error.message}`, "Error")
+    }
   }
 }
 

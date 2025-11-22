@@ -555,3 +555,78 @@ function closeArticleModal() {
     document.body.style.overflow = ""
   }
 }
+
+
+function initMobileMenu() {
+  const mobileMenuBtn = document.getElementById("mobileMenuBtn")
+  const navMenu = document.getElementById("navMenu")
+  const navOverlay = document.getElementById("navOverlay")
+  const dropdownToggles = document.querySelectorAll(".dropdown-toggle")
+
+  // Toggle mobile menu
+  mobileMenuBtn.addEventListener("click", () => {
+    mobileMenuBtn.classList.toggle("active")
+    navMenu.classList.toggle("active")
+    navOverlay.classList.toggle("active")
+  })
+
+  // Close menu when clicking overlay
+  navOverlay.addEventListener("click", () => {
+    mobileMenuBtn.classList.remove("active")
+    navMenu.classList.remove("active")
+    navOverlay.classList.remove("active")
+  })
+
+  dropdownToggles.forEach((toggle) => {
+    toggle.addEventListener("click", (e) => {
+      // Only prevent default on mobile view (when mobile menu button is visible)
+      if (window.innerWidth <= 768) {
+        e.preventDefault()
+        const dropdown = toggle.closest(".nav-dropdown")
+        const isActive = dropdown.classList.contains("active")
+
+        // Close all other dropdowns
+        document.querySelectorAll(".nav-dropdown.active").forEach((item) => {
+          if (item !== dropdown) {
+            item.classList.remove("active")
+          }
+        })
+
+        // Toggle current dropdown
+        if (isActive) {
+          dropdown.classList.remove("active")
+        } else {
+          dropdown.classList.add("active")
+        }
+      }
+    })
+  })
+
+  // Close dropdowns when clicking on a link
+  const dropdownItems = document.querySelectorAll(".dropdown-item")
+  dropdownItems.forEach((item) => {
+    item.addEventListener("click", () => {
+      mobileMenuBtn.classList.remove("active")
+      navMenu.classList.remove("active")
+      navOverlay.classList.remove("active")
+      document.querySelectorAll(".nav-dropdown.active").forEach((dropdown) => {
+        dropdown.classList.remove("active")
+      })
+    })
+  })
+
+  // Handle window resize to clean up classes
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 768) {
+      mobileMenuBtn.classList.remove("active")
+      navMenu.classList.remove("active")
+      navOverlay.classList.remove("active")
+      document.querySelectorAll(".nav-dropdown.active").forEach((dropdown) => {
+        dropdown.classList.remove("active")
+      })
+    }
+  })
+}
+
+// Initialize on page load
+document.addEventListener("DOMContentLoaded", initMobileMenu)

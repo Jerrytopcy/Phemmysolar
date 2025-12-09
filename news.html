@@ -40,6 +40,13 @@
                     <a href="news.html" class="nav-link active">News & Blog</a>
                     <a href="contact.html" class="nav-link">Contact</a>
                     <a href="admin.html" class="nav-link admin-link pro-badge">Pro Dashboard</a>
+                    <!-- NEW: Authentication and Cart Links -->
+                    <div class="nav-auth-section" id="authSection">
+                        <a href="#" id="loginBtn" style="display: none;">Login</a>
+                        <a href="#" id="logoutBtn" style="display: none;">Logout</a>
+                        <a href="account.html" id="accountLink" style="display: none;">Account</a>
+                        <a href="#" id="viewCartBtn" class="cart-link">Cart (<span id="cartCount">0</span>)</a>
+                    </div>
                 </nav>
                 <button class="mobile-menu-btn" id="mobileMenuBtn">
                     <span></span>
@@ -49,7 +56,6 @@
             </div>
         </div>
     </header>
-
     <div class="nav-overlay" id="navOverlay"></div>
 
     <!-- Page Header -->
@@ -97,7 +103,7 @@
                     <div class="social-links">
                         <a href="#" target="_blank" title="Facebook">f</a>
                         <a href="#" target="_blank" title="Instagram">📷</a>
-                        <a href="https://wa.me/2348012345678" target="_blank" title="WhatsApp">💬</a>
+                        <a href="https://wa.me/2348012345678 " target="_blank" title="WhatsApp">💬</a>
                         <a href="#" target="_blank" title="LinkedIn">in</a>
                     </div>
                 </div>
@@ -135,9 +141,63 @@
     </footer>
 
     <!-- WhatsApp Button -->
-    <a href="https://wa.me/2348012345678" class="whatsapp-float" target="_blank" title="Chat on WhatsApp">
+    <a href="https://wa.me/2348012345678 " class="whatsapp-float" target="_blank" title="Chat on WhatsApp">
         <span class="whatsapp-icon">💬</span>
     </a>
+
+    <!-- NEW: Cart Modal -->
+    <div class="modal-overlay" id="cartModal">
+        <div class="modal-container">
+            <button class="modal-close" onclick="closeCartModal()">&times;</button>
+            <div class="modal-content">
+                <h2>Your Cart</h2>
+                <div id="cartContent">
+                    <!-- Cart content will be populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Account Modal (Optional for news page) -->
+    <div class="modal-overlay" id="accountModal">
+        <div class="modal-container">
+            <button class="modal-close" onclick="() => document.getElementById('accountModal').classList.remove('active'); document.body.style.overflow='';">&times;</button>
+            <div class="modal-content">
+                <h2>Your Account</h2>
+                <!-- Add this inside your account page content, perhaps below the order history -->
+<div class="edit-address-section">
+    <h3>Edit Delivery Address</h3>
+    <form id="editAddressForm">
+        <div class="form-group">
+            <label for="editStreet">Street Address:</label>
+            <input type="text" id="editStreet" name="street" required>
+        </div>
+        <div class="form-group">
+            <label for="editCity">City:</label>
+            <input type="text" id="editCity" name="city" required>
+        </div>
+        <div class="form-group">
+            <label for="editState">State:</label>
+            <input type="text" id="editState" name="state" required>
+        </div>
+        <div class="form-group">
+            <label for="editPostalCode">Postal Code:</label>
+            <input type="text" id="editPostalCode" name="postalCode">
+        </div>
+        <div class="user-contact-info">
+    <h3>Contact Information</h3>
+    <p><strong>Email:</strong> <span id="userEmail">Loading...</span></p>
+    <p><strong>Phone:</strong> <span id="userPhone">Loading...</span></p>
+</div>
+        <button type="submit" class="btn btn-primary">Save Address</button>
+    </form>
+</div>
+                <div id="orderHistory">
+                    <!-- Order history will be populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Alert Modal -->
     <div class="modal-overlay" id="alertModal">
@@ -167,19 +227,118 @@
             </div>
         </div>
     </div>
+<!-- NEW: Login/Signup Modal -->
+<div class="modal-overlay" id="authModal">
+    <div class="modal-container">
+        <button class="modal-close" id="authClose">&times;</button>
+        <div class="modal-content">
+            <h2 id="authFormTitle">Login</h2>
+           <form id="authForm" data-mode="login">
+    <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required>
+    </div>
+    <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+    </div>
 
+    <!-- NEW: Container for Signup-only fields -->
+    
+<div id="signupExtraFields" style="display: none;">
+    <!-- Email Field -->
+    <div class="form-group">
+        <label for="email">Email Address:</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com">
+    </div>
+
+    <!-- Phone Number Field -->
+    <div class="form-group">
+        <label for="phone">Phone Number:</label>
+        <input type="tel" id="phone" name="phone" placeholder="+234 801 234 5678" pattern="[+]?[0-9]{1,3}[0-9]{9,15}">
+    </div>
+
+    <!-- Address Fields -->
+    <h4>Delivery Address</h4>
+    <div class="form-group">
+        <label for="street">Street Address:</label>
+        <input type="text" id="street" name="street" placeholder="e.g., 123 Main Street">
+    </div>
+    <div class="form-group">
+        <label for="city">City:</label>
+        <input type="text" id="city" name="city" placeholder="e.g., Lagos">
+    </div>
+    <div class="form-group">
+        <label for="state">State:</label>
+        <input type="text" id="state" name="state" placeholder="e.g., Lagos State">
+    </div>
+    <div class="form-group">
+        <label for="postalCode">Postal Code:</label>
+        <input type="text" id="postalCode" name="postalCode" placeholder="e.g., 100001">
+    </div>
+</div>
+
+    <div id="authError" style="color: red; margin-bottom: 10px;"></div>
+    <button type="submit" id="authSubmitBtn" class="btn btn-primary">Login</button>
+   <div id="forgotPasswordSection" style="margin-top: 15px; text-align: center;">
+    <a href="#" class="btn btn-continue" id="forgotPasswordLink">Forgot Password?</a>
+</div>
+</form>
+            <p id="authToggleText">Don't have an account? <a href="#" id="signupFormSwitch">Sign Up</a></p>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Simulation Modal -->
+<div class="modal-overlay" id="paymentModal">
+    <div class="modal-container">
+        <button class="modal-close" onclick="closePaymentModal()">&times;</button>
+        <div class="modal-content">
+            <h2>Pay with Remita</h2>
+            <p>Simulating payment for Order #<span id="simOrderID">...</span></p>
+            <p>Total Amount: ₦<span id="simOrderTotal">0</span></p>
+            <div id="paymentStatusDisplay" class="payment-status">
+                <!-- Status will be updated here -->
+            </div>
+            <div class="payment-actions">
+                <button id="simulatePaymentBtn" class="btn btn-primary">Simulate Payment</button>
+                <button id="checkStatusBtn" class="btn btn-continue" disabled>Check Payment Status</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Add this after your existing modals -->
+<div class="modal-overlay" id="forgotPasswordModal">
+    <div class="modal-container">
+        <button class="modal-close" onclick="closeForgotPasswordModal()">&times;</button>
+        <div class="forgot-modal modal-content">
+            <h2>Reset Your Password</h2>
+            <form id="forgotPasswordForm">
+                <div class="form-group">
+                    <label for="forgotPasswordUsername">Username</label>
+                    <input type="text" id="forgotPasswordUsername" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="forgotPasswordEmail">Email Address</label>
+                    <input type="email" id="forgotPasswordEmail" name="email" required>
+                </div>
+                <div id="forgotPasswordError" style="color: red; margin-bottom: 10px;"></div>
+                <button type="submit" class="btn btn-primary">Send Reset Link</button>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Keep your existing modals (alertModal, productModal, etc.) here -->
     <script src="script.js"></script>
     <script>
         // Load news on page
         function loadNewsPage() {
             const newsGrid = document.getElementById("newsGrid")
             const news = JSON.parse(localStorage.getItem("news") || "[]")
-
             if (news.length === 0) {
                 newsGrid.innerHTML = '<p class="empty-state">No articles available</p>'
                 return
             }
-
             newsGrid.innerHTML = news
                 .map(
                     (article) => `
@@ -222,7 +381,6 @@
             const articleModal = document.getElementById("articleModal")
             const news = JSON.parse(localStorage.getItem("news") || "[]")
             const article = news.find(article => article.id === articleId)
-
             if (article) {
                 document.getElementById("articleTitle").innerText = article.title
                 document.getElementById("articleDate").innerText = article.date
@@ -242,7 +400,59 @@
         // Initialize
         document.addEventListener("DOMContentLoaded", () => {
             loadNewsPage()
-            initMobileMenu()
+           
+
+            // NEW: Initialize user session and add event listeners for auth/cart
+            initializeUserSession(); // Ensure session is loaded
+
+            const viewCartBtn = document.getElementById('viewCartBtn');
+            if (viewCartBtn) {
+                viewCartBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    viewCart();
+                });
+            }
+
+            // const loginBtn = document.getElementById('loginBtn');
+            // if (loginBtn) {
+            //     loginBtn.addEventListener('click', (e) => {
+            //         e.preventDefault();
+            //         const username = prompt("Please enter a username to log in or create an account:");
+            //         if (username) {
+            //             handleLoginOrSignup(username);
+            //         }
+            //     });
+            // }
+
+             const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    handleLogout();
+                });
+            }
+
+            const accountLink = document.getElementById('accountLink');
+            if (accountLink) {
+                accountLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Navigate to account page or load order history in a modal
+                    loadOrderHistory(); // Example: Load history in a modal
+                     const accountModal = document.getElementById("accountModal"); // You need to create this modal in your HTML
+                     if (accountModal) {
+                         accountModal.classList.add("active");
+                         document.body.style.overflow = "hidden";
+                     }
+                });
+            }
+
+            // Add key listener for account modal close - NEW
+            document.addEventListener("keydown", (e) => {
+                if (document.getElementById("accountModal")?.classList.contains("active")) {
+                  if (e.key === "Escape") { document.getElementById('accountModal').classList.remove('active'); document.body.style.overflow=''; }
+                }
+            });
+
         })
     </script>
 </body>

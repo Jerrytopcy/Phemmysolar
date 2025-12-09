@@ -4,7 +4,7 @@ let currentEditingProductId = null
 let productImages = []
 let testimonialImage = ""
 let newsImage = ""
-
+let currentEditingUserId = null;
 // Custom Alert Modal
 function showAdminAlert(message, title = "Alert") {
   return new Promise((resolve) => {
@@ -147,6 +147,20 @@ async function handleLogout() {
   }
 }
 
+
+// Format a number as Nigerian Naira with commas
+function formatNaira(price) {
+    if (typeof price !== 'number') {
+        // If it's not a number, try to parse it
+        price = parseFloat(price.replace(/[^\d.-]/g, '')) || 0;
+    }
+    return new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        minimumFractionDigits: 0,
+    }).format(price);
+}
+
 // Load products into table
 function loadProducts() {
   const products = JSON.parse(localStorage.getItem("solarProducts") || "[]")
@@ -170,7 +184,7 @@ function loadProducts() {
           <tr>
             <td><img src="${firstImage}" alt="${product.name}" class="product-image-thumb"></td>
             <td>${product.name}</td>
-            <td>${product.price}</td>
+            <td>${formatNaira(product.price)}</td>
             <td>${product.description.substring(0, 60)}...</td>
             <td>
               <div class="product-actions">
@@ -308,11 +322,13 @@ async function handleProductSubmit(e) {
     await showAdminAlert("Please add at least one product image.", "Missing Image")
     return
   }
-
+    let priceInput = document.getElementById("productPrice").value;
+    // Extract only the numeric part (remove ₦ and commas)
+    let rawPrice = parseFloat(priceInput.replace(/[^\d.-]/g, "")) || 0;
   const productData = {
     id: productId ? Number.parseInt(productId) : Date.now(),
     name: document.getElementById("productName").value,
-    price: document.getElementById("productPrice").value,
+    price: rawPrice,
     description: document.getElementById("productDescription").value,
     images: finalImages,
     image: finalImages[0],
@@ -343,9 +359,10 @@ function editProduct(productId) {
   if (product) {
     document.getElementById("productId").value = product.id
     document.getElementById("productName").value = product.name
-    document.getElementById("productPrice").value = product.price
+    document.getElementById("productPrice").value = formatNaira(product.price);
     document.getElementById("productDescription").value = product.description
     document.getElementById("productCategory").value = product.category || ""
+
 
     if (product.images && product.images.length > 0) {
       // If images are URLs, populate URL inputs
@@ -392,6 +409,7 @@ async function deleteProduct(productId) {
 }
 
 // Handle section navigation
+// Handle section navigation
 function handleNavigation(e) {
   e.preventDefault()
 
@@ -414,8 +432,20 @@ function handleNavigation(e) {
     settings: "Settings",
     testimonials: "Testimonial Management",
     news: "News Management",
+    users: "User Management"
   }
   document.getElementById("pageTitle").textContent = titles[targetSection]
+  
+  // Load data for the selected section
+  if (targetSection === "products") {
+    loadProducts()
+  } else if (targetSection === "testimonials") {
+    loadTestimonials()
+  } else if (targetSection === "news") {
+    loadNews()
+  } else if (targetSection === "users") {
+    loadUsers() // Add this line to load users when users section is opened
+  }
 }
 
 // Handle testimonial form submission
@@ -731,6 +761,158 @@ function reverseDateFormat(formattedDate) {
   return date.toISOString().split("T")[0]
 }
 
+// Load users into table
+function loadUsers() {
+  const allUsers = JSON.parse(localStorage.getItem("users") || "{}");
+  const users = Object.values(allUsers);
+  const tableBody = document.getElementById("usersTableBody");
+
+  if (users.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="6" class="empty-state">
+          <p>No users found.</p>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tableBody.innerHTML = users
+    .map((user) => {
+      // Format address for display
+      const address = user.address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
+      const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+      
+      return `
+          <tr>
+            <td>${user.username}</td>
+            <td>${user.email || "Not set"}</td>
+            <td>${user.phone || "Not set"}</td>
+            <td>${fullAddress}</td>
+            <td>${user.orders ? user.orders.length : 0}</td>
+            <td>
+              <div class="product-actions">
+                <button class="btn-edit" onclick="editUser(${user.id})">Edit</button>
+                <button class="btn-delete" onclick="deleteUser(${user.id})">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `
+    })
+    .join("");
+}
+
+// Show user form
+function showUserForm(isEdit = false) {
+  const formContainer = document.getElementById("userFormContainer");
+  const formTitle = document.getElementById("userFormTitle");
+
+  formTitle.textContent = isEdit ? "Edit User" : "Add New User";
+  formContainer.style.display = "flex";
+
+  if (!isEdit) {
+    document.getElementById("userForm").reset();
+    document.getElementById("userId").value = "";
+    currentEditingUserId = null;
+  }
+}
+
+// Hide user form
+function hideUserForm() {
+  document.getElementById("userFormContainer").style.display = "none";
+  document.getElementById("userForm").reset();
+  currentEditingUserId = null;
+}
+
+// Handle user form submission
+async function handleUserSubmit(e) {
+  e.preventDefault();
+
+  const allUsers = JSON.parse(localStorage.getItem("users") || "{}");
+  const userId = document.getElementById("userId").value;
+
+  const userData = {
+    id: userId ? Number.parseInt(userId) : Date.now().toString(),
+    username: document.getElementById("username").value,
+    passwordHash: hashPassword(document.getElementById("password").value), // Use your existing hashPassword function
+    email: document.getElementById("email").value,
+    phone: document.getElementById("phone").value,
+    address: {
+      street: document.getElementById("street").value,
+      city: document.getElementById("city").value,
+      state: document.getElementById("state").value,
+      postalCode: document.getElementById("postalCode").value,
+      country: "Nigeria"
+    },
+    orders: userId && allUsers[userId] ? allUsers[userId].orders : [],
+    cart: userId && allUsers[userId] ? allUsers[userId].cart : []
+  };
+
+  if (userId) {
+    allUsers[userId] = userData;
+  } else {
+    allUsers[userData.id] = userData;
+  }
+
+  localStorage.setItem("users", JSON.stringify(allUsers));
+  loadUsers();
+  hideUserForm();
+
+  await showAdminAlert(userId ? "User updated successfully!" : "User added successfully!", "Success");
+}
+
+// Edit user
+function editUser(userId) {
+  const allUsers = JSON.parse(localStorage.getItem("users") || "{}");
+  const user = allUsers[userId];
+
+  if (user) {
+    document.getElementById("userId").value = user.id;
+    document.getElementById("username").value = user.username;
+    document.getElementById("email").value = user.email || "";
+    document.getElementById("phone").value = user.phone || "";
+    
+    // Pre-fill address fields
+    const address = user.address || { street: "", city: "", state: "", postalCode: "" };
+    document.getElementById("street").value = address.street || "";
+    document.getElementById("city").value = address.city || "";
+    document.getElementById("state").value = address.state || "";
+    document.getElementById("postalCode").value = address.postalCode || "";
+
+    currentEditingUserId = userId;
+    showUserForm(true);
+  }
+}
+
+// Delete user
+async function deleteUser(userId) {
+  const confirmed = await showAdminConfirm(
+    "Are you sure you want to delete this user? This action cannot be undone.",
+    "Delete User",
+  );
+
+  if (confirmed) {
+    let allUsers = JSON.parse(localStorage.getItem("users") || "{}");
+    delete allUsers[userId];
+    localStorage.setItem("users", JSON.stringify(allUsers));
+    loadUsers();
+    await showAdminAlert("User deleted successfully!", "Success");
+  }
+}
+// Simple password hashing simulation (NOT secure for real applications)
+// In a real app, use a proper library like bcrypt on the server side.
+function hashPassword(password) {
+    // A basic hash using Array reduce - very weak, just for client-side simulation
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+        const char = password.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    return hash.toString();
+}
+
 // Initialize admin panel
 document.addEventListener("DOMContentLoaded", () => {
   checkAuth()
@@ -852,4 +1034,57 @@ document.addEventListener("DOMContentLoaded", () => {
   loadProducts()
   loadTestimonials()
   loadNews()
+
+    // Add these event listeners inside the DOMContentLoaded block
+
+  // Add user button
+  const addUserBtn = document.getElementById("addUserBtn");
+  if (addUserBtn) {
+      addUserBtn.addEventListener("click", () => showUserForm(false));
+  }
+
+  // Close user form button
+  const closeUserFormBtn = document.getElementById("closeUserFormBtn");
+  if (closeUserFormBtn) {
+      closeUserFormBtn.addEventListener("click", hideUserForm);
+  }
+
+  // Cancel user form button
+  const cancelUserFormBtn = document.getElementById("cancelUserFormBtn");
+  if (cancelUserFormBtn) {
+      cancelUserFormBtn.addEventListener("click", hideUserForm);
+  }
+
+  // User form submission
+  const userForm = document.getElementById("userForm");
+  if (userForm) {
+      userForm.addEventListener("submit", handleUserSubmit);
+  }
+
+  // Add event listener for the "Users" navigation item
+  const usersNav = document.querySelector('[data-section="users"]');
+  if (usersNav) {
+      usersNav.addEventListener("click", (e) => {
+          e.preventDefault();
+          handleNavigation(e); // Reuse your existing handleNavigation function
+      });
+  }
+// Auto-format price input with Naira symbol and commas
+const productPriceInput = document.getElementById("productPrice");
+if (productPriceInput) {
+  productPriceInput.addEventListener("input", function (e) {
+    let value = e.target.value.replace(/[^0-9]/g, ""); // Keep only digits
+    if (value === "") {
+      e.target.value = "";
+      return;
+    }
+    const formatted = new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: "NGN",
+      minimumFractionDigits: 0,
+    }).format(value);
+    e.target.value = formatted;
+  });
+}
+
 })

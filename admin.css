@@ -278,6 +278,24 @@ body {
   margin-bottom: 2rem;
 }
 
+#userFormContainer .modal-container {
+    width: 100%;
+    max-width: none;   /* remove default limit */
+}
+
+#userFormContainer .modal-content {
+    width: 100%;
+}
+
+#userForm {
+    width: 100%;
+}
+
+#userForm .form-group input {
+    width: 100%;      /* make all inputs fill the container */
+    box-sizing: border-box;
+}
+
 /* Product Form */
 .product-form-container {
   background-color: #fff;

@@ -3011,7 +3011,7 @@ section {
 
 /* --- MOBILE NAVIGATION SCROLLABLE --- */
 #navMenu.active {
-    max-height: 80vh; /* Limits height to 80% of viewport height */
+    max-height: 100vh; /* Limits height to 80% of viewport height */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }

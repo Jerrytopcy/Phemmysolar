@@ -3009,3 +3009,33 @@ section {
 }
 
 
+/* --- MOBILE NAVIGATION SCROLLABLE --- */
+#navMenu.active {
+    max-height: 80vh; /* Limits height to 80% of viewport height */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+}
+
+/* Optional: Add padding so content doesn't stick to edges */
+#navMenu.active .nav-item,
+#navMenu.active .nav-dropdown {
+    padding: 0.5rem 1rem;
+}
+
+/* Optional: Add a subtle scrollbar for better UX */
+#navMenu.active::-webkit-scrollbar {
+    width: 8px;
+}
+
+#navMenu.active::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+#navMenu.active::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+#navMenu.active::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}

@@ -1,12 +1,12 @@
 {
-  "name": "my-project",
-  "version": "0.1.0",
-  "private": true,
+  "name": "phemmysolar",
+  "version": "1.0.0",
+  "description": "A solar energy website with admin panel",
+  "main": "index.html",
   "scripts": {
-    "build": "echo 'no build script'"
+    "build": "echo 'No build needed'"
   },
   "dependencies": {
-    "@netlify/neon": "^0.1.0",
-    "dotenv": "^17.2.3"
+    "@netlify/neon": "^1.0.0"
   }
 }

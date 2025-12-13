@@ -5,6 +5,7 @@ let productImages = []
 let testimonialImage = ""
 let newsImage = ""
 let currentEditingUserId = null;
+
 // Custom Alert Modal
 function showAdminAlert(message, title = "Alert") {
   return new Promise((resolve) => {
@@ -119,21 +120,43 @@ function showDashboard() {
 }
 
 // Handle login
-function handleLogin(e) {
+async function handleLogin(e) {
   e.preventDefault()
 
   const username = document.getElementById("username").value
   const password = document.getElementById("password").value
   const errorMessage = document.getElementById("errorMessage")
 
-  // Simple authentication (in production, this should be server-side)
-  if (username === "admin" && password === "admin123") {
-    isAuthenticated = true
-    sessionStorage.setItem("adminAuth", "true")
-    showDashboard()
-    errorMessage.textContent = ""
-  } else {
-    errorMessage.textContent = "Invalid username or password"
+  try {
+    const response = await fetch('/.netlify/functions/auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'login',
+        username: username,
+        password: password
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Login failed');
+    }
+
+    if (result.success) {
+      isAuthenticated = true
+      sessionStorage.setItem("adminAuth", "true")
+      showDashboard()
+      errorMessage.textContent = ""
+    } else {
+      errorMessage.textContent = result.message || "Invalid username or password"
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    errorMessage.textContent = error.message || "An unexpected error occurred during login."
   }
 }
 
@@ -162,40 +185,50 @@ function formatNaira(price) {
 }
 
 // Load products into table
-function loadProducts() {
-  const products = JSON.parse(localStorage.getItem("solarProducts") || "[]")
+async function loadProducts() {
   const tableBody = document.getElementById("productsTableBody")
 
-  if (products.length === 0) {
-    tableBody.innerHTML = `
-      <tr>
-        <td colspan="5" class="empty-state">
-          <p>No products found. Add your first product!</p>
-        </td>
-      </tr>
-    `
-    return
-  }
+  try {
+    const response = await fetch('/.netlify/functions/products');
+    if (!response.ok) {
+      throw new Error('Failed to load products');
+    }
+    const products = await response.json();
 
-  tableBody.innerHTML = products
-    .map((product) => {
-      const firstImage = product.images ? product.images[0] : product.image
-      return `
-          <tr>
-            <td><img src="${firstImage}" alt="${product.name}" class="product-image-thumb"></td>
-            <td>${product.name}</td>
-            <td>${formatNaira(product.price)}</td>
-            <td>${product.description.substring(0, 60)}...</td>
-            <td>
-              <div class="product-actions">
-                <button class="btn-edit" onclick="editProduct(${product.id})">Edit</button>
-                <button class="btn-delete" onclick="deleteProduct(${product.id})">Delete</button>
-              </div>
-            </td>
-          </tr>
-        `
-    })
-    .join("")
+    if (products.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="5" class="empty-state">
+            <p>No products found. Add your first product!</p>
+          </td>
+        </tr>
+      `
+      return
+    }
+
+    tableBody.innerHTML = products
+      .map((product) => {
+        const firstImage = product.images ? product.images[0] : product.image
+        return `
+            <tr>
+              <td><img src="${firstImage}" alt="${product.name}" class="product-image-thumb"></td>
+              <td>${product.name}</td>
+              <td>${formatNaira(product.price)}</td>
+              <td>${product.description.substring(0, 60)}...</td>
+              <td>
+                <div class="product-actions">
+                  <button class="btn-edit" onclick="editProduct(${product.id})">Edit</button>
+                  <button class="btn-delete" onclick="deleteProduct(${product.id})">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `
+      })
+      .join("")
+  } catch (error) {
+    console.error('Error loading products:', error);
+    tableBody.innerHTML = `<tr><td colspan="5" class="empty-state"><p>Error loading products: ${error.message}</p></td></tr>`;
+  }
 }
 
 // Show product form
@@ -307,9 +340,6 @@ function populateImageUrlInputs(images) {
 async function handleProductSubmit(e) {
   e.preventDefault()
 
-  const products = JSON.parse(localStorage.getItem("solarProducts") || "[]")
-  const productId = document.getElementById("productId").value
-
   let finalImages = []
 
   if (productImages.length > 0) {
@@ -326,7 +356,7 @@ async function handleProductSubmit(e) {
     // Extract only the numeric part (remove ₦ and commas)
     let rawPrice = parseFloat(priceInput.replace(/[^\d.-]/g, "")) || 0;
   const productData = {
-    id: productId ? Number.parseInt(productId) : Date.now(),
+    id: document.getElementById("productId").value ? Number.parseInt(document.getElementById("productId").value) : undefined,
     name: document.getElementById("productName").value,
     price: rawPrice,
     description: document.getElementById("productDescription").value,
@@ -335,28 +365,57 @@ async function handleProductSubmit(e) {
     category: document.getElementById("productCategory").value,
   }
 
-  if (productId) {
-    const index = products.findIndex((p) => p.id === Number.parseInt(productId))
-    if (index !== -1) {
-      products[index] = productData
+  try {
+    const productId = document.getElementById("productId").value;
+    let response;
+    if (productId) {
+      // Update existing product
+      response = await fetch(`/.netlify/functions/products`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(productData)
+      });
+    } else {
+      // Create new product
+      response = await fetch(`/.netlify/functions/products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(productData)
+      });
     }
-  } else {
-    products.push(productData)
+
+    if (!response.ok) {
+      const errorResult = await response.json();
+      throw new Error(errorResult.error || 'Failed to save product');
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      loadProducts()
+      hideProductForm()
+      await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success")
+    } else {
+      throw new Error(result.message || 'Failed to save product');
+    }
+  } catch (error) {
+    console.error('Error saving product:', error);
+    await showAdminAlert(error.message || "An unexpected error occurred while saving the product.", "Error")
   }
-
-  localStorage.setItem("solarProducts", JSON.stringify(products))
-  loadProducts()
-  hideProductForm()
-
-  await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success")
 }
 
 // Edit product
-function editProduct(productId) {
-  const products = JSON.parse(localStorage.getItem("solarProducts") || "[]")
-  const product = products.find((p) => p.id === productId)
+async function editProduct(productId) {
+  try {
+    const response = await fetch(`/.netlify/functions/products?id=${productId}`);
+    if (!response.ok) {
+      throw new Error('Product not found');
+    }
+    const product = await response.json();
 
-  if (product) {
     document.getElementById("productId").value = product.id
     document.getElementById("productName").value = product.name
     document.getElementById("productPrice").value = formatNaira(product.price);
@@ -389,6 +448,9 @@ function editProduct(productId) {
 
     currentEditingProductId = productId
     showProductForm(true)
+  } catch (error) {
+    console.error('Error editing product:', error);
+    await showAdminAlert(error.message || "An unexpected error occurred while editing the product.", "Error");
   }
 }
 
@@ -400,11 +462,31 @@ async function deleteProduct(productId) {
   )
 
   if (confirmed) {
-    let products = JSON.parse(localStorage.getItem("solarProducts") || "[]")
-    products = products.filter((p) => p.id !== productId)
-    localStorage.setItem("solarProducts", JSON.stringify(products))
-    loadProducts()
-    await showAdminAlert("Product deleted successfully!", "Success")
+    try {
+      const response = await fetch(`/.netlify/functions/products`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: productId })
+      });
+
+      if (!response.ok) {
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || 'Failed to delete product');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        loadProducts()
+        await showAdminAlert("Product deleted successfully!", "Success")
+      } else {
+        throw new Error(result.message || 'Failed to delete product');
+      }
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      await showAdminAlert(error.message || "An unexpected error occurred while deleting the product.", "Error")
+    }
   }
 }
 
@@ -452,13 +534,10 @@ function handleNavigation(e) {
 async function handleTestimonialSubmit(e) {
   e.preventDefault()
 
-  const testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
-  const testimonialId = document.getElementById("testimonialId").value
-
   let finalImage = testimonialImage || document.getElementById("testimonialImageUrl").value || ""
 
   const testimonialData = {
-    id: testimonialId ? Number.parseInt(testimonialId) : Date.now(),
+    id: document.getElementById("testimonialId").value ? Number.parseInt(document.getElementById("testimonialId").value) : undefined,
     name: document.getElementById("testimonialName").value,
     role: document.getElementById("testimonialRole").value,
     text: document.getElementById("testimonialText").value,
@@ -466,26 +545,56 @@ async function handleTestimonialSubmit(e) {
     image: finalImage, // Updated to include profile image
   }
 
-  if (testimonialId) {
-    const index = testimonials.findIndex((t) => t.id === Number.parseInt(testimonialId))
-    if (index !== -1) {
-      testimonials[index] = testimonialData
+  try {
+    const testimonialId = document.getElementById("testimonialId").value;
+    let response;
+    if (testimonialId) {
+      // Update existing testimonial
+      response = await fetch(`/.netlify/functions/testimonials`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(testimonialData)
+      });
+    } else {
+      // Create new testimonial
+      response = await fetch(`/.netlify/functions/testimonials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(testimonialData)
+      });
     }
-  } else {
-    testimonials.push(testimonialData)
-  }
 
-  localStorage.setItem("testimonials", JSON.stringify(testimonials))
-  loadTestimonials()
-  hideTestimonialForm()
-  await showAdminAlert(testimonialId ? "Testimonial updated!" : "Testimonial added!", "Success")
+    if (!response.ok) {
+      const errorResult = await response.json();
+      throw new Error(errorResult.error || 'Failed to save testimonial');
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      loadTestimonials()
+      hideTestimonialForm()
+      await showAdminAlert(testimonialId ? "Testimonial updated!" : "Testimonial added!", "Success")
+    } else {
+      throw new Error(result.message || 'Failed to save testimonial');
+    }
+  } catch (error) {
+    console.error('Error saving testimonial:', error);
+    await showAdminAlert(error.message || "An unexpected error occurred while saving the testimonial.", "Error")
+  }
 }
 
-function editTestimonial(testimonialId) {
-  const testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
-  const testimonial = testimonials.find((t) => t.id === testimonialId)
+async function editTestimonial(testimonialId) {
+  try {
+    const response = await fetch(`/.netlify/functions/testimonials?id=${testimonialId}`);
+    if (!response.ok) {
+      throw new Error('Testimonial not found');
+    }
+    const testimonial = await response.json();
 
-  if (testimonial) {
     document.getElementById("testimonialId").value = testimonial.id
     document.getElementById("testimonialName").value = testimonial.name
     document.getElementById("testimonialRole").value = testimonial.role
@@ -504,48 +613,81 @@ function editTestimonial(testimonialId) {
     
     document.getElementById("testimonialFormTitle").textContent = "Edit Testimonial"
     document.getElementById("testimonialFormContainer").style.display = "block"
+  } catch (error) {
+    console.error('Error editing testimonial:', error);
+    await showAdminAlert(error.message || "An unexpected error occurred while editing the testimonial.", "Error");
   }
 }
 
 // Load testimonials
-function loadTestimonials() {
-  const testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
+async function loadTestimonials() {
   const tableBody = document.getElementById("testimonialsTableBody")
 
-  if (testimonials.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="5" class="empty-state"><p>No testimonials found.</p></td></tr>`
-    return
-  }
+  try {
+    const response = await fetch('/.netlify/functions/testimonials');
+    if (!response.ok) {
+      throw new Error('Failed to load testimonials');
+    }
+    const testimonials = await response.json();
 
-  tableBody.innerHTML = testimonials
-    .map(
-      (t) => `
-      <tr>
-        <td>${t.name}</td>
-        <td>${t.role}</td>
-        <td>${t.text.substring(0, 50)}...</td>
-        <td>${"⭐".repeat(t.rating)}</td>
-        <td>
-          <div class="product-actions">
-            <button class="btn-edit" onclick="editTestimonial(${t.id})">Edit</button>
-            <button class="btn-delete" onclick="deleteTestimonial(${t.id})">Delete</button>
-          </div>
-        </td>
-      </tr>
-    `,
-    )
-    .join("")
+    if (testimonials.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="5" class="empty-state"><p>No testimonials found.</p></td></tr>`
+      return
+    }
+
+    tableBody.innerHTML = testimonials
+      .map(
+        (t) => `
+        <tr>
+          <td>${t.name}</td>
+          <td>${t.role}</td>
+          <td>${t.text.substring(0, 50)}...</td>
+          <td>${"⭐".repeat(t.rating)}</td>
+          <td>
+            <div class="product-actions">
+              <button class="btn-edit" onclick="editTestimonial(${t.id})">Edit</button>
+              <button class="btn-delete" onclick="deleteTestimonial(${t.id})">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `,
+      )
+      .join("")
+  } catch (error) {
+    console.error('Error loading testimonials:', error);
+    tableBody.innerHTML = `<tr><td colspan="5" class="empty-state"><p>Error loading testimonials: ${error.message}</p></td></tr>`;
+  }
 }
 
 // Delete testimonial
 async function deleteTestimonial(testimonialId) {
   const confirmed = await showAdminConfirm("Delete this testimonial?", "Delete Testimonial")
   if (confirmed) {
-    let testimonials = JSON.parse(localStorage.getItem("testimonials") || "[]")
-    testimonials = testimonials.filter((t) => t.id !== testimonialId)
-    localStorage.setItem("testimonials", JSON.stringify(testimonials))
-    loadTestimonials()
-    await showAdminAlert("Testimonial deleted!", "Success")
+    try {
+      const response = await fetch(`/.netlify/functions/testimonials`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: testimonialId })
+      });
+
+      if (!response.ok) {
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || 'Failed to delete testimonial');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        loadTestimonials()
+        await showAdminAlert("Testimonial deleted!", "Success")
+      } else {
+        throw new Error(result.message || 'Failed to delete testimonial');
+      }
+    } catch (error) {
+      console.error('Error deleting testimonial:', error);
+      await showAdminAlert(error.message || "An unexpected error occurred while deleting the testimonial.", "Error")
+    }
   }
 }
 
@@ -602,13 +744,10 @@ function removeTestimonialImage() {
 async function handleNewsSubmit(e) {
   e.preventDefault()
 
-  const newsList = JSON.parse(localStorage.getItem("news") || "[]")
-  const newsId = document.getElementById("newsId").value
-
   let finalImage = newsImage || document.getElementById("newsImage").value || ""
 
   const newsData = {
-    id: newsId ? Number.parseInt(newsId) : Date.now(),
+    id: document.getElementById("newsId").value ? Number.parseInt(document.getElementById("newsId").value) : undefined,
     title: document.getElementById("newsTitle").value,
     description: document.getElementById("newsDescription").value,
     fullContent: document.getElementById("newsContent").value, // Save full content
@@ -617,56 +756,96 @@ async function handleNewsSubmit(e) {
     date: formatDate(document.getElementById("newsDate").value),
   }
 
-  if (newsId) {
-    const index = newsList.findIndex((n) => n.id === Number.parseInt(newsId))
-    if (index !== -1) {
-      newsList[index] = newsData
+  try {
+    const newsId = document.getElementById("newsId").value;
+    let response;
+    if (newsId) {
+      // Update existing news
+      response = await fetch(`/.netlify/functions/news`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newsData)
+      });
+    } else {
+      // Create new news
+      response = await fetch(`/.netlify/functions/news`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newsData)
+      });
     }
-  } else {
-    newsList.push(newsData)
-  }
 
-  localStorage.setItem("news", JSON.stringify(newsList))
-  loadNews()
-  hideNewsForm()
-  await showAdminAlert(newsId ? "Article updated!" : "Article added!", "Success")
+    if (!response.ok) {
+      const errorResult = await response.json();
+      throw new Error(errorResult.error || 'Failed to save news article');
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      loadNews()
+      hideNewsForm()
+      await showAdminAlert(newsId ? "Article updated!" : "Article added!", "Success")
+    } else {
+      throw new Error(result.message || 'Failed to save news article');
+    }
+  } catch (error) {
+    console.error('Error saving news article:', error);
+    await showAdminAlert(error.message || "An unexpected error occurred while saving the news article.", "Error")
+  }
 }
 
 // Load news
-function loadNews() {
-  const newsList = JSON.parse(localStorage.getItem("news") || "[]")
+async function loadNews() {
   const tableBody = document.getElementById("newsTableBody")
 
-  if (newsList.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="4" class="empty-state"><p>No articles found.</p></td></tr>`
-    return
-  }
+  try {
+    const response = await fetch('/.netlify/functions/news');
+    if (!response.ok) {
+      throw new Error('Failed to load news');
+    }
+    const newsList = await response.json();
 
-  tableBody.innerHTML = newsList
-    .map(
-      (n) => `
-      <tr>
-        <td>${n.title}</td>
-        <td>${n.date}</td>
-        <td>${n.description.substring(0, 50)}...</td>
-        <td>
-          <div class="product-actions">
-            <button class="btn-edit" onclick="editNews(${n.id})">Edit</button>
-            <button class="btn-delete" onclick="deleteNews(${n.id})">Delete</button>
-          </div>
-        </td>
-      </tr>
-    `,
-    )
-    .join("")
+    if (newsList.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="4" class="empty-state"><p>No articles found.</p></td></tr>`
+      return
+    }
+
+    tableBody.innerHTML = newsList
+      .map(
+        (n) => `
+        <tr>
+          <td>${n.title}</td>
+          <td>${n.date}</td>
+          <td>${n.description.substring(0, 50)}...</td>
+          <td>
+            <div class="product-actions">
+              <button class="btn-edit" onclick="editNews(${n.id})">Edit</button>
+              <button class="btn-delete" onclick="deleteNews(${n.id})">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `,
+      )
+      .join("")
+  } catch (error) {
+    console.error('Error loading news:', error);
+    tableBody.innerHTML = `<tr><td colspan="4" class="empty-state"><p>Error loading news: ${error.message}</p></td></tr>`;
+  }
 }
 
 // Edit news
-function editNews(newsId) {
-  const newsList = JSON.parse(localStorage.getItem("news") || "[]")
-  const news = newsList.find((n) => n.id === newsId)
+async function editNews(newsId) {
+  try {
+    const response = await fetch(`/.netlify/functions/news?id=${newsId}`);
+    if (!response.ok) {
+      throw new Error('News article not found');
+    }
+    const news = await response.json();
 
-  if (news) {
     document.getElementById("newsId").value = news.id
     document.getElementById("newsTitle").value = news.title
     document.getElementById("newsDescription").value = news.description
@@ -685,6 +864,9 @@ function editNews(newsId) {
         updateNewsImagePreview()
       }
     }
+  } catch (error) {
+    console.error('Error editing news:', error);
+    await showAdminAlert(error.message || "An unexpected error occurred while editing the news article.", "Error");
   }
 }
 
@@ -692,11 +874,31 @@ function editNews(newsId) {
 async function deleteNews(newsId) {
   const confirmed = await showAdminConfirm("Delete this article?", "Delete Article")
   if (confirmed) {
-    let newsList = JSON.parse(localStorage.getItem("news") || "[]")
-    newsList = newsList.filter((n) => n.id !== newsId)
-    localStorage.setItem("news", JSON.stringify(newsList))
-    loadNews()
-    await showAdminAlert("Article deleted!", "Success")
+    try {
+      const response = await fetch(`/.netlify/functions/news`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: newsId })
+      });
+
+      if (!response.ok) {
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || 'Failed to delete news article');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        loadNews()
+        await showAdminAlert("Article deleted!", "Success")
+      } else {
+        throw new Error(result.message || 'Failed to delete news article');
+      }
+    } catch (error) {
+      console.error('Error deleting news article:', error);
+      await showAdminAlert(error.message || "An unexpected error occurred while deleting the news article.", "Error")
+    }
   }
 }
 
@@ -762,45 +964,54 @@ function reverseDateFormat(formattedDate) {
 }
 
 // Load users into table
-function loadUsers() {
-  const allUsers = JSON.parse(localStorage.getItem("users") || "{}");
-  const users = Object.values(allUsers);
+async function loadUsers() {
   const tableBody = document.getElementById("usersTableBody");
 
-  if (users.length === 0) {
-    tableBody.innerHTML = `
-      <tr>
-        <td colspan="6" class="empty-state">
-          <p>No users found.</p>
-        </td>
-      </tr>
-    `;
-    return;
-  }
+  try {
+    const response = await fetch('/.netlify/functions/users');
+    if (!response.ok) {
+      throw new Error('Failed to load users');
+    }
+    const users = await response.json();
 
-  tableBody.innerHTML = users
-    .map((user) => {
-      // Format address for display
-      const address = user.address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
-      const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
-      
-      return `
-          <tr>
-            <td>${user.username}</td>
-            <td>${user.email || "Not set"}</td>
-            <td>${user.phone || "Not set"}</td>
-            <td>${fullAddress}</td>
-            <td>${user.orders ? user.orders.length : 0}</td>
-            <td>
-              <div class="product-actions">
-                <button class="btn-edit" onclick="editUser(${user.id})">Edit</button>
-                <button class="btn-delete" onclick="deleteUser(${user.id})">Delete</button>
-              </div>
-            </td>
-          </tr>
-        `
-    })
-    .join("");
+    if (users.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="empty-state">
+            <p>No users found.</p>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tableBody.innerHTML = users
+      .map((user) => {
+        // Format address for display
+        const address = user.address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
+        const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+        
+        return `
+            <tr>
+              <td>${user.username}</td>
+              <td>${user.email || "Not set"}</td>
+              <td>${user.phone || "Not set"}</td>
+              <td>${fullAddress}</td>
+              <td>${user.orders ? user.orders.length : 0}</td>
+              <td>
+                <div class="product-actions">
+                  <button class="btn-edit" onclick="editUser(${user.id})">Edit</button>
+                  <button class="btn-delete" onclick="deleteUser(${user.id})">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `
+      })
+      .join("");
+  } catch (error) {
+    console.error('Error loading users:', error);
+    tableBody.innerHTML = `<tr><td colspan="6" class="empty-state"><p>Error loading users: ${error.message}</p></td></tr>`;
+  }
 }
 
 // Show user form
@@ -829,11 +1040,10 @@ function hideUserForm() {
 async function handleUserSubmit(e) {
   e.preventDefault();
 
-  const allUsers = JSON.parse(localStorage.getItem("users") || "{}");
   const userId = document.getElementById("userId").value;
 
   const userData = {
-    id: userId ? Number.parseInt(userId) : Date.now().toString(),
+    id: userId ? Number.parseInt(userId) : undefined,
     username: document.getElementById("username").value,
     passwordHash: hashPassword(document.getElementById("password").value), // Use your existing hashPassword function
     email: document.getElementById("email").value,
@@ -845,29 +1055,60 @@ async function handleUserSubmit(e) {
       postalCode: document.getElementById("postalCode").value,
       country: "Nigeria"
     },
-    orders: userId && allUsers[userId] ? allUsers[userId].orders : [],
-    cart: userId && allUsers[userId] ? allUsers[userId].cart : []
+    orders: userId ? undefined : [], // Only include orders if editing existing user
+    cart: userId ? undefined : []    // Only include cart if editing existing user
   };
 
-  if (userId) {
-    allUsers[userId] = userData;
-  } else {
-    allUsers[userData.id] = userData;
+  try {
+    let response;
+    if (userId) {
+      // Update existing user
+      response = await fetch(`/.netlify/functions/users`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
+    } else {
+      // Create new user
+      response = await fetch(`/.netlify/functions/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
+    }
+
+    if (!response.ok) {
+      const errorResult = await response.json();
+      throw new Error(errorResult.error || 'Failed to save user');
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      loadUsers()
+      hideUserForm()
+      await showAdminAlert(userId ? "User updated successfully!" : "User added successfully!", "Success")
+    } else {
+      throw new Error(result.message || 'Failed to save user');
+    }
+  } catch (error) {
+    console.error('Error saving user:', error);
+    await showAdminAlert(error.message || "An unexpected error occurred while saving the user.", "Error")
   }
-
-  localStorage.setItem("users", JSON.stringify(allUsers));
-  loadUsers();
-  hideUserForm();
-
-  await showAdminAlert(userId ? "User updated successfully!" : "User added successfully!", "Success");
 }
 
 // Edit user
-function editUser(userId) {
-  const allUsers = JSON.parse(localStorage.getItem("users") || "{}");
-  const user = allUsers[userId];
+async function editUser(userId) {
+  try {
+    const response = await fetch(`/.netlify/functions/users?id=${userId}`);
+    if (!response.ok) {
+      throw new Error('User not found');
+    }
+    const user = await response.json();
 
-  if (user) {
     document.getElementById("userId").value = user.id;
     document.getElementById("username").value = user.username;
     document.getElementById("email").value = user.email || "";
@@ -882,6 +1123,9 @@ function editUser(userId) {
 
     currentEditingUserId = userId;
     showUserForm(true);
+  } catch (error) {
+    console.error('Error editing user:', error);
+    await showAdminAlert(error.message || "An unexpected error occurred while editing the user.", "Error");
   }
 }
 
@@ -893,11 +1137,31 @@ async function deleteUser(userId) {
   );
 
   if (confirmed) {
-    let allUsers = JSON.parse(localStorage.getItem("users") || "{}");
-    delete allUsers[userId];
-    localStorage.setItem("users", JSON.stringify(allUsers));
-    loadUsers();
-    await showAdminAlert("User deleted successfully!", "Success");
+    try {
+      const response = await fetch(`/.netlify/functions/users`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: userId })
+      });
+
+      if (!response.ok) {
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || 'Failed to delete user');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        loadUsers()
+        await showAdminAlert("User deleted successfully!", "Success")
+      } else {
+        throw new Error(result.message || 'Failed to delete user');
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      await showAdminAlert(error.message || "An unexpected error occurred while deleting the user.", "Error")
+    }
   }
 }
 // Simple password hashing simulation (NOT secure for real applications)

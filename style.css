@@ -2343,6 +2343,11 @@ section {
     width: 36px;
     height: 36px;
   }
+  .alert-buttons{
+  display: flex;
+  gap: .5rem;
+  flex-direction: column;
+}
 }
 
 /* ========================================

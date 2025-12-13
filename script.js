@@ -1,17 +1,26 @@
 // script.js
 // --- NEW: Cart and User Management Functions ---
+
 // Initialize user session (simulates login state)
 function initializeUserSession() {
     let user = JSON.parse(sessionStorage.getItem('currentUser')) || null;
     if (!user) {
         // Check if a user ID exists in localStorage (for persistence across sessions)
-        // Note: Since users are managed via API now, persistence needs re-evaluation if needed server-side
-        // For now, only session storage holds the current user context
+        const storedUserId = localStorage.getItem('currentUserId');
+        if (storedUserId) {
+            // Retrieve user data from localStorage
+            const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+            user = allUsers[storedUserId] || null;
+            if (user) {
+                sessionStorage.setItem('currentUser', JSON.stringify(user));
+            }
+        }
     }
     updateUIBasedOnUser(user);
 }
 
 // --- NEW: Custom Modal Functions for Login/Signup ---
+
 // Show the login/signup modal
 function showAuthModal() {
     const modal = document.getElementById("authModal");
@@ -34,62 +43,100 @@ function closeAuthModal() {
 
 // Handle login or signup form submission
 async function handleAuthSubmit(e) {
-    e.preventDefault();
-    const form = e.target;
-    const username = form.username.value.trim();
-    const password = form.password.value;
-    const isLogin = form.dataset.mode === "login";
+  e.preventDefault();
+  const form = e.target;
+  const username = form.username.value.trim();
+  const password = form.password.value;
+  const isLogin = form.dataset.mode === "login";
 
-    if (!username || !password) {
-        document.getElementById("authError").textContent = "Username and password are required.";
-        return;
+  if (!username || !password) {
+    document.getElementById("authError").textContent = "Username and password are required.";
+    return;
+  }
+
+  // Prepare data based on whether it's login or signup
+  let requestData = {
+    username: username,
+    password: password
+  };
+
+  if (!isLogin) {
+    // Collect extra signup fields
+    const email = document.getElementById("email").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const street = document.getElementById("street").value.trim();
+    const city = document.getElementById("city").value.trim();
+    const state = document.getElementById("state").value.trim();
+    const postalCode = document.getElementById("postalCode").value.trim();
+
+    // Validate required fields for signup
+    if (!email || !phone || !street || !city || !state) {
+      document.getElementById("authError").textContent = "Please fill in all required fields.";
+      return;
     }
 
-    try {
-        const response = await fetch('/.netlify/functions/auth', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                action: isLogin ? 'login' : 'signup',
-                username: username,
-                password: password,
-                ...(isLogin ? {} : {
-                    email: document.getElementById("email").value.trim(),
-                    phone: document.getElementById("phone").value.trim(),
-                    street: document.getElementById("street").value.trim(),
-                    city: document.getElementById("city").value.trim(),
-                    state: document.getElementById("state").value.trim(),
-                    postalCode: document.getElementById("postalCode").value.trim()
-                })
-            })
-        });
+    requestData = {
+      ...requestData,
+      action: "signup",
+      email: email,
+      phone: phone,
+      address: {
+        street: street,
+        city: city,
+        state: state,
+        postalCode: postalCode,
+        country: "Nigeria"
+      }
+    };
+  } else {
+    requestData.action = "login";
+  }
 
-        const result = await response.json();
+  try {
+    const response = await fetch('/.netlify/functions/auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData)
+    });
 
-        if (!response.ok) {
-            throw new Error(result.error || 'Authentication failed');
-        }
+    const result = await response.json();
 
-        if (result.success) {
-            // Store the returned user data in sessionStorage
-            sessionStorage.setItem('currentUser', JSON.stringify(result.user));
-            // For demo, we don't store currentUserId persistently anymore as users are server-side
-            // localStorage.setItem('currentUserId', result.user.id); // Removed per instructions
-            updateUIBasedOnUser(result.user);
-            closeAuthModal();
-            showCustomAlert(
-                `Welcome ${isLogin ? 'back' : ''}, ${username}! ${isLogin ? '' : 'Your account has been created.'}`,
-                isLogin ? "Logged In" : "Account Created"
-            );
-        } else {
-            document.getElementById("authError").textContent = result.message || "Authentication failed.";
-        }
-    } catch (error) {
-        console.error('Authentication error:', error);
-        document.getElementById("authError").textContent = error.message || "An unexpected error occurred during authentication.";
+    if (!response.ok) {
+      // Server responded with an error status (e.g., 400, 401, 500)
+      document.getElementById("authError").textContent = result.error || "An unexpected error occurred.";
+      return;
     }
+
+    if (result.success) {
+      // Authentication successful
+      const userData = result.user;
+      // Store user data in session storage for this browser session
+      sessionStorage.setItem('currentUser', JSON.stringify(userData));
+      // Optionally store the user ID persistently in localStorage for easier re-login later
+      localStorage.setItem('currentUserId', userData.id);
+
+      // Update UI based on the logged-in user
+      updateUIBasedOnUser(userData);
+
+      // Close the modal
+      closeAuthModal();
+
+      // Show success message
+      if (isLogin) {
+        showCustomAlert(`Welcome back, ${username}!`, "Logged In");
+      } else {
+        showCustomAlert(`Welcome, ${username}! Your account has been created.`, "Account Created");
+      }
+    } else {
+      // Result indicates failure (e.g., incorrect credentials during login)
+      document.getElementById("authError").textContent = result.error || "Authentication failed.";
+    }
+  } catch (error) {
+    console.error("Network error during authentication:", error);
+    document.getElementById("authError").textContent = "Network error. Please try again.";
+  }
 }
 
 
@@ -107,6 +154,7 @@ function hashPassword(password) {
 }
 
 // --- END NEW: Custom Modal Functions for Login/Signup ---
+
 // Simulate user logout with confirmation
 function handleLogout() {
     showCustomConfirm(
@@ -115,7 +163,7 @@ function handleLogout() {
         () => {
             // This function runs if the user clicks "Yes"
             sessionStorage.removeItem('currentUser');
-            // localStorage.removeItem('currentUserId'); // Removed per instructions
+            localStorage.removeItem('currentUserId'); // Clear persistent ID
             updateUIBasedOnUser(null);
             showCustomAlert("You have been logged out.", "Logged Out");
         }
@@ -137,6 +185,7 @@ function updateUIBasedOnUser(user) {
             logoutBtn.onclick = handleLogout; // Ensure event handler is attached
         }
         if (accountLink) accountLink.style.display = 'inline-block';
+
         // Update cart count based on user's cart data
         const cartCount = user.cart ? user.cart.reduce((sum, item) => sum + item.quantity, 0) : 0;
         if (cartCountElement) cartCountElement.textContent = cartCount;
@@ -151,122 +200,148 @@ function updateUIBasedOnUser(user) {
 
 // Add item to cart
 async function addToCart(productId) {
-    let user = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (!user) {
-        // Prompt for login/signup if not logged in
-        showAuthModal(); // Show the modal instead of prompt
-        return;
+  let user = JSON.parse(sessionStorage.getItem('currentUser'));
+  if (!user) {
+    // Prompt for login/signup if not logged in
+    showAuthModal(); // Show the modal instead of prompt
+    return;
+  }
+
+  try {
+    // Fetch the specific product from the API
+    const response = await fetch(`/.netlify/functions/products?id=${productId}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const product = await response.json();
+
+    if (!product) {
+      showCustomAlert("Product not found.", "Error");
+      return;
     }
 
-    try {
-        // Fetch product data from API
-        const response = await fetch(`/.netlify/functions/products?id=${productId}`);
-        if (!response.ok) {
-            throw new Error('Product not found.');
-        }
-        const product = await response.json();
-
-        // Check if item already exists in cart
-        const existingItemIndex = user.cart.findIndex(item => item.productId === productId);
-        if (existingItemIndex > -1) {
-            user.cart[existingItemIndex].quantity += 1;
-        } else {
-            user.cart.push({ productId: productId, quantity: 1 });
-        }
-
-        // Update user data in session storage
-        sessionStorage.setItem('currentUser', JSON.stringify(user));
-
-        // Update UI
-        updateUIBasedOnUser(user);
-        showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
-    } catch (error) {
-        console.error('Error adding to cart:', error);
-        showCustomAlert(error.message || "Failed to add item to cart.", "Error");
+    // Check if item already exists in cart
+    const existingItemIndex = user.cart.findIndex(item => item.productId === productId);
+    if (existingItemIndex > -1) {
+      user.cart[existingItemIndex].quantity += 1;
+    } else {
+      user.cart.push({ productId: productId, quantity: 1 });
     }
+
+    // Update user data in session and localStorage
+    sessionStorage.setItem('currentUser', JSON.stringify(user));
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    allUsers[user.id] = user;
+    localStorage.setItem('users', JSON.stringify(allUsers));
+
+    // Update UI
+    updateUIBasedOnUser(user);
+    showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
+  } catch (error) {
+    console.error("Error fetching product for cart:", error);
+    showCustomAlert("Failed to add product to cart. Please try again.", "Error");
+  }
 }
 
+
+// View Cart (you can implement this in a modal or a dedicated page)
 // View Cart
 async function viewCart() {
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (!user || !user.cart || user.cart.length === 0) {
-        showCustomAlert("Your cart is empty.", "Cart Empty");
-        return;
+  const user = JSON.parse(sessionStorage.getItem('currentUser'));
+  if (!user || !user.cart || user.cart.length === 0) {
+    showCustomAlert("Your cart is empty.", "Cart Empty");
+    return;
+  }
+
+  // Create an array to hold all product data fetched from the API
+  const cartItemsWithDetails = [];
+
+  try {
+    // Loop through each item in the user's cart and fetch its details
+    for (const cartItem of user.cart) {
+      const response = await fetch(`/.netlify/functions/products?id=${cartItem.productId}`);
+      if (!response.ok) {
+        console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
+        continue; // Skip this item if fetching fails
+      }
+      const product = await response.json();
+      if (product) {
+        // Combine the cart item quantity with the product details
+        cartItemsWithDetails.push({
+          ...product,
+          cartQuantity: cartItem.quantity // Add the quantity from the cart
+        });
+      }
     }
 
-    try {
-        let cartHTML = '<h3>Your Cart</h3><ul>';
-        let total = 0;
+    // Sort cart items in reverse order (last added first) if needed
+    // const reversedCart = [...cartItemsWithDetails].reverse(); // Uncomment if desired
 
-        // Reverse the cart array so the last added item appears first
-        const reversedCart = [...user.cart].reverse();
+    let cartHTML = '<h3>Your Cart</h3><ul>';
+    let total = 0;
 
-        for (const cartItem of reversedCart) {
-            const response = await fetch(`/.netlify/functions/products?id=${cartItem.productId}`);
-            if (!response.ok) {
-                console.warn(`Product ${cartItem.productId} not found.`);
-                continue; // Skip this item if not found
-            }
-            const product = await response.json();
-
-            const price = parseInt(product.price.replace(/\D/g, '')); // Extract numeric price
-            const itemTotal = price * cartItem.quantity;
-            total += itemTotal;
-
-            cartHTML += `
-                <div class="cart-item-card">
-                    <div class="cart-item-image-wrapper">
-                        <img src="${product.images?.[0] || '/placeholder.svg'}" alt="${product.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+    // Iterate through the fetched cart items
+    cartItemsWithDetails.forEach(item => { // Use reversedCart here if sorting was applied
+        const price = parseInt(item.price.replace(/\D/g, '')); // Extract numeric price
+        const itemTotal = price * item.cartQuantity;
+        total += itemTotal;
+        cartHTML += `
+            <div class="cart-item-card">
+                <div class="cart-item-image-wrapper">
+                    <img src="${item.images?.[0] || '/placeholder.svg'}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+                </div>
+                <div class="cart-item-info">
+                    <h4 class="cart-item-title">${item.name}</h4>
+                    <p class="cart-item-price">${formatNaira(itemTotal)}</p>
+                    <div class="cart-item-quantity-controls">
+                        <button class="qty-btn" onclick="updateCartItemQuantity(${item.id}, ${item.cartQuantity - 1})" ${item.cartQuantity <= 1 ? 'disabled' : ''}>−</button>
+                        <span class="qty-display">${item.cartQuantity}</span>
+                        <button class="qty-btn" onclick="updateCartItemQuantity(${item.id}, ${item.cartQuantity + 1})">+</button>
                     </div>
-                    <div class="cart-item-info">
-                        <h4 class="cart-item-title">${product.name}</h4>
-                        <p class="cart-item-price">${formatNaira(itemTotal)}</p>
-                        <div class="cart-item-quantity-controls">
-                            <button class="qty-btn" onclick="updateCartItemQuantity(${product.id}, ${cartItem.quantity - 1})" ${cartItem.quantity <= 1 ? 'disabled' : ''}>−</button>
-                            <span class="qty-display">${cartItem.quantity}</span>
-                            <button class="qty-btn" onclick="updateCartItemQuantity(${product.id}, ${cartItem.quantity + 1})">+</button>
-                        </div>
-                    </div>
-                    <button class="remove-btn" onclick="removeFromCart(${product.id})">×</button>
-                </div>`;
-        }
+                </div>
+                <button class="remove-btn" onclick="removeFromCart(${item.id})">×</button>
+            </div>`;
+    });
 
-        cartHTML += `</ul><p><strong>Total: ${formatNaira(total)}</strong></p>`;
-        cartHTML += `<button class="btn btn-checkout" onclick="proceedToCheckout()">Checkout</button>`;
+    cartHTML += `</ul><p><strong>Total: ${formatNaira(total)}</strong></p>`;
+    cartHTML += `<button class="btn btn-checkout" onclick="proceedToCheckout()">Checkout</button>`;
 
-        // Display cart in the modal
-        const modal = document.getElementById("cartModal");
-        if (modal) {
-            document.getElementById("cartContent").innerHTML = cartHTML;
-            modal.classList.add("active");
-            document.body.style.overflow = "hidden";
-        } else {
-            // Fallback: Show in an alert or console
-            console.log(cartHTML);
-            alert(cartHTML.replace(/<[^>]*>/g, '')); // Simple text version
-        }
-    } catch (error) {
-        console.error('Error loading cart:', error);
-        showCustomAlert("Failed to load cart contents.", "Error");
+    // Display cart in the modal
+    const modal = document.getElementById("cartModal");
+    if (modal) {
+        document.getElementById("cartContent").innerHTML = cartHTML;
+        modal.classList.add("active");
+        document.body.style.overflow = "hidden";
+    } else {
+        // Fallback: Show in an alert or console
+        console.log(cartHTML);
+        alert(cartHTML.replace(/<[^>]*>/g, '')); // Simple text version
     }
+
+  } catch (error) {
+    console.error("Error loading cart items:", error);
+    showCustomAlert("Failed to load cart items. Please try again.", "Error");
+  }
 }
 
+
 // Update item quantity in cart
-async function updateCartItemQuantity(productId, newQuantity) {
+function updateCartItemQuantity(productId, newQuantity) {
     if (newQuantity < 1) {
         removeFromCart(productId);
         return;
     }
-
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!user) return;
-
     const itemIndex = user.cart.findIndex(item => item.productId === productId);
     if (itemIndex > -1) {
         user.cart[itemIndex].quantity = newQuantity;
 
-        // Update user data in session storage
+        // Update user data in session and localStorage
         sessionStorage.setItem('currentUser', JSON.stringify(user));
+        const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+        allUsers[user.id] = user;
+        localStorage.setItem('users', JSON.stringify(allUsers));
 
         // Update UI
         updateUIBasedOnUser(user);
@@ -275,19 +350,22 @@ async function updateCartItemQuantity(productId, newQuantity) {
 }
 
 // Remove item from cart
-async function removeFromCart(productId) {
+// Remove item from cart
+// Remove item from cart
+function removeFromCart(productId) {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!user) return;
-
     // Filter out the item
     user.cart = user.cart.filter(item => item.productId !== productId);
 
-    // Update user data in session storage
+    // Update user data in session and localStorage
     sessionStorage.setItem('currentUser', JSON.stringify(user));
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    allUsers[user.id] = user;
+    localStorage.setItem('users', JSON.stringify(allUsers));
 
     // Update UI
     updateUIBasedOnUser(user);
-
     // Check if cart is now empty
     if (user.cart.length === 0) {
         // Close the cart modal
@@ -302,79 +380,84 @@ async function removeFromCart(productId) {
 
 // Proceed to checkout
 async function proceedToCheckout() {
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (!user || !user.cart || user.cart.length === 0) {
-        showCustomAlert("Your cart is empty.", "Cart Empty");
-        return;
+  const user = JSON.parse(sessionStorage.getItem('currentUser'));
+  if (!user || !user.cart || user.cart.length === 0) {
+    showCustomAlert("Your cart is empty.", "Cart Empty");
+    return;
+  }
+
+  const orderItems = [];
+  let total = 0;
+
+  try {
+    // Loop through each item in the user's cart and fetch its details
+    for (const cartItem of user.cart) {
+      const response = await fetch(`/.netlify/functions/products?id=${cartItem.productId}`);
+      if (!response.ok) {
+        console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
+        continue; // Skip this item if fetching fails
+      }
+      const product = await response.json();
+      if (product) {
+        const price = parseInt(product.price.replace(/\D/g, ''));
+        const itemTotal = price * cartItem.quantity;
+        total += itemTotal;
+        orderItems.push({
+          productId: product.id,
+          name: product.name,
+          price: product.price,
+          quantity: cartItem.quantity,
+          itemTotal: itemTotal
+        });
+      }
     }
 
-    try {
-        const orderItems = [];
-        let total = 0;
+    // --- NEW: Get the current address from the user object ---
+    const currentAddress = user.address || {
+      street: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "Nigeria"
+    };
 
-        for (const cartItem of user.cart) {
-            const response = await fetch(`/.netlify/functions/products?id=${cartItem.productId}`);
-            if (!response.ok) {
-                console.warn(`Product ${cartItem.productId} not found.`);
-                continue; // Skip this item if not found
-            }
-            const product = await response.json();
+    // Create the order object with the calculated items and address
+    const order = {
+      id: Date.now(), // Consider using a UUID for production
+      date: new Date().toLocaleString(),
+      items: orderItems,
+      total: total,
+      status: 'Pending',
+      paymentStatus: 'pending',
+      // --- NEW: Add the address to the order ---
+      deliveryAddress: currentAddress
+    };
 
-            const price = parseInt(product.price.replace(/\D/g, ''));
-            const itemTotal = price * cartItem.quantity;
-            total += itemTotal;
-            orderItems.push({
-                productId: product.id,
-                name: product.name,
-                price: product.price,
-                quantity: cartItem.quantity,
-                itemTotal: itemTotal
-            });
-        }
+    // Save order to user's history (this part still updates local storage)
+    user.orders.push(order);
+    // Clear cart
+    user.cart = [];
+    // Update user data in session and localStorage (this is temporary until you implement backend order saving)
+    sessionStorage.setItem('currentUser', JSON.stringify(user));
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    allUsers[user.id] = user;
+    localStorage.setItem('users', JSON.stringify(allUsers));
 
-        // --- NEW: Get the current address from the user object ---
-        const currentAddress = user.address || {
-            street: "",
-            city: "",
-            state: "",
-            postalCode: "",
-            country: "Nigeria"
-        };
+    // Update UI to reflect empty cart (this updates the cart count)
+    updateUIBasedOnUser(user);
 
-        // Create the order object with the address
-        const order = {
-            id: Date.now(), // Consider using a server-generated ID
-            date: new Date().toLocaleString(),
-            items: orderItems,
-            total: total,
-            status: 'Pending',
-            paymentStatus: 'pending',
-            // --- NEW: Add the address to the order ---
-            deliveryAddress: currentAddress
-        };
+    // Close the cart modal first
+    closeCartModal();
 
-        // Save order to user's history
-        user.orders.push(order);
+    // Then show payment simulation modal
+    showPaymentSimulationModal(order);
 
-        // Clear cart
-        user.cart = [];
-
-        // Update user data in session storage
-        sessionStorage.setItem('currentUser', JSON.stringify(user));
-
-        // Update UI to reflect empty cart (this updates the cart count)
-        updateUIBasedOnUser(user);
-
-        // Close the cart modal first
-        closeCartModal();
-
-        // Then show payment simulation modal
-        showPaymentSimulationModal(order);
-    } catch (error) {
-        console.error('Error during checkout:', error);
-        showCustomAlert("Failed to process checkout.", "Error");
-    }
+  } catch (error) {
+    console.error("Error preparing checkout:", error);
+    showCustomAlert("Failed to prepare checkout. Please try again.", "Error");
+  }
 }
+
 
 // Close Cart Modal (Assuming you add this button)
 function closeCartModal() {
@@ -385,6 +468,7 @@ function closeCartModal() {
     }
 }
 
+// Load user's order history (for account page)
 // Load user's order history (for account page)
 function loadOrderHistory() {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -425,8 +509,11 @@ function loadOrderHistory() {
                 postalCode: "",
                 country: "Nigeria"
             };
-            // Save the initialized address to sessionStorage
+            // Save the initialized address to localStorage
             sessionStorage.setItem('currentUser', JSON.stringify(user));
+            const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+            allUsers[user.id] = user;
+            localStorage.setItem('users', JSON.stringify(allUsers));
         }
     }
 
@@ -447,56 +534,55 @@ function loadOrderHistory() {
     });
 
     let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
-    // Inside the loadOrderHistory function, find the sortedOrders.forEach block
-    sortedOrders.forEach(order => {
-        // --- NEW: Format the delivery address for display ---
-        const address = order.deliveryAddress || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
-        const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
-        historyHTML += `
-            <div class="order-item">
-                <p><strong>Order ID:</strong> ${order.id}</p>
-                <p><strong>Date:</strong> ${order.date}</p>
-                <!-- --- NEW: Add the delivery address --- -->
-                <p><strong>Delivery Address:</strong> ${fullAddress}</p>
-                <div class="order-status-actions">
-                    <p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
-                    <button class="btn-check-payment" onclick="checkOrderPaymentStatus(${order.id})">Check Payment 🔍</button>
-                    <button class="btn-reorder" onclick="reorderOrder(${order.id})">Reorder ➕</button>
-                </div>
-                <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
-                <div class="order-items-list">
-                    ${order.items.map(item => {
-                        // Fetch the full product data to get its image
-                        // We could fetch here too, but since the item already contains the name and image is cached from checkout...
-                        // For consistency with how the rest of the app works, we'll assume the item has the necessary details
-                        // However, for image, we'll rely on the fact that it was fetched during checkout or cart view
-                        // If image isn't present, we fall back to placeholder
-                        // Since we don't have product images cached separately here, we'll use a placeholder or the one saved in the order item
-                        // For simplicity in this refactor, we'll assume the image was part of the order item at checkout time
-                        // In a real scenario, you might want to fetch the product again for the latest image URL
-                        const imageUrl = item.imageUrl || '/placeholder.svg'; // Placeholder if not saved
-                        return `
-                            <div class="order-history-item">
-                                <div class="order-item-image-wrapper">
-                                    <img src="${imageUrl}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
-                                </div>
-                                <div class="order-item-details">
-                                    <div class="order-item-name">${item.name}</div>
-                                    <div class="order-item-meta">
-                                        <span class="order-item-qty">Qty: ${item.quantity}</span>
-                                        <span class="order-item-price">${formatNaira(item.itemTotal)}</span>
-                                    </div>
+
+  // Inside the loadOrderHistory function, find the sortedOrders.forEach block
+sortedOrders.forEach(order => {
+    // --- NEW: Format the delivery address for display ---
+    const address = order.deliveryAddress || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
+    const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+
+    historyHTML += `
+        <div class="order-item">
+            <p><strong>Order ID:</strong> ${order.id}</p>
+            <p><strong>Date:</strong> ${order.date}</p>
+            <!-- --- NEW: Add the delivery address --- -->
+            <p><strong>Delivery Address:</strong> ${fullAddress}</p>
+            <div class="order-status-actions">
+                <p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
+                <button class="btn-check-payment" onclick="checkOrderPaymentStatus(${order.id})">Check Payment 🔍</button>
+                <button class="btn-reorder" onclick="reorderOrder(${order.id})">Reorder ➕</button>
+            </div>
+            <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
+            <div class="order-items-list">
+                ${order.items.map(item => {
+                    // Fetch the full product data to get its image
+                    // const products = JSON.parse(localStorage.getItem("solarProducts") || "[]"); // OLD
+                    // const product = products.find(p => p.id === item.productId); // OLD
+                    const imageUrl = item.imageUrl || '/placeholder.svg'; // Use image from item if available, else placeholder
+                    return `
+                        <div class="order-history-item">
+                            <div class="order-item-image-wrapper">
+                                <img src="${imageUrl}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+                            </div>
+                            <div class="order-item-details">
+                                <div class="order-item-name">${item.name}</div>
+                                <div class="order-item-meta">
+                                    <span class="order-item-qty">Qty: ${item.quantity}</span>
+                                    <span class="order-item-price">${formatNaira(item.itemTotal)}</span>
                                 </div>
                             </div>
-                        `;
-                    }).join('')}
-                </div>
+                        </div>
+                    `;
+                }).join('')}
             </div>
-        `;
-    });
+        </div>
+    `;
+});
+
     historyHTML += '</div>';
     container.innerHTML = historyHTML;
 }
+
 
 // Add this function to your script.js
 function handleUpdateAddress(e) {
@@ -525,8 +611,11 @@ function handleUpdateAddress(e) {
         country: "Nigeria"
     };
 
-    // Save the updated user data in session storage
+    // Save the updated user data in both session and local storage
     sessionStorage.setItem('currentUser', JSON.stringify(user));
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    allUsers[user.id] = user;
+    localStorage.setItem('users', JSON.stringify(allUsers));
 
     // Success message
     showCustomAlert("Your delivery address has been updated successfully.", "Address Updated", "success");
@@ -540,9 +629,9 @@ function checkOrderPaymentStatus(orderId) {
         showCustomAlert("Order not found.", "Error");
         return;
     }
-
     let message = "Payment status: ";
     let type = "info";
+
     // Determine status based on paymentStatus field (if you added it)
     const paymentStatus = order.paymentStatus || 'unknown';
     if (paymentStatus === 'success') {
@@ -555,18 +644,19 @@ function checkOrderPaymentStatus(orderId) {
         message += "⏳ Pending";
         type = "info";
     }
+
     showCustomAlert(message, "Payment Status", type);
 }
 
-async function reorderOrder(orderId) {
+function reorderOrder(orderId) {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
     const order = user.orders.find(o => o.id === orderId);
     if (!order) return;
 
     // Add all items from this order back to cart
-    for (const item of order.items) {
-        await addToCart(item.productId); // Reuses your existing addToCart function (now async)
-    }
+    order.items.forEach(item => {
+        addToCart(item.productId); // Reuses your existing addToCart function
+    });
     showCustomAlert(`Added ${order.items.length} items from Order #${orderId} to your cart.`, "Reordered");
 }
 
@@ -583,6 +673,7 @@ function showPaymentSimulationModal(order) {
     statusDisplay.className = "payment-status pending";
     document.getElementById("simulatePaymentBtn").disabled = false;
     document.getElementById("checkStatusBtn").disabled = true;
+
     const modal = document.getElementById("paymentModal");
     if (modal) {
         modal.classList.add("active");
@@ -662,8 +753,11 @@ function updateOrderPaymentStatus(orderId, status) {
         user.orders[orderIndex].paymentStatus = status;
         user.orders[orderIndex].status = status === 'success' ? 'Paid' : 'Failed';
 
-        // Update user data in session storage
+        // Update user data
         sessionStorage.setItem('currentUser', JSON.stringify(user));
+        const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+        allUsers[user.id] = user;
+        localStorage.setItem('users', JSON.stringify(allUsers));
 
         // Show final alert with correct icon based on status
         if (status === 'success') {
@@ -675,156 +769,167 @@ function updateOrderPaymentStatus(orderId, status) {
 }
 
 // Initialize products from localStorage or use default products
-// --- REFACTORED: No-op function as per requirements ---
+// Initialize data (now handled by the database)
 function initializeData() {
-    // This function is intentionally left empty.
-    // All data fetching is done via API calls now.
+    // Data is loaded from the database via API calls
+    // No need to populate localStorage here
 }
 
 // Global variables for search and sort
-// These will be populated by API calls later
-let allProducts = [];
-let filteredProducts = [];
+let allProducts = []; // Will be populated from API
+let filteredProducts = []; // Will be populated from API
 let currentProductInModal = null;
 let currentImageIndex = 0;
 
 // Load and display featured products
 async function loadFeaturedProducts() {
-    const featuredContainer = document.getElementById("featuredProducts");
-    if (!featuredContainer) return;
+  const featuredContainer = document.getElementById("featuredProducts");
+  if (!featuredContainer) return;
 
-    try {
-        const response = await fetch('/.netlify/functions/products');
-        if (!response.ok) {
-            throw new Error('Failed to load products');
-        }
-        const products = await response.json();
-        const featuredProducts = products.slice(0, 4); // Changed from 3 to 4
+  try {
+    const response = await fetch('/.netlify/functions/products');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const products = await response.json();
 
-        if (featuredProducts.length === 0) {
-            featuredContainer.innerHTML = '<p class="empty-state">No products available</p>';
-            return;
-        }
+    // Get the first 4 products for featured display
+    const featuredProducts = products.slice(0, 4);
 
-        featuredContainer.innerHTML = featuredProducts
-            .map(
-                (product) => `
-            <div class="product-card">
-              <img src="${product.images?.[0] || product.image}" alt="${product.name}" class="product-image">
-              <div class="product-info">
-                <h3 class="product-name">${product.name}</h3>
-                <p class="product-price">${formatNaira(product.price)}</p>
-                <p class="product-description">${product.description.substring(0, 80)}...</p>
-                <div class="view-details">
-                    <button class="btn product-btn" onclick="viewProduct(${product.id})">View Details</button>
-                    <!-- NEW: Add to Cart Button in Product Card -->
-                    <button class="btn btn-contact" onclick="addToCart(${product.id})">Add to Cart</button>
-                </div>
+    if (featuredProducts.length === 0) {
+      featuredContainer.innerHTML = '<p class="empty-state">No products available</p>';
+      return;
+    }
+
+    featuredContainer.innerHTML = featuredProducts
+      .map(
+        (product) => `
+          <div class="product-card">
+            <img src="${product.images?.[0] || product.image}" alt="${product.name}" class="product-image">
+            <div class="product-info">
+              <h3 class="product-name">${product.name}</h3>
+              <p class="product-price">${formatNaira(product.price)}</p>
+              <p class="product-description">${product.description.substring(0, 80)}...</p>
+              <div class="view-details">
+                <button class="btn product-btn" onclick="viewProduct(${product.id})">View Details</button>
+                <!-- NEW: Add to Cart Button in Product Card -->
+                <button class="btn btn-contact" onclick="addToCart(${product.id})">Add to Cart</button>
               </div>
             </div>
-          `,
-            )
-            .join("");
-    } catch (error) {
-        console.error('Error loading featured products:', error);
-        featuredContainer.innerHTML = '<p class="empty-state">Error loading products</p>';
-    }
+          </div>
+        `,
+      )
+      .join("");
+
+  } catch (error) {
+    console.error("Error loading featured products:", error);
+    featuredContainer.innerHTML = '<p class="error-message">Failed to load featured products.</p>';
+  }
 }
+
 
 // Load and display testimonials
 async function loadTestimonials() {
-    const testimonialContainer = document.getElementById("testimonialsGrid");
-    if (!testimonialContainer) return;
+  const testimonialContainer = document.getElementById("testimonialsGrid");
+  if (!testimonialContainer) return;
 
-    try {
-        const response = await fetch('/.netlify/functions/testimonials');
-        if (!response.ok) {
-            throw new Error('Failed to load testimonials');
-        }
-        const testimonials = await response.json();
-
-        if (testimonials.length === 0) {
-            testimonialContainer.innerHTML = '<p class="empty-state">No testimonials available</p>';
-            return;
-        }
-
-        testimonialContainer.innerHTML = testimonials
-            .map(
-                (testimonial) => `
-            <div class="testimonial-card">
-              <div class="testimonial-header">
-                ${testimonial.image ? `<img src="${testimonial.image}" alt="${testimonial.name}" class="testimonial-avatar">` : '<div class="testimonial-avatar-placeholder">👤</div>'}
-                <div class="testimonial-author-info">
-                  <p class="testimonial-author">${testimonial.name}</p>
-                  <p class="testimonial-role">${testimonial.role}</p>
-                </div>
-              </div>
-              <div class="testimonial-stars">${"⭐".repeat(testimonial.rating)}</div>
-              <p class="testimonial-text">"${testimonial.text}"</p>
-            </div>
-          `,
-            )
-            .join("");
-    } catch (error) {
-        console.error('Error loading testimonials:', error);
-        testimonialContainer.innerHTML = '<p class="empty-state">Error loading testimonials</p>';
+  try {
+    const response = await fetch('/.netlify/functions/testimonials');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    const testimonials = await response.json();
+
+    if (testimonials.length === 0) {
+      testimonialContainer.innerHTML = '<p class="empty-state">No testimonials available</p>';
+      return;
+    }
+
+    testimonialContainer.innerHTML = testimonials
+      .map(
+        (testimonial) => `
+          <div class="testimonial-card">
+            <div class="testimonial-header">
+              ${testimonial.image ? `<img src="${testimonial.image}" alt="${testimonial.name}" class="testimonial-avatar">` : '<div class="testimonial-avatar-placeholder">👤</div>'}
+              <div class="testimonial-author-info">
+                <p class="testimonial-author">${testimonial.name}</p>
+                <p class="testimonial-role">${testimonial.role}</p>
+              </div>
+            </div>
+            <div class="testimonial-stars">${"⭐".repeat(testimonial.rating)}</div>
+            <p class="testimonial-text">"${testimonial.text}"</p>
+          </div>
+        `,
+      )
+      .join("");
+
+  } catch (error) {
+    console.error("Error loading testimonials:", error);
+    testimonialContainer.innerHTML = '<p class="error-message">Failed to load testimonials.</p>';
+  }
 }
+
 
 // Load and display latest news
 async function loadLatestNews() {
-    const newsContainer = document.getElementById("latestNews");
-    if (!newsContainer) return;
+  const newsContainer = document.getElementById("latestNews");
+  if (!newsContainer) return;
 
-    try {
-        const response = await fetch('/.netlify/functions/news');
-        if (!response.ok) {
-            throw new Error('Failed to load news');
-        }
-        const news = await response.json();
-        const latestNews = news.slice(0, 4);
-
-        if (latestNews.length === 0) {
-            newsContainer.innerHTML = '<p class="empty-state">No news available</p>';
-            return;
-        }
-
-        newsContainer.innerHTML = latestNews
-            .map(
-                (article) => `
-            <div class="news-card">
-              <img src="${article.image}" alt="${article.title}" class="news-image">
-              <div class="news-content">
-                <p class="news-date">${article.date}</p>
-                <h3 class="news-title">${article.title}</h3>
-                <p class="news-description">${article.description}</p>
-                <a href="news.html" class="news-link" onclick="viewFullArticle(${article.id});">Read More →</a>
-              </div>
-            </div>
-          `,
-            )
-            .join("");
-    } catch (error) {
-        console.error('Error loading latest news:', error);
-        newsContainer.innerHTML = '<p class="empty-state">Error loading news</p>';
+  try {
+    const response = await fetch('/.netlify/functions/news');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    const news = await response.json();
+
+    // Get the first 4 news articles
+    const latestNews = news.slice(0, 4);
+
+    if (latestNews.length === 0) {
+      newsContainer.innerHTML = '<p class="empty-state">No news available</p>';
+      return;
+    }
+
+    newsContainer.innerHTML = latestNews
+      .map(
+        (article) => `
+          <div class="news-card">
+            <img src="${article.image}" alt="${article.title}" class="news-image">
+            <div class="news-content">
+              <p class="news-date">${article.date}</p>
+              <h3 class="news-title">${article.title}</h3>
+              <p class="news-description">${article.description}</p>
+              <a href="news.html" class="news-link" onclick="viewFullArticle(${article.id});">Read More →</a>
+            </div>
+          </div>
+        `,
+      )
+      .join("");
+
+  } catch (error) {
+    console.error("Error loading latest news:", error);
+    newsContainer.innerHTML = '<p class="error-message">Failed to load news.</p>';
+  }
 }
+
 
 // Search functionality
 function handleSearch(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    filteredProducts = allProducts.filter(
-        (product) =>
-            product.name.toLowerCase().includes(searchTerm) || product.description.toLowerCase().includes(searchTerm),
-    );
-    applySorting();
-    displayProducts(filteredProducts);
+  const searchTerm = e.target.value.toLowerCase();
+  // This needs to filter the globally fetched 'allProducts'
+  // If allProducts is fetched from API, the filtering logic remains similar
+  filteredProducts = allProducts.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchTerm) || product.description.toLowerCase().includes(searchTerm),
+  );
+  applySorting();
+  displayProducts(filteredProducts);
 }
 
 // Sort functionality
 function handleSort(e) {
-    applySorting();
-    displayProducts(filteredProducts);
+  applySorting();
+  displayProducts(filteredProducts);
 }
 
 // Format a number as Nigerian Naira with commas
@@ -841,492 +946,484 @@ function formatNaira(price) {
 }
 
 function applySorting() {
-    const sortValue = document.getElementById("sortSelect").value;
-    switch (sortValue) {
-        case "name-asc":
-            filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
-            break;
-        case "name-desc":
-            filteredProducts.sort((a, b) => b.name.localeCompare(a.name));
-            break;
-        case "price-asc":
-            filteredProducts.sort((a, b) => {
-                const priceA = Number.parseInt(a.price.replace(/[^0-9]/g, ""));
-                const priceB = Number.parseInt(b.price.replace(/[^0-9]/g, ""));
-                return priceA - priceB;
-            });
-            break;
-        case "price-desc":
-            filteredProducts.sort((a, b) => {
-                const priceA = Number.parseInt(a.price.replace(/[^0-9]/g, ""));
-                const priceB = Number.parseInt(b.price.replace(/[^0-9]/g, ""));
-                return priceB - priceA;
-            });
-            break;
-        default:
-            // Default order (by ID)
-            filteredProducts.sort((a, b) => a.id - b.id);
-    }
+  const sortValue = document.getElementById("sortSelect").value;
+  switch (sortValue) {
+    case "name-asc":
+      filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case "name-desc":
+      filteredProducts.sort((a, b) => b.name.localeCompare(a.name));
+      break;
+    case "price-asc":
+      filteredProducts.sort((a, b) => {
+        const priceA = Number.parseInt(a.price.replace(/[^0-9]/g, ""));
+        const priceB = Number.parseInt(b.price.replace(/[^0-9]/g, ""));
+        return priceA - priceB;
+      });
+      break;
+    case "price-desc":
+      filteredProducts.sort((a, b) => {
+        const priceA = Number.parseInt(a.price.replace(/[^0-9]/g, ""));
+        const priceB = Number.parseInt(b.price.replace(/[^0-9]/g, ""));
+        return priceB - priceA;
+      });
+      break;
+    default:
+      // Default order (by ID)
+      filteredProducts.sort((a, b) => a.id - b.id);
+  }
 }
 
 // Custom modal functions
 function showCustomAlert(message, title = "Success", type = "success") {
-    const modal = document.getElementById("alertModal");
-    const alertIcon = document.getElementById("alertIcon");
-    const alertTitle = document.getElementById("alertTitle");
-    const alertMessage = document.getElementById("alertMessage");
+  const modal = document.getElementById("alertModal");
+  const alertIcon = document.getElementById("alertIcon");
+  const alertTitle = document.getElementById("alertTitle");
+  const alertMessage = document.getElementById("alertMessage");
 
-    alertTitle.textContent = title;
-    alertMessage.textContent = message;
-    alertIcon.textContent = type === "success" ? "✓" : "✕";
-    alertIcon.className = `alert-icon ${type}`;
-    modal.classList.add("active");
-    document.body.style.overflow = "hidden";
+  alertTitle.textContent = title;
+  alertMessage.textContent = message;
+  alertIcon.textContent = type === "success" ? "✓" : "✕";
+  alertIcon.className = `alert-icon ${type}`;
+  modal.classList.add("active");
+  document.body.style.overflow = "hidden";
 }
 
 function showCustomConfirm(message, title = "Confirm Action", onConfirm) {
-    const modal = document.getElementById("confirmModal");
-    const confirmTitle = document.getElementById("confirmTitle");
-    const confirmMessage = document.getElementById("confirmMessage");
-    const confirmYes = document.getElementById("confirmYes");
-    const confirmNo = document.getElementById("confirmNo");
+  const modal = document.getElementById("confirmModal");
+  const confirmTitle = document.getElementById("confirmTitle");
+  const confirmMessage = document.getElementById("confirmMessage");
+  const confirmYes = document.getElementById("confirmYes");
+  const confirmNo = document.getElementById("confirmNo");
 
-    confirmTitle.textContent = title;
-    confirmMessage.textContent = message;
-    modal.classList.add("active");
-    document.body.style.overflow = "hidden";
+  confirmTitle.textContent = title;
+  confirmMessage.textContent = message;
+  modal.classList.add("active");
+  document.body.style.overflow = "hidden";
 
-    // Remove old listeners
-    const newYes = confirmYes.cloneNode(true);
-    const newNo = confirmNo.cloneNode(true);
-    confirmYes.parentNode.replaceChild(newYes, confirmYes);
-    confirmNo.parentNode.replaceChild(newNo, confirmNo);
+  // Remove old listeners
+  const newYes = confirmYes.cloneNode(true);
+  const newNo = confirmNo.cloneNode(true);
+  confirmYes.parentNode.replaceChild(newYes, confirmYes);
+  confirmNo.parentNode.replaceChild(newNo, confirmNo);
 
-    // Add new listeners
-    newYes.addEventListener("click", () => {
-        modal.classList.remove("active");
-        document.body.style.overflow = "";
-        if (onConfirm) onConfirm();
-    });
-    newNo.addEventListener("click", () => {
-        modal.classList.remove("active");
-        document.body.style.overflow = "";
-    });
+  // Add new listeners
+  newYes.addEventListener("click", () => {
+    modal.classList.remove("active");
+    document.body.style.overflow = "";
+    if (onConfirm) onConfirm();
+  });
+  newNo.addEventListener("click", () => {
+    modal.classList.remove("active");
+    document.body.style.overflow = "";
+  });
 }
 
 // View product details in modal
-async function viewProduct(productId) {
-    try {
-        const response = await fetch(`/.netlify/functions/products?id=${productId}`);
-        if (!response.ok) {
-            throw new Error('Product not found.');
-        }
-        const product = await response.json();
+function viewProduct(productId) {
+  // Fetch the specific product from the API
+  fetch(`/.netlify/functions/products?id=${productId}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(product => {
+      if (!product) {
+        showCustomAlert("Product not found.", "Error");
+        return;
+      }
 
-        currentProductInModal = product;
-        currentImageIndex = 0;
-        if (!product.images) {
-            product.images = [product.image];
-        }
+      currentProductInModal = product;
+      currentImageIndex = 0;
+      if (!product.images) {
+        product.images = [product.image];
+      }
+      const modal = document.getElementById("productModal");
+      const mainImage = document.getElementById("modalMainImage");
+      const productName = document.getElementById("modalProductName");
+      const productPrice = document.getElementById("modalProductPrice");
+      const productDescription = document.getElementById("modalProductDescription");
+      const thumbnailContainer = document.getElementById("thumbnailContainer");
+      const addToCartButton = document.getElementById("modalAddToCart"); // NEW: Get the button
 
-        const modal = document.getElementById("productModal");
-        const mainImage = document.getElementById("modalMainImage");
-        const productName = document.getElementById("modalProductName");
-        const productPrice = document.getElementById("modalProductPrice");
-        const productDescription = document.getElementById("modalProductDescription");
-        const thumbnailContainer = document.getElementById("thumbnailContainer");
-        const addToCartButton = document.getElementById("modalAddToCart"); // NEW: Get the button
-
-        productName.textContent = product.name;
-        productPrice.textContent = formatNaira(product.price);
-        productDescription.textContent = product.description;
-        mainImage.src = product.images[0];
-        mainImage.alt = product.name;
-
-        thumbnailContainer.innerHTML = product.images
-            .map(
-                (img, index) => `
-          <div class="thumbnail ${index === 0 ? "active" : ""}" onclick="changeImage(${index})">
-            <img src="${img}" alt="${product.name} ${index + 1}">
-          </div>
-        `,
-            )
-            .join("");
-
-        updateGalleryNav();
-
-        // NEW: Set the onclick for the Add to Cart button in the modal
-        if (addToCartButton) {
-            addToCartButton.onclick = () => addToCart(product.id);
-        }
-
-        modal.classList.add("active");
-        document.body.style.overflow = "hidden";
-    } catch (error) {
-        console.error('Error viewing product:', error);
-        showCustomAlert(error.message || "Failed to load product details.", "Error");
-    }
+      productName.textContent = product.name;
+      productPrice.textContent = formatNaira(product.price);
+      productDescription.textContent = product.description;
+      mainImage.src = product.images[0];
+      mainImage.alt = product.name;
+      thumbnailContainer.innerHTML = product.images
+        .map(
+          (img, index) => `
+        <div class="thumbnail ${index === 0 ? "active" : ""}" onclick="changeImage(${index})">
+          <img src="${img}" alt="${product.name} ${index + 1}">
+        </div>
+      `,
+        )
+        .join("");
+      updateGalleryNav();
+      // NEW: Set the onclick for the Add to Cart button in the modal
+      if (addToCartButton) {
+          addToCartButton.onclick = () => addToCart(product.id);
+      }
+      modal.classList.add("active");
+      document.body.style.overflow = "hidden";
+    })
+    .catch(error => {
+      console.error("Error fetching product:", error);
+      showCustomAlert("Failed to load product details.", "Error");
+    });
 }
 
+
 function changeImage(index) {
-    if (!currentProductInModal) return;
-    if (index < 0 || index >= currentProductInModal.images.length) {
-        return;
-    }
-    currentImageIndex = index;
-    const mainImage = document.getElementById("modalMainImage");
-    mainImage.src = currentProductInModal.images[index];
-    document.querySelectorAll(".thumbnail").forEach((thumb, i) => {
-        thumb.classList.toggle("active", i === index);
-    });
-    updateGalleryNav();
+  if (!currentProductInModal) return;
+  if (index < 0 || index >= currentProductInModal.images.length) {
+    return;
+  }
+  currentImageIndex = index;
+  const mainImage = document.getElementById("modalMainImage");
+  mainImage.src = currentProductInModal.images[index];
+  document.querySelectorAll(".thumbnail").forEach((thumb, i) => {
+    thumb.classList.toggle("active", i === index);
+  });
+  updateGalleryNav();
 }
 
 function updateGalleryNav() {
-    if (!currentProductInModal) return;
-    const prevBtn = document.getElementById("prevImage");
-    const nextBtn = document.getElementById("nextImage");
-    prevBtn.disabled = currentImageIndex === 0;
-    nextBtn.disabled = currentImageIndex === currentProductInModal.images.length - 1;
+  if (!currentProductInModal) return;
+  const prevBtn = document.getElementById("prevImage");
+  const nextBtn = document.getElementById("nextImage");
+  prevBtn.disabled = currentImageIndex === 0;
+  nextBtn.disabled = currentImageIndex === currentProductInModal.images.length - 1;
 }
 
 function navigateGallery(direction) {
-    if (!currentProductInModal) return;
-    const newIndex = currentImageIndex + direction;
-    if (newIndex >= 0 && newIndex < currentProductInModal.images.length) {
-        currentImageIndex = newIndex;
-        const mainImage = document.getElementById("modalMainImage");
-        mainImage.src = currentProductInModal.images[newIndex];
-        document.querySelectorAll(".thumbnail").forEach((thumb, i) => {
-            thumb.classList.toggle("active", i === newIndex);
-        });
-        updateGalleryNav();
-    }
+  if (!currentProductInModal) return;
+  const newIndex = currentImageIndex + direction;
+  if (newIndex >= 0 && newIndex < currentProductInModal.images.length) {
+    currentImageIndex = newIndex;
+    const mainImage = document.getElementById("modalMainImage");
+    mainImage.src = currentProductInModal.images[newIndex];
+    document.querySelectorAll(".thumbnail").forEach((thumb, i) => {
+      thumb.classList.toggle("active", i === newIndex);
+    });
+    updateGalleryNav();
+  }
 }
 
 function closeProductModal() {
-    const modal = document.getElementById("productModal");
-    modal.classList.remove("active");
-    document.body.style.overflow = "";
-    currentProductInModal = null;
-    currentImageIndex = 0;
+  const modal = document.getElementById("productModal");
+  modal.classList.remove("active");
+  document.body.style.overflow = "";
+  currentProductInModal = null;
+  currentImageIndex = 0;
 }
 
 // Mobile menu initialization
+// Mobile menu initialization
+// Mobile menu initialization
 function initMobileMenu() {
-    const mobileMenuBtn = document.getElementById("mobileMenuBtn");
-    const nav = document.getElementById("navMenu");
-    const navOverlay = document.getElementById("navOverlay");
-    let isMenuOpen = false;
-
-    function toggleMobileMenu() {
-        isMenuOpen = !isMenuOpen;
-        mobileMenuBtn.classList.toggle("active", isMenuOpen);
-        nav.classList.toggle("active", isMenuOpen);
-        navOverlay.classList.toggle("active", isMenuOpen);
-        document.body.style.overflow = isMenuOpen ? "hidden" : "";
+  const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+  const nav = document.getElementById("navMenu");
+  const navOverlay = document.getElementById("navOverlay");
+  let isMenuOpen = false;
+  function toggleMobileMenu() {
+    isMenuOpen = !isMenuOpen;
+    mobileMenuBtn.classList.toggle("active", isMenuOpen);
+    nav.classList.toggle("active", isMenuOpen);
+    navOverlay.classList.toggle("active", isMenuOpen);
+    document.body.style.overflow = isMenuOpen ? "hidden" : "";
+  }
+  window.closeMobileMenu = () => {
+    if (isMenuOpen) {
+      isMenuOpen = false;
+      mobileMenuBtn.classList.remove("active");
+      nav.classList.remove("active");
+      navOverlay.classList.remove("active");
+      document.body.style.overflow = "";
     }
-
-    window.closeMobileMenu = () => {
-        if (isMenuOpen) {
-            isMenuOpen = false;
-            mobileMenuBtn.classList.remove("active");
-            nav.classList.remove("active");
-            navOverlay.classList.remove("active");
-            document.body.style.overflow = "";
-        }
-    };
-
-    if (mobileMenuBtn) {
-        mobileMenuBtn.addEventListener("click", toggleMobileMenu);
-    }
-    if (navOverlay) {
-        navOverlay.addEventListener("click", window.closeMobileMenu);
-    }
-
-    // --- NEW: Mobile Dropdown Menu Logic ---
-    // Add event listeners for mobile dropdown toggles
-    const dropdownToggles = document.querySelectorAll(".nav-dropdown .dropdown-toggle");
-    dropdownToggles.forEach((toggle) => {
-        toggle.addEventListener("click", (e) => {
-            e.preventDefault(); // Prevent default button behavior
-            // Only handle dropdowns in mobile view (when nav is active)
-            if (nav.classList.contains("active")) {
-                // Close all other dropdowns first
-                document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
-                    if (dropdown !== toggle.closest(".nav-dropdown")) {
-                        dropdown.classList.remove("active");
-                    }
-                });
-                // Toggle the clicked dropdown
-                const dropdownContainer = toggle.closest(".nav-dropdown");
-                dropdownContainer.classList.toggle("active");
-            }
+  };
+  if (mobileMenuBtn) {
+    mobileMenuBtn.addEventListener("click", toggleMobileMenu);
+  }
+  if (navOverlay) {
+    navOverlay.addEventListener("click", window.closeMobileMenu);
+  }
+  // --- NEW: Mobile Dropdown Menu Logic ---
+  // Add event listeners for mobile dropdown toggles
+  const dropdownToggles = document.querySelectorAll(".nav-dropdown .dropdown-toggle");
+  dropdownToggles.forEach((toggle) => {
+    toggle.addEventListener("click", (e) => {
+      e.preventDefault(); // Prevent default button behavior
+      // Only handle dropdowns in mobile view (when nav is active)
+      if (nav.classList.contains("active")) {
+        // Close all other dropdowns first
+        document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
+          if (dropdown !== toggle.closest(".nav-dropdown")) {
+            dropdown.classList.remove("active");
+          }
         });
+        // Toggle the clicked dropdown
+        const dropdownContainer = toggle.closest(".nav-dropdown");
+        dropdownContainer.classList.toggle("active");
+      }
     });
-
-    // Close dropdowns when clicking outside or resizing
-    document.addEventListener("click", (e) => {
-        if (nav.classList.contains("active")) {
-            // Check if click is outside any dropdown container
-            const isClickInsideDropdown = e.target.closest(".nav-dropdown");
-            if (!isClickInsideDropdown) {
-                document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
-                    dropdown.classList.remove("active");
-                });
-            }
-        }
-    });
-
-    // Handle window resize
-    let resizeTimer;
-    window.addEventListener("resize", () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-            if (isMenuOpen && window.innerWidth > 768) {
-                window.closeMobileMenu();
-            }
-            // Also close any open dropdowns when switching to desktop
-            if (window.innerWidth > 768) {
-                document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
-                    dropdown.classList.remove("active");
-                });
-            }
-        }, 250);
-    });
-
-    // Handle Escape key
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-            if (isMenuOpen) {
-                window.closeMobileMenu();
-            }
-            // Also close any open dropdowns
-            document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
-                dropdown.classList.remove("active");
-            });
-        }
-    });
+  });
+  // Close dropdowns when clicking outside or resizing
+  document.addEventListener("click", (e) => {
+    if (nav.classList.contains("active")) {
+      // Check if click is outside any dropdown container
+      const isClickInsideDropdown = e.target.closest(".nav-dropdown");
+      if (!isClickInsideDropdown) {
+        document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
+          dropdown.classList.remove("active");
+        });
+      }
+    }
+  });
+  // Handle window resize
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (isMenuOpen && window.innerWidth > 768) {
+        window.closeMobileMenu();
+      }
+      // Also close any open dropdowns when switching to desktop
+      if (window.innerWidth > 768) {
+        document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
+          dropdown.classList.remove("active");
+        });
+      }
+    }, 250);
+  });
+  // Handle Escape key
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (isMenuOpen) {
+        window.closeMobileMenu();
+      }
+      // Also close any open dropdowns
+      document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
+        dropdown.classList.remove("active");
+      });
+    }
+  });
 }
 
 // Initialize everything when DOM is loaded
-document.addEventListener("DOMContentLoaded", async () => {
-    initializeData(); // No-op now
-    initializeUserSession(); // Add this line - NEW
-
-    // Load data asynchronously
-    await Promise.allSettled([
-        loadFeaturedProducts(),
-        loadTestimonials(),
-        loadLatestNews()
-    ]);
-
-    initMobileMenu();
-
-    // --- NEW: Add event listener for Edit Address Form ---
-    const editAddressForm = document.getElementById("editAddressForm");
+document.addEventListener("DOMContentLoaded", () => {
+  initializeData();
+  initializeUserSession(); // Add this line - NEW
+  loadFeaturedProducts();
+  loadTestimonials();
+  loadLatestNews();
+  initMobileMenu();
+  // --- NEW: Add event listener for Edit Address Form ---
+   const editAddressForm = document.getElementById("editAddressForm");
     if (editAddressForm) {
         editAddressForm.addEventListener("submit", handleUpdateAddress);
     }
-
-    // Modal event listeners
-    const closeModal = document.getElementById("closeModal");
-    if (closeModal) {
-        closeModal.addEventListener("click", closeProductModal);
-    }
-    const prevImage = document.getElementById("prevImage");
-    if (prevImage) {
-        prevImage.addEventListener("click", () => navigateGallery(-1));
-    }
-    const nextImage = document.getElementById("nextImage");
-    if (nextImage) {
-        nextImage.addEventListener("click", () => navigateGallery(1));
-    }
-    document.querySelectorAll(".modal-overlay").forEach((overlay) => {
-        overlay.addEventListener("click", (e) => {
-            if (e.target === overlay) {
-                overlay.classList.remove("active");
-                document.body.style.overflow = "";
-            }
-        });
+  // Modal event listeners
+  const closeModal = document.getElementById("closeModal");
+  if (closeModal) {
+    closeModal.addEventListener("click", closeProductModal);
+  }
+  const prevImage = document.getElementById("prevImage");
+  if (prevImage) {
+    prevImage.addEventListener("click", () => navigateGallery(-1));
+  }
+  const nextImage = document.getElementById("nextImage");
+  if (nextImage) {
+    nextImage.addEventListener("click", () => navigateGallery(1));
+  }
+  document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove("active");
+        document.body.style.overflow = "";
+      }
     });
-    const alertOk = document.getElementById("alertOk");
-    if (alertOk) {
-        alertOk.addEventListener("click", () => {
-            document.getElementById("alertModal").classList.remove("active");
-            document.body.style.overflow = "";
-        });
-    }
-    // Add event listener for Forgot Password link
-    const forgotPasswordLink = document.getElementById("forgotPasswordLink");
-    // Replace the previous forgot password link event listener with:
-    if (forgotPasswordLink) {
-        forgotPasswordLink.addEventListener("click", (e) => {
-            e.preventDefault();
-            showForgotPasswordModal();
-        });
-    }
-
-    // NEW: Add event listeners for Cart View, Login, Logout, Account Link
-    const viewCartBtn = document.getElementById('viewCartBtn');
-    if (viewCartBtn) {
-        viewCartBtn.addEventListener('click', viewCart);
-    }
-    const loginBtn = document.getElementById('loginBtn');
-    if (loginBtn) {
-        loginBtn.addEventListener('click', (e) => {
-            e.preventDefault(); // Prevent default link behavior
-            showAuthModal(); // Show the modal instead of prompt
-        });
-    }
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', (e) => {
-            e.preventDefault(); // Prevent default link behavior
-            handleLogout();
-        });
-    }
-    const accountLink = document.getElementById('accountLink');
-    if (accountLink) {
-        accountLink.addEventListener('click', (e) => {
-            e.preventDefault(); // Prevent default link behavior
-            // Navigate to account page or load order history in a modal
-            loadOrderHistory(); // Example: Load history in a modal
-            const accountModal = document.getElementById("accountModal"); // You need to create this modal in your HTML
-            if (accountModal) {
-                accountModal.classList.add("active");
-                document.body.style.overflow = "hidden";
-            }
-        });
-    }
-    // NEW: Add event listener for Account Modal Close Button
-    const accountModalCloseBtn = document.getElementById("accountModal"); // Get the modal itself
-    if (accountModalCloseBtn) {
-        // Use event delegation on the modal container to catch clicks on the close button
-        accountModalCloseBtn.addEventListener('click', (e) => {
-            // Check if the clicked element has the class 'modal-close' (the X button)
-            if (e.target && e.target.classList.contains('modal-close')) {
-                accountModalCloseBtn.classList.remove("active");
-                document.body.style.overflow = "";
-            }
-        });
-    }
-    // NEW: Add event listeners for Auth Modal
-    const authForm = document.getElementById("authForm");
-    if (authForm) {
-        authForm.addEventListener("submit", handleAuthSubmit);
-    }
-    const authCloseBtn = document.getElementById("authClose");
-    if (authCloseBtn) {
-        authCloseBtn.addEventListener("click", closeAuthModal);
-    }
-    const authModal = document.getElementById("authModal");
-    if (authModal) {
-        authModal.addEventListener("click", (e) => {
-            if (e.target === authModal) {
-                closeAuthModal();
-            }
-        });
-    }
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && authModal?.classList.contains("active")) {
-            closeAuthModal();
-        }
+  });
+  const alertOk = document.getElementById("alertOk");
+  if (alertOk) {
+    alertOk.addEventListener("click", () => {
+      document.getElementById("alertModal").classList.remove("active");
+      document.body.style.overflow = "";
     });
-
-    // Switch between Login and Signup forms
-    const loginFormSwitch = document.getElementById("loginFormSwitch");
-    const signupFormSwitch = document.getElementById("signupFormSwitch");
-    if (loginFormSwitch) {
-        loginFormSwitch.addEventListener("click", (e) => {
-            e.preventDefault();
-            document.getElementById("authFormTitle").textContent = "Login";
-            document.getElementById("authForm").dataset.mode = "login";
-            document.getElementById("authSubmitBtn").textContent = "Login";
-            document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
-            // Reattach event listener for the new signup link
-            document.getElementById("signupFormSwitch").addEventListener("click", switchToSignup);
-        });
-    }
-    // Inside the DOMContentLoaded event listener, find or add these functions
-    function switchToSignup(e) {
+  }
+// Add event listener for Forgot Password link
+const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+// Replace the previous forgot password link event listener with:
+if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener("click", (e) => {
         e.preventDefault();
-        document.getElementById("authFormTitle").textContent = "Sign Up";
-        document.getElementById("authForm").dataset.mode = "signup";
-        document.getElementById("authSubmitBtn").textContent = "Sign Up";
-        document.getElementById("authToggleText").innerHTML = "Already have an account? <a href='#' id='loginFormSwitch'>Login</a>";
-        // Show the extra signup fields
-        document.getElementById("signupExtraFields").style.display = "block";
-        // Reattach event listener for the new login link
-        document.getElementById("loginFormSwitch").addEventListener("click", switchToLogin);
-    }
-
-    function switchToLogin(e) {
-        e.preventDefault();
-        document.getElementById("authFormTitle").textContent = "Login";
-        document.getElementById("authForm").dataset.mode = "login";
-        document.getElementById("authSubmitBtn").textContent = "Login";
-        document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
-        // Hide the extra signup fields for login
-        document.getElementById("signupExtraFields").style.display = "none";
-        // Reattach event listener for the new signup link
-        document.getElementById("signupFormSwitch").addEventListener("click", switchToSignup);
-    }
-
-    // Attach initial event listeners for switching
-    if (signupFormSwitch) {
-        signupFormSwitch.addEventListener("click", switchToSignup);
-    }
-    document.addEventListener("keydown", (e) => {
-        if (document.getElementById("productModal")?.classList.contains("active")) {
-            if (e.key === "ArrowLeft") navigateGallery(-1);
-            if (e.key === "ArrowRight") navigateGallery(1);
-            if (e.key === "Escape") closeProductModal();
-        }
-        // Add key listener for cart modal close - NEW
-        if (document.getElementById("cartModal")?.classList.contains("active")) {
-            if (e.key === "Escape") closeCartModal();
-        }
-        // Add key listener for account modal close - NEW
-        if (document.getElementById("accountModal")?.classList.contains("active")) {
-            if (e.key === "Escape") {
-                document.getElementById('accountModal').classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        }
+        showForgotPasswordModal();
     });
+}
+  // NEW: Add event listeners for Cart View, Login, Logout, Account Link
+  const viewCartBtn = document.getElementById('viewCartBtn');
+  if (viewCartBtn) {
+      viewCartBtn.addEventListener('click', viewCart);
+  }
+  const loginBtn = document.getElementById('loginBtn');
+  if (loginBtn) {
+      loginBtn.addEventListener('click', (e) => {
+          e.preventDefault(); // Prevent default link behavior
+          showAuthModal(); // Show the modal instead of prompt
+      });
+  }
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+      logoutBtn.addEventListener('click', (e) => {
+          e.preventDefault(); // Prevent default link behavior
+          handleLogout();
+      });
+  }
+  const accountLink = document.getElementById('accountLink');
+  if (accountLink) {
+      accountLink.addEventListener('click', (e) => {
+          e.preventDefault(); // Prevent default link behavior
+          // Navigate to account page or load order history in a modal
+          loadOrderHistory(); // Example: Load history in a modal
+           const accountModal = document.getElementById("accountModal"); // You need to create this modal in your HTML
+           if (accountModal) {
+               accountModal.classList.add("active");
+               document.body.style.overflow = "hidden";
+           }
+      });
+  }
+ // NEW: Add event listener for Account Modal Close Button
+  const accountModalCloseBtn = document.getElementById("accountModal"); // Get the modal itself
+  if (accountModalCloseBtn) {
+      // Use event delegation on the modal container to catch clicks on the close button
+      accountModalCloseBtn.addEventListener('click', (e) => {
+          // Check if the clicked element has the class 'modal-close' (the X button)
+          if (e.target && e.target.classList.contains('modal-close')) {
+              accountModalCloseBtn.classList.remove("active");
+              document.body.style.overflow = "";
+          }
+      });
+  }
+  // NEW: Add event listeners for Auth Modal
+  const authForm = document.getElementById("authForm");
+  if (authForm) {
+      authForm.addEventListener("submit", handleAuthSubmit);
+  }
+  const authCloseBtn = document.getElementById("authClose");
+  if (authCloseBtn) {
+      authCloseBtn.addEventListener("click", closeAuthModal);
+  }
+  const authModal = document.getElementById("authModal");
+  if (authModal) {
+      authModal.addEventListener("click", (e) => {
+          if (e.target === authModal) {
+              closeAuthModal();
+          }
+      });
+  }
+  document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && authModal?.classList.contains("active")) {
+          closeAuthModal();
+      }
+  });
+  // Switch between Login and Signup forms
+  const loginFormSwitch = document.getElementById("loginFormSwitch");
+  const signupFormSwitch = document.getElementById("signupFormSwitch");
+  if (loginFormSwitch) {
+      loginFormSwitch.addEventListener("click", (e) => {
+          e.preventDefault();
+          document.getElementById("authFormTitle").textContent = "Login";
+          document.getElementById("authForm").dataset.mode = "login";
+          document.getElementById("authSubmitBtn").textContent = "Login";
+          document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
+          // Reattach event listener for the new signup link
+          document.getElementById("signupFormSwitch").addEventListener("click", switchToSignup);
+      });
+  }
+ // Inside the DOMContentLoaded event listener, find or add these functions
+function switchToSignup(e) {
+    e.preventDefault();
+    document.getElementById("authFormTitle").textContent = "Sign Up";
+    document.getElementById("authForm").dataset.mode = "signup";
+    document.getElementById("authSubmitBtn").textContent = "Sign Up";
+    document.getElementById("authToggleText").innerHTML = "Already have an account? <a href='#' id='loginFormSwitch'>Login</a>";
+    // Show the extra signup fields
+    document.getElementById("signupExtraFields").style.display = "block";
+    // Reattach event listener for the new login link
+    document.getElementById("loginFormSwitch").addEventListener("click", switchToLogin);
+}
+function switchToLogin(e) {
+    e.preventDefault();
+    document.getElementById("authFormTitle").textContent = "Login";
+    document.getElementById("authForm").dataset.mode = "login";
+    document.getElementById("authSubmitBtn").textContent = "Login";
+    document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
+    // Hide the extra signup fields for login
+    document.getElementById("signupExtraFields").style.display = "none";
+    // Reattach event listener for the new signup link
+    document.getElementById("signupFormSwitch").addEventListener("click", switchToSignup);
+}
+  // Attach initial event listeners for switching
+  if (signupFormSwitch) {
+      signupFormSwitch.addEventListener("click", switchToSignup);
+  }
+  document.addEventListener("keydown", (e) => {
+    if (document.getElementById("productModal")?.classList.contains("active")) {
+      if (e.key === "ArrowLeft") navigateGallery(-1);
+      if (e.key === "ArrowRight") navigateGallery(1);
+      if (e.key === "Escape") closeProductModal();
+    }
+    // Add key listener for cart modal close - NEW
+    if (document.getElementById("cartModal")?.classList.contains("active")) {
+      if (e.key === "Escape") closeCartModal();
+    }
+    // Add key listener for account modal close - NEW
+    if (document.getElementById("accountModal")?.classList.contains("active")) {
+      if (e.key === "Escape") { document.getElementById('accountModal').classList.remove('active'); document.body.style.overflow=''; }
+    }
+  });
 });
 
-async function viewFullArticle(articleId) {
-    try {
-        const response = await fetch(`/.netlify/functions/news?id=${articleId}`);
-        if (!response.ok) {
-            throw new Error('Article not found.');
-        }
-        const article = await response.json();
+function viewFullArticle(articleId) {
+  // Fetch the specific news article from the API
+  fetch(`/.netlify/functions/news?id=${articleId}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(article => {
+      if (!article) {
+        console.error("Article not found.");
+        return;
+      }
+      const modal = document.getElementById("articleModal");
+      if (!modal) return;
 
-        const modal = document.getElementById("articleModal");
-        if (!modal) return;
-
-        document.getElementById("articleTitle").textContent = article.title;
-        document.getElementById("articleDate").textContent = article.date;
-        document.getElementById("articleImage").src = article.image || "/placeholder.svg";
-        document.getElementById("articleBody").innerHTML = `<p>${(article.fullContent || article.body || article.description).replace(/\n/g, "</p><p>")}</p>`;
-
-        modal.classList.add("active");
-        document.body.style.overflow = "hidden";
-    } catch (error) {
-        console.error('Error viewing article:', error);
-        showCustomAlert(error.message || "Failed to load article.", "Error");
-    }
+      document.getElementById("articleTitle").textContent = article.title;
+      document.getElementById("articleDate").textContent = article.date;
+      document.getElementById("articleImage").src = article.image || "/placeholder.svg";
+      document.getElementById("articleBody").innerHTML = `<p>${(article.fullContent || article.body || article.description).replace(/\n/g, "</p><p>")}</p>`;
+      modal.classList.add("active");
+      document.body.style.overflow = "hidden";
+    })
+    .catch(error => {
+      console.error("Error fetching article:", error);
+      // Optionally show an alert or handle the error differently
+    });
 }
 
+
 function closeArticleModal() {
-    const modal = document.getElementById("articleModal");
-    if (modal) {
-        modal.classList.remove("active");
-        document.body.style.overflow = "";
-    }
+  const modal = document.getElementById("articleModal");
+  if (modal) {
+    modal.classList.remove("active");
+    document.body.style.overflow = "";
+  }
 }
 
 // Add event listeners for payment simulation buttons
@@ -1346,11 +1443,33 @@ function handleForgotPassword() {
         showCustomAlert("Please enter your username.", "Error");
         return;
     }
+    // Get all users
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    // Find user by username
+    const user = Object.values(allUsers).find(u => u.username === username);
+    if (!user) {
+        showCustomAlert("Username not found. Please check and try again.", "User Not Found");
+        return;
+    }
+    // For demo purposes, we'll generate a new random password
+    // In a real application, you would send an email with a reset link
+    const newPassword = generateRandomPassword(8);
+    const hashedPassword = hashPassword(newPassword);
+    // Update user's password
+    user.passwordHash = hashedPassword;
+    allUsers[user.id] = user;
+    localStorage.setItem('users', JSON.stringify(allUsers));
 
-    // Get all users - This is no longer possible with API, so we'll call the API endpoint
-    // In a real implementation, this would likely be a separate endpoint like /auth/forgot-password
-    // For now, we'll simulate calling an API endpoint
-    showCustomAlert("This feature requires backend implementation for sending reset emails securely.", "Feature Unavailable");
+    // Show success message with the new password
+    showCustomAlert(
+        `Your password has been reset successfully!
+New Password: ${newPassword}
+Please change this password immediately after logging in.`,
+        "Password Reset",
+        "success"
+    );
+    // Clear the password field
+    document.getElementById("password").value = "";
 }
 
 // Helper function to generate random password
@@ -1382,7 +1501,7 @@ function closeForgotPasswordModal() {
     }
 }
 
-async function handleForgotPasswordSubmit(e) {
+function handleForgotPasswordSubmit(e) {
     e.preventDefault();
     const username = document.getElementById("forgotPasswordUsername").value.trim();
     const email = document.getElementById("forgotPasswordEmail").value.trim();
@@ -1392,38 +1511,27 @@ async function handleForgotPasswordSubmit(e) {
         return;
     }
 
-    // Call API for password reset
-    try {
-        const response = await fetch('/.netlify/functions/auth', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                action: 'forgot_password', // Hypothetical action
-                username: username,
-                email: email
-            })
-        });
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    const user = Object.values(allUsers).find(u => u.username === username && u.email === email);
 
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.error || 'Password reset request failed');
-        }
-
-        if (result.success) {
-            showCustomAlert(
-                `A password reset link has been sent to ${email}.`,
-                "Password Reset Requested",
-                "success"
-            );
-            closeForgotPasswordModal();
-        } else {
-            document.getElementById("forgotPasswordError").textContent = result.message;
-        }
-    } catch (error) {
-        console.error('Forgot password error:', error);
-        document.getElementById("forgotPasswordError").textContent = error.message || "An unexpected error occurred.";
+    if (!user) {
+        document.getElementById("forgotPasswordError").textContent = "Username or email not found.";
+        return;
     }
+
+    // Generate reset token (for demo purposes)
+    const resetToken = Math.random().toString(36).substr(2, 15);
+    user.resetToken = resetToken;
+    user.resetTokenExpiry = Date.now() + 300000; // 5 minutes expiry
+    allUsers[user.id] = user;
+    localStorage.setItem('users', JSON.stringify(allUsers));
+
+    // In a real app, you would send an email with the reset link
+    showCustomAlert(
+        `A password reset link has been sent to ${email}.
+For demo purposes, use this token: ${resetToken}`,
+        "Password Reset Requested",
+        "success"
+    );
+    closeForgotPasswordModal();
 }

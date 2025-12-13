@@ -110,7 +110,6 @@ function showDashboard() {
 }
 
 // Handle login
-// Handle login
 async function handleLogin(e) {
   e.preventDefault();
 
@@ -125,37 +124,42 @@ async function handleLogin(e) {
   }
 
   try {
-    const response = await fetch('/.netlify/functions/auth', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: username,
-        password: password,
-        action: 'adminLogin' // Assuming your Netlify function checks for this action
-      })
-    });
-
-    const result = await response.json();
-
+    // Fetch user data from the API based on username
+    const response = await fetch(`/.netlify/functions/users?username=${encodeURIComponent(username)}`);
     if (!response.ok) {
-      // Server responded with an error status (e.g., 401)
-      errorMessage.textContent = result.error || "Login failed. Please check your credentials.";
-      return;
+      // If user is not found, the API might return 404
+      if (response.status === 404) {
+          errorMessage.textContent = "Invalid username or password.";
+          return;
+      }
+      // Other network errors
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    if (result.success && result.user && result.user.role === 'admin') { // Check for admin role
-      isAuthenticated = true;
-      sessionStorage.setItem("adminAuth", "true");
-      showDashboard();
-      errorMessage.textContent = ""; // Clear error message on success
+    const userData = await response.json();
+
+    // Verify password hash (using the same hashPassword function)
+    const inputPasswordHash = hashPassword(password);
+
+    if (userData.passwordHash === inputPasswordHash) {
+        // Check if the user has admin role
+        if (userData.role === 'admin') {
+            // Login successful for admin
+            isAuthenticated = true;
+            sessionStorage.setItem("adminAuth", "true");
+            showDashboard();
+            errorMessage.textContent = ""; // Clear error message on success
+        } else {
+            // User exists but is not an admin
+            errorMessage.textContent = "Access denied. Admin privileges required.";
+        }
     } else {
-      errorMessage.textContent = result.error || "Invalid username, password, or insufficient permissions.";
+        // Password mismatch
+        errorMessage.textContent = "Invalid username or password.";
     }
   } catch (error) {
-    console.error("Network error during admin login:", error);
-    errorMessage.textContent = "Network error. Please try again.";
+    console.error("Error during admin login:", error);
+    errorMessage.textContent = "An error occurred during login. Please try again.";
   }
 }
 
@@ -1037,7 +1041,8 @@ async function handleUserSubmit(e) {
       country: "Nigeria"
     },
     orders: userId ? undefined : [], // Don't send orders when creating new user
-    cart: userId ? undefined : []    // Don't send cart when creating new user
+    cart: userId ? undefined : [],    // Don't send cart when creating new user
+    role: document.getElementById("userRole").value || 'user' // Add role field
   };
 
   try {
@@ -1090,6 +1095,7 @@ function editUser(userId) {
       document.getElementById("username").value = user.username;
       document.getElementById("email").value = user.email || "";
       document.getElementById("phone").value = user.phone || "";
+      document.getElementById("userRole").value = user.role || 'user'; // Load role
       // Pre-fill address fields
       const address = user.address || { street: "", city: "", state: "", postalCode: "" };
       document.getElementById("street").value = address.street || "";

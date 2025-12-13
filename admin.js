@@ -110,59 +110,21 @@ function showDashboard() {
 }
 
 // Handle login
-async function handleLogin(e) {
+function handleLogin(e) {
   e.preventDefault();
-
   const username = document.getElementById("username").value;
   const password = document.getElementById("password").value;
   const errorMessage = document.getElementById("errorMessage");
-
-  // Validate input
-  if (!username || !password) {
-    errorMessage.textContent = "Username and password are required.";
-    return;
-  }
-
-  try {
-    // Fetch user data from the API based on username
-    const response = await fetch(`/.netlify/functions/users?username=${encodeURIComponent(username)}`);
-    if (!response.ok) {
-      // If user is not found, the API might return 404
-      if (response.status === 404) {
-          errorMessage.textContent = "Invalid username or password.";
-          return;
-      }
-      // Other network errors
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const userData = await response.json();
-
-    // Verify password hash (using the same hashPassword function)
-    const inputPasswordHash = hashPassword(password);
-
-    if (userData.passwordHash === inputPasswordHash) {
-        // Check if the user has admin role
-        if (userData.role === 'admin') {
-            // Login successful for admin
-            isAuthenticated = true;
-            sessionStorage.setItem("adminAuth", "true");
-            showDashboard();
-            errorMessage.textContent = ""; // Clear error message on success
-        } else {
-            // User exists but is not an admin
-            errorMessage.textContent = "Access denied. Admin privileges required.";
-        }
-    } else {
-        // Password mismatch
-        errorMessage.textContent = "Invalid username or password.";
-    }
-  } catch (error) {
-    console.error("Error during admin login:", error);
-    errorMessage.textContent = "An error occurred during login. Please try again.";
+  // Simple authentication (in production, this should be server-side)
+  if (username === "admin" && password === "admin123") {
+    isAuthenticated = true;
+    sessionStorage.setItem("adminAuth", "true");
+    showDashboard();
+    errorMessage.textContent = "";
+  } else {
+    errorMessage.textContent = "Invalid username or password";
   }
 }
-
 
 // Handle logout
 async function handleLogout() {

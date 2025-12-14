@@ -23,10 +23,18 @@ exports.handler = async (event, context) => {
                 };
         }
     } catch (error) {
-        console.error('Database Error:', error);
+        console.error('Database Error:', error); // Log the full error object
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Internal Server Error' })
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+                error: 'Internal Server Error',
+                message: error.message, // Include the specific error message
+                stack: error.stack // Include the stack trace for debugging
+            })
         };
     }
 };

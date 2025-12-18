@@ -1378,6 +1378,14 @@ function closeForgotPasswordModal() {
         document.body.style.overflow = "";
     }
 }
+// Add event listener for Forgot Password link
+const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        showForgotPasswordModal();
+    });
+}
 async function handleForgotPasswordSubmit(e) {
     e.preventDefault();
     const username = document.getElementById("forgotPasswordUsername").value.trim();

@@ -378,7 +378,13 @@ app.post('/api/checkout', async (req, res) => {
     res.status(500).json({ error: 'Checkout failed' });
   }
 });
-
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    database: pool ? 'Connected' : 'Disconnected',
+    env: process.env.DATABASE_URL ? 'DATABASE_URL set' : 'DATABASE_URL missing'
+  });
+});
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

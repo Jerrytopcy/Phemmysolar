@@ -422,7 +422,7 @@ function closeCartModal() {
 }
 // Load user's order history (for account page)
 // Load user's order history (for account page)
-function loadOrderHistory() {
+async function loadOrderHistory() {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!user) {
         document.getElementById('orderHistory').innerHTML = '<p>Please log in to view your order history.</p>';
@@ -480,10 +480,56 @@ function loadOrderHistory() {
     });
     let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
   // Inside the loadOrderHistory function, find the sortedOrders.forEach block
-sortedOrders.forEach(order => {
+for (const order of sortedOrders) {
     // --- NEW: Format the delivery address for display ---
     const address = order.deliveryAddress || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
     const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+
+    let itemsHTML = '';
+
+    // Process each item in the order
+    for (const item of order.items) {
+        try {
+            const productResponse = await fetch(`/api/products/${item.productId}`);
+            if (!productResponse.ok) throw new Error(`Failed to fetch product ${item.productId}`);
+
+            const product = await productResponse.json();
+            const imageUrl = product.images?.[0] || '/placeholder.svg';
+
+            itemsHTML += `
+                <div class="order-history-item">
+                    <div class="order-item-image-wrapper">
+                        <img src="${imageUrl}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+                    </div>
+                    <div class="order-item-details">
+                        <div class="order-item-name">${item.name}</div>
+                        <div class="order-item-meta">
+                            <span class="order-item-qty">Qty: ${item.quantity}</span>
+                            <span class="order-item-price">${formatNaira(item.itemTotal)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error loading product image for item:', item.productId, error);
+            // Fallback to placeholder
+            itemsHTML += `
+                <div class="order-history-item">
+                    <div class="order-item-image-wrapper">
+                        <img src="/placeholder.svg" alt="Image not available" onerror="this.src='/placeholder.svg';">
+                    </div>
+                    <div class="order-item-details">
+                        <div class="order-item-name">${item.name}</div>
+                        <div class="order-item-meta">
+                            <span class="order-item-qty">Qty: ${item.quantity}</span>
+                            <span class="order-item-price">${formatNaira(item.itemTotal)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
     historyHTML += `
         <div class="order-item">
             <p><strong>Order ID:</strong> ${order.id}</p>
@@ -497,30 +543,11 @@ sortedOrders.forEach(order => {
             </div>
             <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
             <div class="order-items-list">
-                ${order.items.map(item => {
-                    // Fetch the full product data to get its image
-                    // const products = JSON.parse(localStorage.getItem("solarProducts") || "[]"); // OLD
-                    // const product = products.find(p => p.id === item.productId); // OLD
-                    const imageUrl = item.imageUrl || '/placeholder.svg'; // Use image from item if available, else placeholder
-                    return `
-                        <div class="order-history-item">
-                            <div class="order-item-image-wrapper">
-                                <img src="${imageUrl}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
-                            </div>
-                            <div class="order-item-details">
-                                <div class="order-item-name">${item.name}</div>
-                                <div class="order-item-meta">
-                                    <span class="order-item-qty">Qty: ${item.quantity}</span>
-                                    <span class="order-item-price">${formatNaira(item.itemTotal)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
+                ${itemsHTML}
             </div>
         </div>
     `;
-});
+}
     historyHTML += '</div>';
     container.innerHTML = historyHTML;
 }

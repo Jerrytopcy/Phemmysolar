@@ -2,6 +2,7 @@
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
+const multer = require('multer'); // Add multer for file uploads
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,12 +22,33 @@ app.use(cors({
     credentials: true
 }));
 // --- END ADDITION ---
+
+// Configure storage for uploaded files
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // Define where to save uploaded files. Create this folder if it doesn't exist.
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    // Generate a unique filename using timestamp and original name
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+// Create the multer instance
+const upload = multer({ storage: storage });
+
+// Serve uploaded files from 'uploads' folder
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Connect to PostgreSQL (Railway auto-provides DATABASE_URL)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
 // --- PRODUCTS ROUTES ---
+
 // GET all products
 app.get('/api/products', async (req, res) => {
   try {
@@ -53,8 +75,29 @@ app.get('/api/products/:id', async (req, res) => {
 });
 
 // POST create product
-app.post('/api/products', async (req, res) => {
-  const { name, price, description, images, category } = req.body;
+// Use upload.array('images') middleware to handle file uploads
+app.post('/api/products', upload.array('images'), async (req, res) => {
+  let { name, price, description, category } = req.body;
+  let images = [];
+
+  // Check if any files were uploaded via multer
+  if (req.files && req.files.length > 0) {
+    // Map the uploaded files to their paths
+    images = req.files.map(file => `/uploads/${file.filename}`);
+  } else {
+    // If no files were uploaded, check if images are sent as a JSON string (base64)
+    if (req.body.images) {
+      try {
+        // Parse the images field if it's a stringified array
+        images = typeof req.body.images === 'string' ? JSON.parse(req.body.images) : req.body.images;
+      } catch (e) {
+        console.error("Failed to parse images:", e);
+        // If parsing fails, use an empty array or fallback to single image
+        images = [];
+      }
+    }
+  }
+
   try {
     const result = await pool.query(
       'INSERT INTO products (name, price, description, images, category) VALUES ($1, $2, $3, $4, $5) RETURNING *',
@@ -68,8 +111,35 @@ app.post('/api/products', async (req, res) => {
 });
 
 // PUT update product
-app.put('/api/products/:id', async (req, res) => {
-  const { name, price, description, images, category } = req.body;
+// Use upload.array('images') middleware to handle file uploads
+app.put('/api/products/:id', upload.array('images'), async (req, res) => {
+  const { name, price, description, category } = req.body;
+  let images = [];
+
+  // Check if any files were uploaded via multer
+  if (req.files && req.files.length > 0) {
+    // Map the uploaded files to their paths
+    images = req.files.map(file => `/uploads/${file.filename}`);
+  } else {
+    // If no new images are uploaded, keep the existing ones
+    // Fetch current product to get its images
+    const currentProductResult = await pool.query('SELECT images FROM products WHERE id = $1', [req.params.id]);
+    if (currentProductResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    // If images are sent as a JSON string (base64), parse them
+    if (req.body.images) {
+      try {
+        images = typeof req.body.images === 'string' ? JSON.parse(req.body.images) : req.body.images;
+      } catch (e) {
+        console.error("Failed to parse images:", e);
+        images = currentProductResult.rows[0].images; // Fallback to existing images
+      }
+    } else {
+      images = currentProductResult.rows[0].images; // Use existing images
+    }
+  }
+
   try {
     const result = await pool.query(
       'UPDATE products SET name = $1, price = $2, description = $3, images = $4, category = $5 WHERE id = $6 RETURNING *',
@@ -100,6 +170,7 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 // --- TESTIMONIALS ROUTES ---
+
 // GET all testimonials
 app.get('/api/testimonials', async (req, res) => {
   try {
@@ -173,6 +244,7 @@ app.delete('/api/testimonials/:id', async (req, res) => {
 });
 
 // --- NEWS ROUTES ---
+
 // GET all news
 app.get('/api/news', async (req, res) => {
   try {
@@ -246,6 +318,7 @@ app.delete('/api/news/:id', async (req, res) => {
 });
 
 // --- USERS ROUTES ---
+
 // GET all users
 app.get('/api/users', async (req, res) => {
   try {
@@ -319,6 +392,7 @@ app.delete('/api/users/:id', async (req, res) => {
 });
 
 // --- AUTHENTICATION ROUTE ---
+
 // POST login/signup
 app.post('/api/auth', async (req, res) => {
   const { username, password, action } = req.body;
@@ -351,6 +425,7 @@ app.post('/api/auth', async (req, res) => {
 });
 
 // --- REMITA WEBHOOK ROUTE ---
+
 // POST handle Remita payment callback
 app.post('/api/webhook/remita', async (req, res) => {
   const { transactionId, status } = req.body;
@@ -367,6 +442,7 @@ app.post('/api/webhook/remita', async (req, res) => {
 });
 
 // --- CHECKOUT ROUTE ---
+
 // POST initiate checkout
 app.post('/api/checkout', async (req, res) => {
   const { productId, email } = req.body;
@@ -387,6 +463,7 @@ app.post('/api/checkout', async (req, res) => {
     res.status(500).json({ error: 'Checkout failed' });
   }
 });
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -394,6 +471,7 @@ app.get('/health', (req, res) => {
     env: process.env.DATABASE_URL ? 'DATABASE_URL set' : 'DATABASE_URL missing'
   });
 });
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

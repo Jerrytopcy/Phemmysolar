@@ -343,19 +343,56 @@
     </div>
 </div>
 <!-- Keep your existing modals (alertModal, productModal, etc.) here -->
-    <script src="script.js"></script>
-    <script>
-        // Load news on page
-        function loadNewsPage() {
-            const newsGrid = document.getElementById("newsGrid")
-            const news = JSON.parse(localStorage.getItem("news") || "[]")
-            if (news.length === 0) {
-                newsGrid.innerHTML = '<p class="empty-state">No articles available</p>'
-                return
+   <script src="script.js"></script>
+<script>
+    // --- Global Variable for News ---
+    let allNewsArticles = []; // Will be populated from API
+
+    // Load news on page
+    async function loadNewsPage() {
+        const newsGrid = document.getElementById("newsGrid");
+        if (!newsGrid) {
+            console.log("News grid not found");
+            return;
+        }
+
+        try {
+            // Fetch news articles from the API
+            const response = await fetch('/api/news');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-            newsGrid.innerHTML = news
-                .map(
-                    (article) => `
+            allNewsArticles = await response.json();
+            console.log("[v0] Retrieved news articles:", allNewsArticles.length);
+
+            // Display the news articles
+            displayNewsOnPage();
+        } catch (error) {
+            console.error("Error loading news:", error);
+            newsGrid.innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                    <p style="font-size: 1.125rem; color: #666;">Failed to load articles.</p>
+                    <p style="color: #666;">Please try again later.</p>
+                </div>
+            `;
+        }
+    }
+
+    function displayNewsOnPage() {
+        const newsGrid = document.getElementById("newsGrid");
+        if (!newsGrid) {
+            console.log("News grid not found");
+            return;
+        }
+
+        if (allNewsArticles.length === 0) {
+            newsGrid.innerHTML = '<p class="empty-state">No articles available</p>';
+            return;
+        }
+
+        newsGrid.innerHTML = allNewsArticles
+            .map(
+                (article) => `
                     <div class="news-full-card">
                         <img src="${article.image}" alt="${article.title}" class="news-full-image">
                         <div class="news-full-content">
@@ -366,108 +403,130 @@
                         </div>
                     </div>
                 `,
-                )
-                .join("")
+            )
+            .join("");
+    }
+
+    // Subscribe form
+    const subscribeForm = document.getElementById("subscribeForm");
+    if (subscribeForm) {
+        subscribeForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const alertModal = document.getElementById("alertModal");
+            alertModal.classList.add("active");
+            document.body.style.overflow = "hidden";
+            subscribeForm.reset();
+
+            // Optionally, send subscription data to server here
+            // Example:
+            // const formData = new FormData(subscribeForm);
+            // fetch('/api/subscribe', { method: 'POST', body: formData })
+            //     .then(response => response.json())
+            //     .then(data => console.log('Subscription successful:', data))
+            //     .catch(error => console.error('Subscription failed:', error));
+        });
+    }
+
+    // Alert modal OK button
+    const alertOk = document.getElementById("alertOk");
+    if (alertOk) {
+        alertOk.addEventListener("click", () => {
+            document.getElementById("alertModal").classList.remove("active");
+            document.body.style.overflow = "";
+        });
+    }
+
+    // Article Modal Functions
+    function viewFullArticle(articleId) {
+        const articleModal = document.getElementById("articleModal");
+        const article = allNewsArticles.find(a => a.id === articleId); // Use global array
+        if (article) {
+            document.getElementById("articleTitle").innerText = article.title;
+            document.getElementById("articleDate").innerText = article.date;
+            document.getElementById("articleImage").src = article.image;
+            document.getElementById("articleBody").innerHTML = article.body;
+            articleModal.classList.add("active");
+            document.body.style.overflow = "hidden";
+        } else {
+            console.warn(`Article with ID ${articleId} not found.`);
+            // Optionally show an error message in the modal
+        }
+    }
+
+    function closeArticleModal() {
+        const articleModal = document.getElementById("articleModal");
+        if (articleModal) {
+            articleModal.classList.remove("active");
+            document.body.style.overflow = "";
+        }
+    }
+
+    // Initialize
+    document.addEventListener("DOMContentLoaded", () => {
+        loadNewsPage(); // Load news from API
+
+        // NEW: Initialize user session and add event listeners for auth/cart
+        initializeUserSession(); // Ensure session is loaded
+
+        const viewCartBtn = document.getElementById('viewCartBtn');
+        if (viewCartBtn) {
+            viewCartBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                viewCart();
+            });
         }
 
-        // Subscribe form
-        const subscribeForm = document.getElementById("subscribeForm")
-        if (subscribeForm) {
-            subscribeForm.addEventListener("submit", (e) => {
-                e.preventDefault()
-                const alertModal = document.getElementById("alertModal")
-                alertModal.classList.add("active")
-                document.body.style.overflow = "hidden"
-                subscribeForm.reset()
-            })
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                handleLogout();
+            });
         }
 
-        const alertOk = document.getElementById("alertOk")
-        if (alertOk) {
-            alertOk.addEventListener("click", () => {
-                document.getElementById("alertModal").classList.remove("active")
-                document.body.style.overflow = ""
-            })
-        }
-
-        // Article Modal Functions
-        function viewFullArticle(articleId) {
-            const articleModal = document.getElementById("articleModal")
-            const news = JSON.parse(localStorage.getItem("news") || "[]")
-            const article = news.find(article => article.id === articleId)
-            if (article) {
-                document.getElementById("articleTitle").innerText = article.title
-                document.getElementById("articleDate").innerText = article.date
-                document.getElementById("articleImage").src = article.image
-                document.getElementById("articleBody").innerHTML = article.body
-                articleModal.classList.add("active")
-                document.body.style.overflow = "hidden"
-            }
-        }
-
-        function closeArticleModal() {
-            const articleModal = document.getElementById("articleModal")
-            articleModal.classList.remove("active")
-            document.body.style.overflow = ""
-        }
-
-        // Initialize
-        document.addEventListener("DOMContentLoaded", () => {
-            loadNewsPage()
-           
-
-            // NEW: Initialize user session and add event listeners for auth/cart
-            initializeUserSession(); // Ensure session is loaded
-
-            const viewCartBtn = document.getElementById('viewCartBtn');
-            if (viewCartBtn) {
-                viewCartBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    viewCart();
-                });
-            }
-
-            // const loginBtn = document.getElementById('loginBtn');
-            // if (loginBtn) {
-            //     loginBtn.addEventListener('click', (e) => {
-            //         e.preventDefault();
-            //         const username = prompt("Please enter a username to log in or create an account:");
-            //         if (username) {
-            //             handleLoginOrSignup(username);
-            //         }
-            //     });
-            // }
-
-             const logoutBtn = document.getElementById('logoutBtn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    handleLogout();
-                });
-            }
-
-            const accountLink = document.getElementById('accountLink');
-            if (accountLink) {
-                accountLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    // Navigate to account page or load order history in a modal
-                    loadOrderHistory(); // Example: Load history in a modal
-                     const accountModal = document.getElementById("accountModal"); // You need to create this modal in your HTML
-                     if (accountModal) {
-                         accountModal.classList.add("active");
-                         document.body.style.overflow = "hidden";
-                     }
-                });
-            }
-
-            // Add key listener for account modal close - NEW
-            document.addEventListener("keydown", (e) => {
-                if (document.getElementById("accountModal")?.classList.contains("active")) {
-                  if (e.key === "Escape") { document.getElementById('accountModal').classList.remove('active'); document.body.style.overflow=''; }
+        const accountLink = document.getElementById('accountLink');
+        if (accountLink) {
+            accountLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Navigate to account page or load order history in a modal
+                loadOrderHistory(); // Example: Load history in a modal
+                const accountModal = document.getElementById("accountModal"); // You need to create this modal in your HTML
+                if (accountModal) {
+                    accountModal.classList.add("active");
+                    document.body.style.overflow = "hidden";
                 }
             });
+        }
 
-        })
-    </script>
+        // Add key listener for account modal close - NEW
+        document.addEventListener("keydown", (e) => {
+            if (document.getElementById("accountModal")?.classList.contains("active")) {
+                if (e.key === "Escape") {
+                    document.getElementById('accountModal').classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            }
+        });
+
+        // Optional: Add key listener for article modal close
+        document.addEventListener("keydown", (e) => {
+            if (document.getElementById("articleModal")?.classList.contains("active")) {
+                if (e.key === "Escape") {
+                    closeArticleModal();
+                }
+            }
+        });
+
+        // Add click listener for closing article modal by clicking outside
+        const articleModalOverlay = document.querySelector(".modal-overlay.article-modal");
+        if (articleModalOverlay) {
+            articleModalOverlay.addEventListener("click", (e) => {
+                if (e.target === articleModalOverlay) {
+                    closeArticleModal();
+                }
+            });
+        }
+    });
+</script>
 </body>
 </html>

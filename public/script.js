@@ -900,28 +900,15 @@ function viewProduct(productId) {
       return response.json();
     })
     .then(product => {
-  if (!product) {
-    showCustomAlert("Product not found.", "Error");
-    return;
-  }
-
-  // Parse images if it's a string (JSONB from DB)
-  if (typeof product.images === 'string') {
-    try {
-      product.images = JSON.parse(product.images);
-    } catch (e) {
-      console.error("Failed to parse images:", e);
-      product.images = []; // Fallback to empty array
-    }
-  }
-
-  // If no images array exists, fall back to single image
-  if (!Array.isArray(product.images)) {
-    product.images = [product.image];
-  }
-
-  currentProductInModal = product;
-  currentImageIndex = 0;
+      if (!product) {
+        showCustomAlert("Product not found.", "Error");
+        return;
+      }
+      currentProductInModal = product;
+      currentImageIndex = 0;
+      if (!product.images) {
+        product.images = [product.image];
+      }
       const modal = document.getElementById("productModal");
       const mainImage = document.getElementById("modalMainImage");
       const productName = document.getElementById("modalProductName");

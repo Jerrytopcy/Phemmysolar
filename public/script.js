@@ -1,4 +1,5 @@
 // script.js
+const bcrypt = require('bcryptjs');
 // --- NEW: Cart and User Management Functions ---
 // Initialize user session (simulates login state)
 function initializeUserSession() {
@@ -16,6 +17,18 @@ function initializeUserSession() {
         }
     }
     updateUIBasedOnUser(user);
+}
+function formatDate(dateString) {
+    try {
+        return new Date(dateString).toLocaleDateString('en-NG', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+    } catch (error) {
+        console.error("Error formatting date:", error);
+        return dateString; // Fallback to original string if parsing fails
+    }
 }
 // --- NEW: Custom Modal Functions for Login/Signup ---
 // Show the login/signup modal
@@ -37,21 +50,25 @@ function closeAuthModal() {
     }
 }
 // Handle login or signup form submission
+// Handle login or signup form submission
 async function handleAuthSubmit(e) {
   e.preventDefault();
   const form = e.target;
   const username = form.username.value.trim();
   const password = form.password.value;
   const isLogin = form.dataset.mode === "login";
+
   if (!username || !password) {
     document.getElementById("authError").textContent = "Username and password are required.";
     return;
   }
+
   // Prepare data based on whether it's login or signup
   let requestData = {
     username: username,
     password: password
   };
+
   if (!isLogin) {
     // Collect extra signup fields
     const email = document.getElementById("email").value.trim();
@@ -60,11 +77,13 @@ async function handleAuthSubmit(e) {
     const city = document.getElementById("city").value.trim();
     const state = document.getElementById("state").value.trim();
     const postalCode = document.getElementById("postalCode").value.trim();
+
     // Validate required fields for signup
     if (!email || !phone || !street || !city || !state) {
       document.getElementById("authError").textContent = "Please fill in all required fields.";
       return;
     }
+
     requestData = {
       ...requestData,
       action: "signup",
@@ -81,6 +100,7 @@ async function handleAuthSubmit(e) {
   } else {
     requestData.action = "login";
   }
+
   try {
     const response = await fetch('/api/auth', {
       method: 'POST',
@@ -89,23 +109,30 @@ async function handleAuthSubmit(e) {
       },
       body: JSON.stringify(requestData)
     });
+
     const result = await response.json();
+
     if (!response.ok) {
       // Server responded with an error status (e.g., 400, 401, 500)
       document.getElementById("authError").textContent = result.error || "An unexpected error occurred.";
       return;
     }
+
     if (result.success) {
       // Authentication successful
       const userData = result.user;
+
       // Store user data in session storage for this browser session
       sessionStorage.setItem('currentUser', JSON.stringify(userData));
       // Optionally store the user ID persistently in localStorage for easier re-login later
       localStorage.setItem('currentUserId', userData.id);
+
       // Update UI based on the logged-in user
       updateUIBasedOnUser(userData);
+
       // Close the modal
       closeAuthModal();
+
       // Show success message
       if (isLogin) {
         showCustomAlert(`Welcome back, ${username}!`, "Logged In");
@@ -779,7 +806,7 @@ async function loadLatestNews() {
           <div class="news-card">
             <img src="${article.image}" alt="${article.title}" class="news-image">
             <div class="news-content">
-              <p class="news-date">${article.date}</p>
+              <p class="news-date">${formatDate(article.date)}</p>
               <h3 class="news-title">${article.title}</h3>
               <p class="news-description">${article.description}</p>
               <a href="news.html" class="news-link" onclick="viewFullArticle(${article.id});">Read More →</a>
@@ -1351,7 +1378,7 @@ function closeForgotPasswordModal() {
         document.body.style.overflow = "";
     }
 }
-function handleForgotPasswordSubmit(e) {
+async function handleForgotPasswordSubmit(e) {
     e.preventDefault();
     const username = document.getElementById("forgotPasswordUsername").value.trim();
     const email = document.getElementById("forgotPasswordEmail").value.trim();
@@ -1359,24 +1386,36 @@ function handleForgotPasswordSubmit(e) {
         document.getElementById("forgotPasswordError").textContent = "Username and email are required.";
         return;
     }
-    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    const user = Object.values(allUsers).find(u => u.username === username && u.email === email);
-    if (!user) {
-        document.getElementById("forgotPasswordError").textContent = "Username or email not found.";
-        return;
+
+    try {
+        const response = await fetch('/api/forgot-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, email })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            document.getElementById("forgotPasswordError").textContent = result.error || "An unexpected error occurred.";
+            return;
+        }
+
+        if (result.success) {
+            showCustomAlert(
+                `A password reset link has been sent to ${email}.`,
+                "Password Reset Requested",
+                "success"
+            );
+            closeForgotPasswordModal();
+        } else {
+            document.getElementById("forgotPasswordError").textContent = result.error || "Password reset failed.";
+        }
+
+    } catch (error) {
+        console.error("Network error during password reset:", error);
+        document.getElementById("forgotPasswordError").textContent = "Network error. Please try again.";
     }
-    // Generate reset token (for demo purposes)
-    const resetToken = Math.random().toString(36).substr(2, 15);
-    user.resetToken = resetToken;
-    user.resetTokenExpiry = Date.now() + 300000; // 5 minutes expiry
-    allUsers[user.id] = user;
-    localStorage.setItem('users', JSON.stringify(allUsers));
-    // In a real app, you would send an email with the reset link
-    showCustomAlert(
-        `A password reset link has been sent to ${email}.
-For demo purposes, use this token: ${resetToken}`,
-        "Password Reset Requested",
-        "success"
-    );
-    closeForgotPasswordModal();
 }

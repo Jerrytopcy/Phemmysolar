@@ -12,6 +12,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Parse JSON bodies
 app.use(express.json());
 
+// --- ADD THIS BLOCK ---
+const cors = require('cors');
+
+// Enable CORS for development (allow all origins)
+app.use(cors({
+    origin: 'http://localhost:3000', // Or '*' for dev only
+    credentials: true
+}));
+// --- END ADDITION ---
 // Connect to PostgreSQL (Railway auto-provides DATABASE_URL)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

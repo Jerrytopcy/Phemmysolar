@@ -321,8 +321,6 @@ app.delete('/api/users/:id', async (req, res) => {
 
 // --- AUTHENTICATION ROUTE ---
 // POST login/signup
-// --- AUTHENTICATION ROUTE ---
-// POST login/signup
 app.post('/api/auth', async (req, res) => {
   const { username, password, action } = req.body;
   try {
@@ -332,35 +330,16 @@ app.post('/api/auth', async (req, res) => {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
       const user = result.rows[0];
-      // Compare password hashes with bcrypt
-      const isMatch = await bcrypt.compare(password, user.passwordHash);
-      if (!isMatch) {
+      // In real app, compare password hashes with bcrypt
+      if (user.passwordHash !== password) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
-
-      // Ensure cart and orders exist for the user
-      if (!user.cart) {
-        user.cart = [];
-      }
-      if (!user.orders) {
-        user.orders = [];
-      }
-
       res.json({ success: true, user });
     } else if (action === 'signup') {
       const { email, phone, address } = req.body;
-
-      // Hash the password before storing it
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-      // Initialize empty cart and orders arrays
-      const cart = [];
-      const orders = [];
-
       const result = await pool.query(
-        'INSERT INTO users (username, passwordHash, email, phone, address, role, cart, orders) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-        [username, hashedPassword, email, phone, address, 'user', cart, orders]
+        'INSERT INTO users (username, passwordHash, email, phone, address, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [username, password, email, phone, address, 'user']
       );
       res.json({ success: true, user: result.rows[0] });
     } else {

@@ -464,13 +464,7 @@ app.post('/api/checkout', async (req, res) => {
   }
 });
 
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    database: pool ? 'Connected' : 'Disconnected',
-    env: process.env.DATABASE_URL ? 'DATABASE_URL set' : 'DATABASE_URL missing'
-  });
-});
+
 
 // Start server
 app.listen(PORT, () => {

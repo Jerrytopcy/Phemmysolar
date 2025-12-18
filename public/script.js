@@ -183,7 +183,7 @@ async function addToCart(productId) {
   }
   try {
     // Fetch the specific product from the API
-    const response = await fetch(`/api/products?id=${productId}`);
+    const response = await fetch(`/api/products/${productId}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -225,7 +225,7 @@ async function viewCart() {
   try {
     // Loop through each item in the user's cart and fetch its details
     for (const cartItem of user.cart) {
-      const response = await fetch(`/api/products?id=${cartItem.productId}`);
+      const response = await fetch(`/api/products/${cartItem.productId}`);
       if (!response.ok) {
         console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
         continue; // Skip this item if fetching fails
@@ -342,7 +342,7 @@ async function proceedToCheckout() {
   try {
     // Loop through each item in the user's cart and fetch its details
     for (const cartItem of user.cart) {
-      const response = await fetch(`/api/products?id=${cartItem.productId}`);
+      const response = await fetch(`/api/products/${cartItem.productId}`);
       if (!response.ok) {
         console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
         continue; // Skip this item if fetching fails
@@ -892,7 +892,7 @@ function showCustomConfirm(message, title = "Confirm Action", onConfirm) {
 // View product details in modal
 function viewProduct(productId) {
   // Fetch the specific product from the API
-  fetch(`/api/products?id=${productId}`)
+   fetch(`/api/products/${productId}`) 
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1249,7 +1249,7 @@ function switchToLogin(e) {
 });
 function viewFullArticle(articleId) {
   // Fetch the specific news article from the API
-  fetch(`/api/news?id=${articleId}`)
+  fetch(`/api/news/${articleId}`)
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

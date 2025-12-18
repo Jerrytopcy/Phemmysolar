@@ -308,6 +308,9 @@ function populateImageUrlInputs(images) {
 }
 
 // Handle product form submission
+// ... (inside admin.js)
+
+// Handle product form submission
 async function handleProductSubmit(e) {
   e.preventDefault();
   let finalImages = [];
@@ -320,11 +323,8 @@ async function handleProductSubmit(e) {
     await showAdminAlert("Please add at least one product image.", "Missing Image");
     return;
   }
-
   let priceInput = document.getElementById("productPrice").value;
-  // Keep the original formatted string from the input field
-  let formattedPrice = priceInput; // e.g., "₦50,000"
-
+  let formattedPrice = priceInput;
   const productId = document.getElementById("productId").value;
   const productData = {
     name: document.getElementById("productName").value,
@@ -335,8 +335,8 @@ async function handleProductSubmit(e) {
   };
 
   try {
-    const method = productId ? 'PUT' : 'POST'; // Use PUT for updates, POST for new
-    const url = productId ? `/api/products/${productId}` : '/api/products'; // Use route param, not query param
+    const method = productId ? 'PUT' : 'POST';
+    const url = productId ? `/api/products/${productId}` : '/api/products';
     const response = await fetch(url, {
       method: method,
       headers: {
@@ -344,23 +344,33 @@ async function handleProductSubmit(e) {
       },
       body: JSON.stringify(productData),
     });
+
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` })); // Attempt to read error response
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
+
     const result = await response.json();
     if (result.success) {
-      loadProducts(); // Reload the product list
-      hideProductForm(); // Close the form
+      loadProducts();
+      hideProductForm();
       await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success");
     } else {
       throw new Error(result.error || "Failed to save product.");
     }
   } catch (error) {
-    console.error("Error saving product:", error);
-    await showAdminAlert(`Error saving product: ${error.message}`, "Error");
+    console.error("Error saving product:", error); // Log the raw error for debugging
+    // Check for the specific error indicating server returned HTML (likely due to payload size)
+    if (error.message.includes("DOCTYPE") || error.message.includes("Unexpected token '<'")) {
+       await showAdminAlert("File size too large. Please reduce image size and try again.", "File Size Error");
+    } else {
+       // Handle other potential errors (network issues, server errors returning JSON, etc.)
+       await showAdminAlert(`Error saving product: ${error.message}`, "Error");
+    }
   }
 }
+
+// ... (rest of admin.js remains the same)
 
 // Edit product
 async function editProduct(productId) {
@@ -472,9 +482,12 @@ function handleNavigation(e) {
 }
 
 // Handle testimonial form submission
+// ... (inside admin.js, find handleTestimonialSubmit)
+
 async function handleTestimonialSubmit(e) {
   e.preventDefault();
   let finalImage = testimonialImage || document.getElementById("testimonialImageUrl").value || "";
+
   const testimonialData = {
     name: document.getElementById("testimonialName").value,
     role: document.getElementById("testimonialRole").value,
@@ -485,8 +498,8 @@ async function handleTestimonialSubmit(e) {
 
   try {
     const testimonialId = document.getElementById("testimonialId").value;
-    const method = testimonialId ? 'PUT' : 'POST'; // Use PUT for updates, POST for new
-    const url = testimonialId ? `/api/testimonials/${testimonialId}` : '/api/testimonials'; // Use route param, not query param
+    const method = testimonialId ? 'PUT' : 'POST';
+    const url = testimonialId ? `/api/testimonials/${testimonialId}` : '/api/testimonials';
     const response = await fetch(url, {
       method: method,
       headers: {
@@ -494,23 +507,33 @@ async function handleTestimonialSubmit(e) {
       },
       body: JSON.stringify(testimonialData),
     });
+
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` })); // Attempt to read error response
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
+
     const result = await response.json();
     if (result.success) {
-      loadTestimonials(); // Reload the testimonial list
-      hideTestimonialForm(); // Close the form
+      loadTestimonials();
+      hideTestimonialForm();
       await showAdminAlert(testimonialId ? "Testimonial updated!" : "Testimonial added!", "Success");
     } else {
       throw new Error(result.error || "Failed to save testimonial.");
     }
   } catch (error) {
-    console.error("Error saving testimonial:", error);
-    await showAdminAlert(`Error saving testimonial: ${error.message}`, "Error");
+    console.error("Error saving testimonial:", error); // Log the raw error for debugging
+    // Check for the specific error indicating server returned HTML (likely due to payload size)
+    if (error.message.includes("DOCTYPE") || error.message.includes("Unexpected token '<'")) {
+       await showAdminAlert("File size too large. Please reduce image size and try again.", "File Size Error");
+    } else {
+       // Handle other potential errors
+       await showAdminAlert(`Error saving testimonial: ${error.message}`, "Error");
+    }
   }
 }
+
+// ... (rest of admin.js remains the same)
 
 function editTestimonial(testimonialId) {
   fetch(`/api/testimonials/${testimonialId}`) // Use route param, not query param
@@ -661,9 +684,12 @@ function removeTestimonialImage() {
 }
 
 // Handle news form submission
+// ... (inside admin.js, find handleNewsSubmit)
+
 async function handleNewsSubmit(e) {
   e.preventDefault();
   let finalImage = newsImage || document.getElementById("newsImage").value || "";
+
   const newsData = {
     title: document.getElementById("newsTitle").value,
     description: document.getElementById("newsDescription").value,
@@ -674,8 +700,8 @@ async function handleNewsSubmit(e) {
 
   try {
     const newsId = document.getElementById("newsId").value;
-    const method = newsId ? 'PUT' : 'POST'; // Use PUT for updates, POST for new
-    const url = newsId ? `/api/news/${newsId}` : '/api/news'; // Use route param, not query param
+    const method = newsId ? 'PUT' : 'POST';
+    const url = newsId ? `/api/news/${newsId}` : '/api/news';
     const response = await fetch(url, {
       method: method,
       headers: {
@@ -683,23 +709,33 @@ async function handleNewsSubmit(e) {
       },
       body: JSON.stringify(newsData),
     });
-    if (!response.ok) {
-      const errorData = await response.json();
+
+     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` })); // Attempt to read error response
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
+
     const result = await response.json();
     if (result.success) {
-      loadNews(); // Reload the news list
-      hideNewsForm(); // Close the form
+      loadNews();
+      hideNewsForm();
       await showAdminAlert(newsId ? "Article updated!" : "Article added!", "Success");
     } else {
       throw new Error(result.error || "Failed to save article.");
     }
   } catch (error) {
-    console.error("Error saving article:", error);
-    await showAdminAlert(`Error saving article: ${error.message}`, "Error");
+    console.error("Error saving article:", error); // Log the raw error for debugging
+    // Check for the specific error indicating server returned HTML (likely due to payload size)
+    if (error.message.includes("DOCTYPE") || error.message.includes("Unexpected token '<'")) {
+       await showAdminAlert("File size too large. Please reduce image size and try again.", "File Size Error");
+    } else {
+       // Handle other potential errors
+       await showAdminAlert(`Error saving article: ${error.message}`, "Error");
+    }
   }
 }
+
+// ... (rest of admin.js remains the same)
 
 // Load news
 async function loadNews() {

@@ -1,5 +1,4 @@
 // script.js
-const bcrypt = require('bcryptjs');
 // --- NEW: Cart and User Management Functions ---
 // Initialize user session (simulates login state)
 function initializeUserSession() {
@@ -50,25 +49,21 @@ function closeAuthModal() {
     }
 }
 // Handle login or signup form submission
-// Handle login or signup form submission
 async function handleAuthSubmit(e) {
   e.preventDefault();
   const form = e.target;
   const username = form.username.value.trim();
   const password = form.password.value;
   const isLogin = form.dataset.mode === "login";
-
   if (!username || !password) {
     document.getElementById("authError").textContent = "Username and password are required.";
     return;
   }
-
   // Prepare data based on whether it's login or signup
   let requestData = {
     username: username,
     password: password
   };
-
   if (!isLogin) {
     // Collect extra signup fields
     const email = document.getElementById("email").value.trim();
@@ -77,13 +72,11 @@ async function handleAuthSubmit(e) {
     const city = document.getElementById("city").value.trim();
     const state = document.getElementById("state").value.trim();
     const postalCode = document.getElementById("postalCode").value.trim();
-
     // Validate required fields for signup
     if (!email || !phone || !street || !city || !state) {
       document.getElementById("authError").textContent = "Please fill in all required fields.";
       return;
     }
-
     requestData = {
       ...requestData,
       action: "signup",
@@ -100,7 +93,6 @@ async function handleAuthSubmit(e) {
   } else {
     requestData.action = "login";
   }
-
   try {
     const response = await fetch('/api/auth', {
       method: 'POST',
@@ -109,30 +101,23 @@ async function handleAuthSubmit(e) {
       },
       body: JSON.stringify(requestData)
     });
-
     const result = await response.json();
-
     if (!response.ok) {
       // Server responded with an error status (e.g., 400, 401, 500)
       document.getElementById("authError").textContent = result.error || "An unexpected error occurred.";
       return;
     }
-
     if (result.success) {
       // Authentication successful
       const userData = result.user;
-
       // Store user data in session storage for this browser session
       sessionStorage.setItem('currentUser', JSON.stringify(userData));
       // Optionally store the user ID persistently in localStorage for easier re-login later
       localStorage.setItem('currentUserId', userData.id);
-
       // Update UI based on the logged-in user
       updateUIBasedOnUser(userData);
-
       // Close the modal
       closeAuthModal();
-
       // Show success message
       if (isLogin) {
         showCustomAlert(`Welcome back, ${username}!`, "Logged In");
@@ -1377,14 +1362,6 @@ function closeForgotPasswordModal() {
         modal.classList.remove("active");
         document.body.style.overflow = "";
     }
-}
-// Add event listener for Forgot Password link
-const forgotPasswordLink = document.getElementById("forgotPasswordLink");
-if (forgotPasswordLink) {
-    forgotPasswordLink.addEventListener("click", (e) => {
-        e.preventDefault();
-        showForgotPasswordModal();
-    });
 }
 async function handleForgotPasswordSubmit(e) {
     e.preventDefault();

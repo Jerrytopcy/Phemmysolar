@@ -395,8 +395,7 @@
             initializeData()
             
             // Get products from localStorage
-            const storedProducts = JSON.parse(localStorage.getItem("solarProducts") || "[]")
-            console.log("[v0] Retrieved products:", storedProducts.length)
+            
             
             pageProducts = [...storedProducts]
             pageFilteredProducts = [...storedProducts]

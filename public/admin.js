@@ -308,59 +308,65 @@ function populateImageUrlInputs(images) {
 }
 
 // Handle product form submission
-async function handleProductSubmit(e) {
-  e.preventDefault();
-  let finalImages = [];
-  if (productImages.length > 0) {
-    finalImages = productImages;
-  } else {
-    finalImages = getImageUrlsFromInputs();
-  }
-  if (finalImages.length === 0) {
-    await showAdminAlert("Please add at least one product image.", "Missing Image");
-    return;
-  }
-
-  let priceInput = document.getElementById("productPrice").value;
-  // Keep the original formatted string from the input field
-  let formattedPrice = priceInput; // e.g., "₦50,000"
-
-  const productId = document.getElementById("productId").value;
-  const productData = {
-    name: document.getElementById("productName").value,
-    price: formattedPrice, // Send as string
-    description: document.getElementById("productDescription").value,
-    images: JSON.stringify(finalImages), // Send as stringified JSON array
-    category: document.getElementById("productCategory").value,
-  };
-
-  try {
-    const method = productId ? 'PUT' : 'POST'; // Use PUT for updates, POST for new
-    const url = productId ? `/api/products/${productId}` : '/api/products'; // Use route param, not query param
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(productData),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-    }
-    const result = await response.json();
-    if (result.success) {
-      loadProducts(); // Reload the product list
-      hideProductForm(); // Close the form
-      await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success");
+// Handle product form submission
+  async function handleProductSubmit(e) {
+    e.preventDefault();
+    let finalImages = [];
+    if (productImages.length > 0) {
+      finalImages = productImages;
     } else {
-      throw new Error(result.error || "Failed to save product.");
+      finalImages = getImageUrlsFromInputs();
     }
-  } catch (error) {
-    console.error("Error saving product:", error);
-    await showAdminAlert(`Error saving product: ${error.message}`, "Error");
+    if (finalImages.length === 0) {
+      await showAdminAlert("Please add at least one product image.", "Missing Image");
+      return;
+    }
+
+    // Create a FormData object to handle file uploads
+    const formData = new FormData();
+
+    // Append text fields
+    formData.append("name", document.getElementById("productName").value);
+    formData.append("price", document.getElementById("productPrice").value); // Send as string
+    formData.append("description", document.getElementById("productDescription").value);
+    formData.append("category", document.getElementById("productCategory").value);
+
+    // Append image files if they exist (base64 strings)
+    // Since your current code uses base64, you need to convert them back to File objects or send them as strings
+    // For simplicity, we'll send them as a JSON string (same as before)
+    formData.append("images", JSON.stringify(finalImages));
+
+    // Get the product ID for PUT requests
+    const productId = document.getElementById("productId").value;
+
+    try {
+      const method = productId ? 'PUT' : 'POST'; // Use PUT for updates, POST for new
+      const url = productId ? `/api/products/${productId}` : '/api/products'; // Use route param, not query param
+
+      // Send the FormData (this will automatically set Content-Type to multipart/form-data)
+      const response = await fetch(url, {
+        method: method,
+        body: formData, // Send FormData, not JSON
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json(); // This might fail if the server returns HTML
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        loadProducts(); // Reload the product list
+        hideProductForm(); // Close the form
+        await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success");
+      } else {
+        throw new Error(result.error || "Failed to save product.");
+      }
+    } catch (error) {
+      console.error("Error saving product:", error);
+      await showAdminAlert(`Error saving product: ${error.message}`, "Error");
+    }
   }
-}
 
 // Edit product
 async function editProduct(productId) {

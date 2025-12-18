@@ -387,85 +387,76 @@
 <!-- Keep your existing modals (alertModal, productModal, etc.) here -->
    <script src="script.js"></script>
 <script>
-    // --- Global Variables ---
-    let allProducts = []; // Will be populated from API
-    let filteredProducts = []; // Will be populated from API
+    let pageProducts = []
+    let pageFilteredProducts = []
 
     function initProductsPage() {
-        console.log("[v0] Initializing products page");
-        initializeData(); // This function might be empty or handle other initializations now that data comes from API.
-
-        // Initialize user session
-        initializeUserSession();
+        console.log("[v0] Initializing products page")
+        initializeData()
 
         // Fetch products from the API
-        loadProductsFromAPI();
-    }
+        fetch('/api/products')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(products => {
+                console.log("[v0] Retrieved products:", products.length)
+                pageProducts = [...products]
+                pageFilteredProducts = [...products]
 
-    async function loadProductsFromAPI() {
-        const productsGrid = document.getElementById("productsGrid");
-        if (!productsGrid) {
-            console.log("Products grid not found");
-            return;
-        }
+                // Check for category filter in URL
+                const urlParams = new URLSearchParams(window.location.search)
+                const categoryFilter = urlParams.get("category")
 
-        try {
-            const response = await fetch('/api/products');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            allProducts = await response.json();
-            console.log("[v0] Retrieved products:", allProducts.length);
+                if (categoryFilter) {
+                    console.log("[v0] Filtering by category:", categoryFilter)
+                    pageFilteredProducts = pageFilteredProducts.filter(p => p.category === categoryFilter)
+                }
 
-            // Check for category filter in URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const categoryFilter = urlParams.get("category");
-
-            if (categoryFilter) {
-                console.log("[v0] Filtering by category:", categoryFilter);
-                filteredProducts = allProducts.filter(p => p.category === categoryFilter);
-            } else {
-                filteredProducts = [...allProducts]; // Start with all products
-            }
-
-            // Apply any existing sort (default will be applied by applySorting)
-            applySorting();
-
-            // Display initial products
-            displayProductsOnPage();
-        } catch (error) {
-            console.error("Error loading products:", error);
-            productsGrid.innerHTML = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                    <p style="font-size: 1.125rem; color: #666;">Failed to load products.</p>
-                    <p style="color: #666;">Please try again later.</p>
-                </div>
-            `;
-        }
+                // Display initial products
+                applySorting() // Apply sorting to ensure consistent order before display
+                displayProductsOnPage()
+            })
+            .catch(error => {
+                console.error("Error loading products:", error);
+                // Handle error - maybe show a message to the user
+                const productsGrid = document.getElementById("productsGrid");
+                if (productsGrid) {
+                    productsGrid.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                            <p style="font-size: 1.125rem; color: #666;">Failed to load products.</p>
+                            <p style="color: #666;">Please try again later.</p>
+                        </div>
+                    `;
+                }
+            });
     }
 
     function displayProductsOnPage() {
-        console.log("Displaying products:", filteredProducts.length);
-        const productsGrid = document.getElementById("productsGrid");
+        console.log("Displaying products:", pageFilteredProducts.length)
+        const productsGrid = document.getElementById("productsGrid")
 
         if (!productsGrid) {
-            console.log("Products grid not found");
-            return;
+            console.log("Products grid not found")
+            return
         }
 
-        if (filteredProducts.length === 0) {
+        if (pageFilteredProducts.length === 0) {
             productsGrid.innerHTML = `
                 <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
                     <p style="font-size: 1.125rem; color: #666;">No products found matching your criteria.</p>
                     <p style="color: #666;">Try adjusting your search or filters.</p>
                 </div>
-            `;
-            return;
+            `
+            return
         }
 
-        productsGrid.innerHTML = filteredProducts
+        productsGrid.innerHTML = pageFilteredProducts
             .map((product) => {
-                const imageUrl = product.images?.[0] || product.image || "/placeholder.svg?height=300&width=300";
+                const imageUrl = product.images?.[0] || product.image || "/placeholder.svg?height=300&width=300"
                 return `
                     <div class="product-card">
                         <img src="${imageUrl}" alt="${product.name}" class="product-image">
@@ -474,152 +465,121 @@
                             <p class="product-price">${formatNaira(product.price)}</p>
                             <p class="product-description">${product.description.substring(0, 100)}...</p>
                             <div class="view-details"> 
-                                <button class="btn product-btn" onclick="viewProduct(${product.id})">View Details</button>
-                                <!-- NEW: Add to Cart Button in Product Card -->
-                                <button class="btn btn-contact" onclick="addToCart(${product.id})">Add to Cart</button>
+                            <button class="btn product-btn" onclick="viewProduct(${product.id})">View Details</button>
+                            <!-- NEW: Add to Cart Button in Product Card -->
+                            <button class="btn btn-contact" onclick="addToCart(${product.id})">Add to Cart</button>
                             </div>
                         </div>
                     </div>
-                `;
+                `
             })
-            .join("");
+            .join("")
     }
 
-    // --- Search and Sort Functions (Integrated from pasted script) ---
+    function handlePageSearch(e) {
+        const searchTerm = e.target.value.toLowerCase()
 
-    // Handle search input
-    function handleSearch(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        // Filter the globally fetched 'allProducts'
-        filteredProducts = allProducts.filter(
+        pageFilteredProducts = pageProducts.filter(
             (product) =>
                 product.name.toLowerCase().includes(searchTerm) ||
                 product.description.toLowerCase().includes(searchTerm),
-        );
-        applySorting(); // Re-apply sorting after filtering
-        displayProductsOnPage();
+        )
+
+        applySorting()
     }
 
-    // Handle sort selection change
-    function handleSort(e) {
-        applySorting();
-        displayProductsOnPage();
+    function handlePageCategoryFilter(e) {
+        const category = e.target.value
+
+        pageFilteredProducts = category
+            ? pageProducts.filter((product) => product.category === category)
+            : [...pageProducts]
+
+        applySorting()
     }
 
-    // Apply sorting based on selected option
     function applySorting() {
-        const sortValue = document.getElementById("sortSelect").value;
+        const sortValue = document.getElementById("sortSelect").value
+
         switch (sortValue) {
             case "name-asc":
-                filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
-                break;
+                pageFilteredProducts.sort((a, b) => a.name.localeCompare(b.name))
+                break
             case "name-desc":
-                filteredProducts.sort((a, b) => b.name.localeCompare(a.name));
-                break;
+                pageFilteredProducts.sort((a, b) => b.name.localeCompare(a.name))
+                break
             case "price-asc":
-                filteredProducts.sort((a, b) => {
-                    const priceA = Number.parseInt(a.price.replace(/[^0-9]/g, ""));
-                    const priceB = Number.parseInt(b.price.replace(/[^0-9]/g, ""));
-                    return priceA - priceB;
-                });
-                break;
+                pageFilteredProducts.sort((a, b) => {
+                    const priceA = parseInt(a.price.replace(/[^0-9]/g, "")) || 0
+                    const priceB = parseInt(b.price.replace(/[^0-9]/g, "")) || 0
+                    return priceA - priceB
+                })
+                break
             case "price-desc":
-                filteredProducts.sort((a, b) => {
-                    const priceA = Number.parseInt(a.price.replace(/[^0-9]/g, ""));
-                    const priceB = Number.parseInt(b.price.replace(/[^0-9]/g, ""));
-                    return priceB - priceA;
-                });
-                break;
+                pageFilteredProducts.sort((a, b) => {
+                    const priceA = parseInt(a.price.replace(/[^0-9]/g, "")) || 0
+                    const priceB = parseInt(b.price.replace(/[^0-9]/g, "")) || 0
+                    return priceB - priceA
+                })
+                break
             default:
-                // Default order (by ID)
-                filteredProducts.sort((a, b) => a.id - b.id);
+                pageFilteredProducts.sort((a, b) => a.id - b.id)
         }
+
+        displayProductsOnPage()
     }
-
-    // Format a number as Nigerian Naira with commas (Integrated from pasted script)
-    function formatNaira(price) {
-        if (typeof price !== 'number') {
-            // If it's not a number, try to parse it
-            price = parseFloat(price.replace(/[^\d.-]/g, '')) || 0;
-        }
-        return new Intl.NumberFormat("en-NG", {
-            style: "currency",
-            currency: "NGN",
-            minimumFractionDigits: 0,
-        }).format(price);
-    }
-
-    // --- Modal Handling (Updated to match pasted script) ---
-
-    // Close product modal
-    function closeProductModal() {
-        const modal = document.getElementById("productModal");
-        if (modal) {
-            modal.classList.remove("active");
-            document.body.style.overflow = "";
-            currentProductInModal = null;
-            currentImageIndex = 0;
-        }
-    }
-
-    // View product details in modal (This function should already exist in script.js)
-    // Ensure it's defined or imported properly. For this script, we assume it's available.
 
     // Initialize on DOM ready
     document.addEventListener("DOMContentLoaded", () => {
-        initProductsPage();
+        initProductsPage()
 
         // Setup event listeners
-        const searchInput = document.getElementById("searchInput");
+        const searchInput = document.getElementById("searchInput")
         if (searchInput) {
-            searchInput.addEventListener("input", handleSearch); // Use the integrated handleSearch
+            searchInput.addEventListener("input", handlePageSearch)
         }
 
-        // Assuming you have a category filter element, add its listener here if needed.
-        // const categoryFilter = document.getElementById("categoryFilter");
-        // if (categoryFilter) {
-        //     categoryFilter.addEventListener("change", handlePageCategoryFilter); // You can define this if needed, or remove if using only search/sort.
-        // }
+        const categoryFilter = document.getElementById("categoryFilter")
+        if (categoryFilter) {
+            categoryFilter.addEventListener("change", handlePageCategoryFilter)
+        }
 
-        const sortSelect = document.getElementById("sortSelect");
+        const sortSelect = document.getElementById("sortSelect")
         if (sortSelect) {
-            sortSelect.addEventListener("change", handleSort); // Use the integrated handleSort
+            sortSelect.addEventListener("change", applySorting)
         }
 
-        // Modal listeners (Updated to match pasted script structure)
-        const closeModal = document.getElementById("closeModal");
+        // Modal listeners
+        const closeModal = document.getElementById("closeModal")
         if (closeModal) {
-            closeModal.addEventListener("click", closeProductModal);
+            closeModal.addEventListener("click", closeProductModal)
         }
 
-        // Handle clicking outside the modal to close it
         document.querySelectorAll(".modal-overlay").forEach((overlay) => {
             overlay.addEventListener("click", (e) => {
                 if (e.target === overlay) {
-                    overlay.classList.remove("active");
-                    document.body.style.overflow = "";
+                    overlay.classList.remove("active")
+                    document.body.style.overflow = ""
                 }
-            });
-        });
+            })
+        })
 
-        // Alert modal OK button
-        const alertOk = document.getElementById("alertOk");
+        const alertOk = document.getElementById("alertOk")
         if (alertOk) {
             alertOk.addEventListener("click", () => {
-                document.getElementById("alertModal").classList.remove("active");
-                document.body.style.overflow = "";
-            });
+                document.getElementById("alertModal").classList.remove("active")
+                document.body.style.overflow = ""
+            })
         }
 
-        // Keyboard navigation for product modal
         document.addEventListener("keydown", (e) => {
             if (document.getElementById("productModal")?.classList.contains("active")) {
-                if (e.key === "ArrowLeft") navigateGallery(-1);
-                if (e.key === "ArrowRight") navigateGallery(1);
-                if (e.key === "Escape") closeProductModal();
+                if (e.key === "ArrowLeft") navigateGallery(-1)
+                if (e.key === "ArrowRight") navigateGallery(1)
+                if (e.key === "Escape") closeProductModal()
             }
-        });
-    });
+        })
+    })
 </script>
 </body>
 </html>

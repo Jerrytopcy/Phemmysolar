@@ -1,5 +1,4 @@
 // admin.js
-
 // Authentication state
 let isAuthenticated = false;
 let currentEditingProductId = null;
@@ -15,21 +14,26 @@ function showAdminAlert(message, title = "Alert") {
     const titleEl = document.getElementById("adminAlertTitle");
     const messageEl = document.getElementById("adminAlertMessage");
     const okBtn = document.getElementById("adminAlertOkBtn");
+
     titleEl.textContent = title;
     messageEl.textContent = message;
     modal.classList.add("active");
+
     const handleOk = () => {
       modal.classList.remove("active");
       okBtn.removeEventListener("click", handleOk);
       resolve(true);
     };
+
     okBtn.addEventListener("click", handleOk);
+
     // Close on overlay click
     modal.addEventListener("click", (e) => {
       if (e.target === modal) {
         handleOk();
       }
     });
+
     // Close on Escape key
     const handleEscape = (e) => {
       if (e.key === "Escape") {
@@ -49,31 +53,38 @@ function showAdminConfirm(message, title = "Confirm Action") {
     const messageEl = document.getElementById("adminConfirmMessage");
     const okBtn = document.getElementById("adminConfirmOkBtn");
     const cancelBtn = document.getElementById("adminConfirmCancelBtn");
+
     titleEl.textContent = title;
     messageEl.textContent = message;
     modal.classList.add("active");
+
     const handleOk = () => {
       modal.classList.remove("active");
       cleanup();
       resolve(true);
     };
+
     const handleCancel = () => {
       modal.classList.remove("active");
       cleanup();
       resolve(false);
     };
+
     const cleanup = () => {
       okBtn.removeEventListener("click", handleOk);
       cancelBtn.removeEventListener("click", handleCancel);
     };
+
     okBtn.addEventListener("click", handleOk);
     cancelBtn.addEventListener("click", handleCancel);
+
     // Close on overlay click (counts as cancel)
     modal.addEventListener("click", (e) => {
       if (e.target === modal) {
         handleCancel();
       }
     });
+
     // Close on Escape key (counts as cancel)
     const handleEscape = (e) => {
       if (e.key === "Escape") {
@@ -115,6 +126,7 @@ function handleLogin(e) {
   const username = document.getElementById("username").value;
   const password = document.getElementById("password").value;
   const errorMessage = document.getElementById("errorMessage");
+
   // Simple authentication (in production, this should be server-side)
   if (username === "admin" && password === "admin123") {
     isAuthenticated = true;
@@ -153,14 +165,12 @@ function formatNaira(price) {
 // Load products into table
 async function loadProducts() {
   const tableBody = document.getElementById("productsTableBody");
-
   try {
-    const response = await fetch('/.netlify/functions/products');
+    const response = await fetch('/api/products');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const products = await response.json();
-
     if (products.length === 0) {
       tableBody.innerHTML = `
         <tr>
@@ -171,7 +181,6 @@ async function loadProducts() {
       `;
       return;
     }
-
     tableBody.innerHTML = products
       .map((product) => {
         const firstImage = product.images ? product.images[0] : product.image;
@@ -196,7 +205,6 @@ async function loadProducts() {
     tableBody.innerHTML = `<tr><td colspan="5" class="error-message"><p>Error loading products: ${error.message}</p></td></tr>`;
   }
 }
-
 
 // Show product form
 function showProductForm(isEdit = false) {
@@ -298,26 +306,20 @@ function populateImageUrlInputs(images) {
 // Handle product form submission
 async function handleProductSubmit(e) {
   e.preventDefault();
-
   let finalImages = [];
-
   if (productImages.length > 0) {
     finalImages = productImages;
   } else {
     finalImages = getImageUrlsFromInputs();
   }
-
   if (finalImages.length === 0) {
     await showAdminAlert("Please add at least one product image.", "Missing Image");
     return;
   }
-
   let priceInput = document.getElementById("productPrice").value;
   // Extract only the numeric part (remove ₦ and commas)
   let rawPrice = parseFloat(priceInput.replace(/[^\d.-]/g, "")) || 0;
-
   const productId = document.getElementById("productId").value;
-
   const productData = {
     id: productId ? Number.parseInt(productId) : null, // Send null for new products
     name: document.getElementById("productName").value,
@@ -330,8 +332,7 @@ async function handleProductSubmit(e) {
 
   try {
     const method = productId ? 'PUT' : 'POST'; // Use PUT for updates, POST for new
-    const url = productId ? `/.netlify/functions/products?id=${productId}` : '/.netlify/functions/products';
-
+    const url = productId ? `/api/products?id=${productId}` : '/api/products';
     const response = await fetch(url, {
       method: method,
       headers: {
@@ -344,7 +345,6 @@ async function handleProductSubmit(e) {
       const errorData = await response.json();
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
-
     const result = await response.json();
     if (result.success) {
       loadProducts(); // Reload the product list
@@ -359,28 +359,24 @@ async function handleProductSubmit(e) {
   }
 }
 
-
 // Edit product
 // Edit product
 async function editProduct(productId) {
   try {
-    const response = await fetch(`/.netlify/functions/products?id=${productId}`);
+    const response = await fetch(`/api/products?id=${productId}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const product = await response.json();
-
     if (!product) {
       await showAdminAlert("Product not found.", "Error");
       return;
     }
-
     document.getElementById("productId").value = product.id;
     document.getElementById("productName").value = product.name;
     document.getElementById("productPrice").value = formatNaira(product.price);
     document.getElementById("productDescription").value = product.description;
     document.getElementById("productCategory").value = product.category || "";
-
     if (product.images && product.images.length > 0) {
       // If images are URLs, populate URL inputs
       if (
@@ -411,7 +407,6 @@ async function editProduct(productId) {
   }
 }
 
-
 // Delete product
 // Delete product
 async function deleteProduct(productId) {
@@ -421,7 +416,7 @@ async function deleteProduct(productId) {
   );
   if (confirmed) {
     try {
-      const response = await fetch(`/.netlify/functions/products?id=${productId}`, {
+      const response = await fetch(`/api/products?id=${productId}`, {
         method: 'DELETE',
       });
 
@@ -429,7 +424,6 @@ async function deleteProduct(productId) {
         const errorData = await response.json();
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-
       const result = await response.json();
       if (result.success) {
         loadProducts(); // Reload the product list
@@ -444,7 +438,6 @@ async function deleteProduct(productId) {
   }
 }
 
-
 // Handle section navigation
 // Handle section navigation
 function handleNavigation(e) {
@@ -452,12 +445,15 @@ function handleNavigation(e) {
   const navItems = document.querySelectorAll(".nav-item");
   const sections = document.querySelectorAll(".content-section");
   const targetSection = e.currentTarget.dataset.section;
+
   navItems.forEach((item) => item.classList.remove("active"));
   e.currentTarget.classList.add("active");
+
   sections.forEach((section) => {
     section.style.display = "none";
   });
   document.getElementById(`${targetSection}Section`).style.display = "block";
+
   // Update page title
   const titles = {
     products: "Product Management",
@@ -467,6 +463,7 @@ function handleNavigation(e) {
     users: "User Management"
   };
   document.getElementById("pageTitle").textContent = titles[targetSection];
+
   // Load data for the selected section
   if (targetSection === "products") {
     loadProducts();
@@ -479,14 +476,11 @@ function handleNavigation(e) {
   }
 }
 
-
 // Handle testimonial form submission
 // Handle testimonial form submission
 async function handleTestimonialSubmit(e) {
   e.preventDefault();
-
   let finalImage = testimonialImage || document.getElementById("testimonialImageUrl").value || "";
-
   const testimonialData = {
     id: document.getElementById("testimonialId").value || null, // Send null for new testimonials
     name: document.getElementById("testimonialName").value,
@@ -499,8 +493,7 @@ async function handleTestimonialSubmit(e) {
   try {
     const testimonialId = document.getElementById("testimonialId").value;
     const method = testimonialId ? 'PUT' : 'POST'; // Use PUT for updates, POST for new
-    const url = testimonialId ? `/.netlify/functions/testimonials?id=${testimonialId}` : '/.netlify/functions/testimonials';
-
+    const url = testimonialId ? `/api/testimonials?id=${testimonialId}` : '/api/testimonials';
     const response = await fetch(url, {
       method: method,
       headers: {
@@ -513,7 +506,6 @@ async function handleTestimonialSubmit(e) {
       const errorData = await response.json();
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
-
     const result = await response.json();
     if (result.success) {
       loadTestimonials(); // Reload the testimonial list
@@ -528,9 +520,8 @@ async function handleTestimonialSubmit(e) {
   }
 }
 
-
 function editTestimonial(testimonialId) {
-  fetch(`/.netlify/functions/testimonials?id=${testimonialId}`)
+  fetch(`/api/testimonials?id=${testimonialId}`)
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -565,24 +556,20 @@ function editTestimonial(testimonialId) {
     });
 }
 
-
 // Load testimonials
 // Load testimonials
 async function loadTestimonials() {
   const tableBody = document.getElementById("testimonialsTableBody");
-
   try {
-    const response = await fetch('/.netlify/functions/testimonials');
+    const response = await fetch('/api/testimonials');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const testimonials = await response.json();
-
     if (testimonials.length === 0) {
       tableBody.innerHTML = `<tr><td colspan="5" class="empty-state"><p>No testimonials found.</p></td></tr>`;
       return;
     }
-
     tableBody.innerHTML = testimonials
       .map(
         (t) => `
@@ -607,15 +594,13 @@ async function loadTestimonials() {
   }
 }
 
-
 // Delete testimonial
 // Delete testimonial
 async function deleteTestimonial(testimonialId) {
   const confirmed = await showAdminConfirm("Delete this testimonial?", "Delete Testimonial");
-
   if (confirmed) {
     try {
-      const response = await fetch(`/.netlify/functions/testimonials?id=${testimonialId}`, {
+      const response = await fetch(`/api/testimonials?id=${testimonialId}`, {
         method: 'DELETE',
       });
 
@@ -623,7 +608,6 @@ async function deleteTestimonial(testimonialId) {
         const errorData = await response.json();
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-
       const result = await response.json();
       if (result.success) {
         loadTestimonials(); // Reload the testimonial list
@@ -637,7 +621,6 @@ async function deleteTestimonial(testimonialId) {
     }
   }
 }
-
 
 // Hide testimonial form
 function hideTestimonialForm() {
@@ -692,9 +675,7 @@ function removeTestimonialImage() {
 // Handle news form submission
 async function handleNewsSubmit(e) {
   e.preventDefault();
-
   let finalImage = newsImage || document.getElementById("newsImage").value || "";
-
   const newsData = {
     id: document.getElementById("newsId").value || null, // Send null for new articles
     title: document.getElementById("newsTitle").value,
@@ -708,8 +689,7 @@ async function handleNewsSubmit(e) {
   try {
     const newsId = document.getElementById("newsId").value;
     const method = newsId ? 'PUT' : 'POST'; // Use PUT for updates, POST for new
-    const url = newsId ? `/.netlify/functions/news?id=${newsId}` : '/.netlify/functions/news';
-
+    const url = newsId ? `/api/news?id=${newsId}` : '/api/news';
     const response = await fetch(url, {
       method: method,
       headers: {
@@ -722,7 +702,6 @@ async function handleNewsSubmit(e) {
       const errorData = await response.json();
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
-
     const result = await response.json();
     if (result.success) {
       loadNews(); // Reload the news list
@@ -737,24 +716,20 @@ async function handleNewsSubmit(e) {
   }
 }
 
-
 // Load news
 // Load news
 async function loadNews() {
   const tableBody = document.getElementById("newsTableBody");
-
   try {
-    const response = await fetch('/.netlify/functions/news');
+    const response = await fetch('/api/news');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const newsList = await response.json();
-
     if (newsList.length === 0) {
       tableBody.innerHTML = `<tr><td colspan="4" class="empty-state"><p>No articles found.</p></td></tr>`;
       return;
     }
-
     tableBody.innerHTML = newsList
       .map(
         (n) => `
@@ -778,10 +753,9 @@ async function loadNews() {
   }
 }
 
-
 // Edit news
 function editNews(newsId) {
-  fetch(`/.netlify/functions/news?id=${newsId}`)
+  fetch(`/api/news?id=${newsId}`)
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -817,15 +791,13 @@ function editNews(newsId) {
     });
 }
 
-
 // Delete news
 // Delete news
 async function deleteNews(newsId) {
   const confirmed = await showAdminConfirm("Delete this article?", "Delete Article");
-
   if (confirmed) {
     try {
-      const response = await fetch(`/.netlify/functions/news?id=${newsId}`, {
+      const response = await fetch(`/api/news?id=${newsId}`, {
         method: 'DELETE',
       });
 
@@ -833,7 +805,6 @@ async function deleteNews(newsId) {
         const errorData = await response.json();
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-
       const result = await response.json();
       if (result.success) {
         loadNews(); // Reload the news list
@@ -847,7 +818,6 @@ async function deleteNews(newsId) {
     }
   }
 }
-
 
 // Hide news form
 function hideNewsForm() {
@@ -914,14 +884,12 @@ function reverseDateFormat(formattedDate) {
 // Load users into table
 async function loadUsers() {
   const tableBody = document.getElementById("usersTableBody");
-
   try {
-    const response = await fetch('/.netlify/functions/users');
+    const response = await fetch('/api/users');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const users = await response.json(); // Assuming your API returns an array of users
-
     if (users.length === 0) {
       tableBody.innerHTML = `
         <tr>
@@ -932,7 +900,6 @@ async function loadUsers() {
       `;
       return;
     }
-
     tableBody.innerHTML = users
       .map((user) => {
         // Format address for display
@@ -961,7 +928,6 @@ async function loadUsers() {
   }
 }
 
-
 // Show user form
 function showUserForm(isEdit = false) {
   const formContainer = document.getElementById("userFormContainer");
@@ -986,9 +952,7 @@ function hideUserForm() {
 // Handle user form submission
 async function handleUserSubmit(e) {
   e.preventDefault();
-
   const userId = document.getElementById("userId").value;
-
   const userData = {
     id: userId || null, // Send null for new users
     username: document.getElementById("username").value,
@@ -1009,8 +973,7 @@ async function handleUserSubmit(e) {
 
   try {
     const method = userId ? 'PUT' : 'POST'; // Use PUT for updates, POST for new
-    const url = userId ? `/.netlify/functions/users?id=${userId}` : '/.netlify/functions/users';
-
+    const url = userId ? `/api/users?id=${userId}` : '/api/users';
     const response = await fetch(url, {
       method: method,
       headers: {
@@ -1023,7 +986,6 @@ async function handleUserSubmit(e) {
       const errorData = await response.json();
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
-
     const result = await response.json();
     if (result.success) {
       loadUsers(); // Reload the user list
@@ -1038,10 +1000,9 @@ async function handleUserSubmit(e) {
   }
 }
 
-
 // Edit user
 function editUser(userId) {
-  fetch(`/.netlify/functions/users?id=${userId}`)
+  fetch(`/api/users?id=${userId}`)
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1073,7 +1034,6 @@ function editUser(userId) {
     });
 }
 
-
 // Delete user
 // Delete user
 async function deleteUser(userId) {
@@ -1081,10 +1041,9 @@ async function deleteUser(userId) {
     "Are you sure you want to delete this user? This action cannot be undone.",
     "Delete User",
   );
-
   if (confirmed) {
     try {
-      const response = await fetch(`/.netlify/functions/users?id=${userId}`, {
+      const response = await fetch(`/api/users?id=${userId}`, {
         method: 'DELETE',
       });
 
@@ -1092,7 +1051,6 @@ async function deleteUser(userId) {
         const errorData = await response.json();
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-
       const result = await response.json();
       if (result.success) {
         loadUsers(); // Reload the user list
@@ -1106,7 +1064,6 @@ async function deleteUser(userId) {
     }
   }
 }
-
 
 // Simple password hashing simulation (NOT secure for real applications)
 // In a real app, use a proper library like bcrypt on the server side.
@@ -1124,41 +1081,49 @@ function hashPassword(password) {
 // Initialize admin panel
 document.addEventListener("DOMContentLoaded", () => {
   checkAuth();
+
   // Login form
   const loginForm = document.getElementById("loginForm");
   if (loginForm) {
     loginForm.addEventListener("submit", handleLogin);
   }
+
   // Logout button
   const logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", handleLogout);
   }
+
   // Add product button
   const addProductBtn = document.getElementById("addProductBtn");
   if (addProductBtn) {
     addProductBtn.addEventListener("click", () => showProductForm(false));
   }
+
   // Close form button
   const closeFormBtn = document.getElementById("closeFormBtn");
   if (closeFormBtn) {
     closeFormBtn.addEventListener("click", hideProductForm);
   }
+
   // Cancel form button
   const cancelFormBtn = document.getElementById("cancelFormBtn");
   if (cancelFormBtn) {
     cancelFormBtn.addEventListener("click", hideProductForm);
   }
+
   // Product form submission
   const productForm = document.getElementById("productForm");
   if (productForm) {
     productForm.addEventListener("submit", handleProductSubmit);
   }
+
   // Navigation items
   const navItems = document.querySelectorAll(".nav-item");
   navItems.forEach((item) => {
     item.addEventListener("click", handleNavigation);
   });
+
   const selectImagesBtn = document.getElementById("selectImagesBtn");
   const imageInput = document.getElementById("imageInput");
   if (selectImagesBtn && imageInput) {
@@ -1167,22 +1132,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     imageInput.addEventListener("change", handleImageSelect);
   }
+
   const addTestimonialBtn = document.getElementById("addTestimonialBtn");
   if (addTestimonialBtn) {
     addTestimonialBtn.addEventListener("click", showTestimonialForm);
   }
+
   const closeTestimonialFormBtn = document.getElementById("closeTestimonialFormBtn");
   if (closeTestimonialFormBtn) {
     closeTestimonialFormBtn.addEventListener("click", hideTestimonialForm);
   }
+
   const cancelTestimonialFormBtn = document.getElementById("cancelTestimonialFormBtn");
   if (cancelTestimonialFormBtn) {
     cancelTestimonialFormBtn.addEventListener("click", hideTestimonialForm);
   }
+
   const testimonialForm = document.getElementById("testimonialForm");
   if (testimonialForm) {
     testimonialForm.addEventListener("submit", handleTestimonialSubmit);
   }
+
   const selectTestimonialImageBtn = document.getElementById("selectTestimonialImageBtn");
   const testimonialImageInput = document.getElementById("testimonialImageInput");
   if (selectTestimonialImageBtn && testimonialImageInput) {
@@ -1191,22 +1161,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     testimonialImageInput.addEventListener("change", handleTestimonialImageSelect);
   }
+
   const addNewsBtn = document.getElementById("addNewsBtn");
   if (addNewsBtn) {
     addNewsBtn.addEventListener("click", showNewsForm);
   }
+
   const closeNewsFormBtn = document.getElementById("closeNewsFormBtn");
   if (closeNewsFormBtn) {
     closeNewsFormBtn.addEventListener("click", hideNewsForm);
   }
+
   const cancelNewsFormBtn = document.getElementById("cancelNewsFormBtn");
   if (cancelNewsFormBtn) {
     cancelNewsFormBtn.addEventListener("click", hideNewsForm);
   }
+
   const newsForm = document.getElementById("newsForm");
   if (newsForm) {
     newsForm.addEventListener("submit", handleNewsSubmit);
   }
+
   const selectNewsImageBtn = document.getElementById("selectNewsImageBtn");
   const newsImageInput = document.getElementById("newsImageInput");
   if (selectNewsImageBtn && newsImageInput) {
@@ -1215,31 +1190,37 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     newsImageInput.addEventListener("change", handleNewsImageSelect);
   }
+
   // Load all data
   loadProducts();
   loadTestimonials();
   loadNews();
+
     // Add these event listeners inside the DOMContentLoaded block
   // Add user button
   const addUserBtn = document.getElementById("addUserBtn");
   if (addUserBtn) {
       addUserBtn.addEventListener("click", () => showUserForm(false));
   }
+
   // Close user form button
   const closeUserFormBtn = document.getElementById("closeUserFormBtn");
   if (closeUserFormBtn) {
       closeUserFormBtn.addEventListener("click", hideUserForm);
   }
+
   // Cancel user form button
   const cancelUserFormBtn = document.getElementById("cancelUserFormBtn");
   if (cancelUserFormBtn) {
       cancelUserFormBtn.addEventListener("click", hideUserForm);
   }
+
   // User form submission
   const userForm = document.getElementById("userForm");
   if (userForm) {
       userForm.addEventListener("submit", handleUserSubmit);
   }
+
   // Add event listener for the "Users" navigation item
   const usersNav = document.querySelector('[data-section="users"]');
   if (usersNav) {
@@ -1248,6 +1229,7 @@ document.addEventListener("DOMContentLoaded", () => {
           handleNavigation(e); // Reuse your existing handleNavigation function
       });
   }
+
 // Auto-format price input with Naira symbol and commas
 const productPriceInput = document.getElementById("productPrice");
 if (productPriceInput) {
@@ -1265,4 +1247,5 @@ if (productPriceInput) {
     e.target.value = formatted;
   });
 }
+
 });

@@ -1,6 +1,5 @@
 // script.js
 // --- NEW: Cart and User Management Functions ---
-
 // Initialize user session (simulates login state)
 function initializeUserSession() {
     let user = JSON.parse(sessionStorage.getItem('currentUser')) || null;
@@ -18,9 +17,7 @@ function initializeUserSession() {
     }
     updateUIBasedOnUser(user);
 }
-
 // --- NEW: Custom Modal Functions for Login/Signup ---
-
 // Show the login/signup modal
 function showAuthModal() {
     const modal = document.getElementById("authModal");
@@ -31,7 +28,6 @@ function showAuthModal() {
         document.body.style.overflow = "hidden";
     }
 }
-
 // Close the login/signup modal
 function closeAuthModal() {
     const modal = document.getElementById("authModal");
@@ -40,7 +36,6 @@ function closeAuthModal() {
         document.body.style.overflow = "";
     }
 }
-
 // Handle login or signup form submission
 async function handleAuthSubmit(e) {
   e.preventDefault();
@@ -48,18 +43,15 @@ async function handleAuthSubmit(e) {
   const username = form.username.value.trim();
   const password = form.password.value;
   const isLogin = form.dataset.mode === "login";
-
   if (!username || !password) {
     document.getElementById("authError").textContent = "Username and password are required.";
     return;
   }
-
   // Prepare data based on whether it's login or signup
   let requestData = {
     username: username,
     password: password
   };
-
   if (!isLogin) {
     // Collect extra signup fields
     const email = document.getElementById("email").value.trim();
@@ -68,13 +60,11 @@ async function handleAuthSubmit(e) {
     const city = document.getElementById("city").value.trim();
     const state = document.getElementById("state").value.trim();
     const postalCode = document.getElementById("postalCode").value.trim();
-
     // Validate required fields for signup
     if (!email || !phone || !street || !city || !state) {
       document.getElementById("authError").textContent = "Please fill in all required fields.";
       return;
     }
-
     requestData = {
       ...requestData,
       action: "signup",
@@ -91,24 +81,20 @@ async function handleAuthSubmit(e) {
   } else {
     requestData.action = "login";
   }
-
   try {
-    const response = await fetch('/.netlify/functions/auth', {
+    const response = await fetch('/api/auth', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestData)
     });
-
     const result = await response.json();
-
     if (!response.ok) {
       // Server responded with an error status (e.g., 400, 401, 500)
       document.getElementById("authError").textContent = result.error || "An unexpected error occurred.";
       return;
     }
-
     if (result.success) {
       // Authentication successful
       const userData = result.user;
@@ -116,13 +102,10 @@ async function handleAuthSubmit(e) {
       sessionStorage.setItem('currentUser', JSON.stringify(userData));
       // Optionally store the user ID persistently in localStorage for easier re-login later
       localStorage.setItem('currentUserId', userData.id);
-
       // Update UI based on the logged-in user
       updateUIBasedOnUser(userData);
-
       // Close the modal
       closeAuthModal();
-
       // Show success message
       if (isLogin) {
         showCustomAlert(`Welcome back, ${username}!`, "Logged In");
@@ -138,8 +121,6 @@ async function handleAuthSubmit(e) {
     document.getElementById("authError").textContent = "Network error. Please try again.";
   }
 }
-
-
 // Simple password hashing simulation (NOT secure for real applications)
 // In a real app, use a proper library like bcrypt on the server side.
 function hashPassword(password) {
@@ -152,9 +133,7 @@ function hashPassword(password) {
     }
     return hash.toString();
 }
-
 // --- END NEW: Custom Modal Functions for Login/Signup ---
-
 // Simulate user logout with confirmation
 function handleLogout() {
     showCustomConfirm(
@@ -169,14 +148,12 @@ function handleLogout() {
         }
     );
 }
-
 // Update UI elements based on user status
 function updateUIBasedOnUser(user) {
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const accountLink = document.getElementById('accountLink');
     const cartCountElement = document.getElementById('cartCount');
-
     if (user) {
         // User is logged in
         if (loginBtn) loginBtn.style.display = 'none';
@@ -185,7 +162,6 @@ function updateUIBasedOnUser(user) {
             logoutBtn.onclick = handleLogout; // Ensure event handler is attached
         }
         if (accountLink) accountLink.style.display = 'inline-block';
-
         // Update cart count based on user's cart data
         const cartCount = user.cart ? user.cart.reduce((sum, item) => sum + item.quantity, 0) : 0;
         if (cartCountElement) cartCountElement.textContent = cartCount;
@@ -197,7 +173,6 @@ function updateUIBasedOnUser(user) {
         if (cartCountElement) cartCountElement.textContent = '0';
     }
 }
-
 // Add item to cart
 async function addToCart(productId) {
   let user = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -206,20 +181,17 @@ async function addToCart(productId) {
     showAuthModal(); // Show the modal instead of prompt
     return;
   }
-
   try {
     // Fetch the specific product from the API
-    const response = await fetch(`/.netlify/functions/products?id=${productId}`);
+    const response = await fetch(`/api/products?id=${productId}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const product = await response.json();
-
     if (!product) {
       showCustomAlert("Product not found.", "Error");
       return;
     }
-
     // Check if item already exists in cart
     const existingItemIndex = user.cart.findIndex(item => item.productId === productId);
     if (existingItemIndex > -1) {
@@ -227,13 +199,11 @@ async function addToCart(productId) {
     } else {
       user.cart.push({ productId: productId, quantity: 1 });
     }
-
     // Update user data in session and localStorage
     sessionStorage.setItem('currentUser', JSON.stringify(user));
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
     allUsers[user.id] = user;
     localStorage.setItem('users', JSON.stringify(allUsers));
-
     // Update UI
     updateUIBasedOnUser(user);
     showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
@@ -242,8 +212,6 @@ async function addToCart(productId) {
     showCustomAlert("Failed to add product to cart. Please try again.", "Error");
   }
 }
-
-
 // View Cart (you can implement this in a modal or a dedicated page)
 // View Cart
 async function viewCart() {
@@ -252,14 +220,12 @@ async function viewCart() {
     showCustomAlert("Your cart is empty.", "Cart Empty");
     return;
   }
-
   // Create an array to hold all product data fetched from the API
   const cartItemsWithDetails = [];
-
   try {
     // Loop through each item in the user's cart and fetch its details
     for (const cartItem of user.cart) {
-      const response = await fetch(`/.netlify/functions/products?id=${cartItem.productId}`);
+      const response = await fetch(`/api/products?id=${cartItem.productId}`);
       if (!response.ok) {
         console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
         continue; // Skip this item if fetching fails
@@ -273,13 +239,10 @@ async function viewCart() {
         });
       }
     }
-
     // Sort cart items in reverse order (last added first) if needed
     // const reversedCart = [...cartItemsWithDetails].reverse(); // Uncomment if desired
-
     let cartHTML = '<h3>Your Cart</h3><ul>';
     let total = 0;
-
     // Iterate through the fetched cart items
     cartItemsWithDetails.forEach(item => { // Use reversedCart here if sorting was applied
         const price = parseInt(item.price.replace(/\D/g, '')); // Extract numeric price
@@ -302,10 +265,8 @@ async function viewCart() {
                 <button class="remove-btn" onclick="removeFromCart(${item.id})">×</button>
             </div>`;
     });
-
     cartHTML += `</ul><p><strong>Total: ${formatNaira(total)}</strong></p>`;
     cartHTML += `<button class="btn btn-checkout" onclick="proceedToCheckout()">Checkout</button>`;
-
     // Display cart in the modal
     const modal = document.getElementById("cartModal");
     if (modal) {
@@ -317,14 +278,11 @@ async function viewCart() {
         console.log(cartHTML);
         alert(cartHTML.replace(/<[^>]*>/g, '')); // Simple text version
     }
-
   } catch (error) {
     console.error("Error loading cart items:", error);
     showCustomAlert("Failed to load cart items. Please try again.", "Error");
   }
 }
-
-
 // Update item quantity in cart
 function updateCartItemQuantity(productId, newQuantity) {
     if (newQuantity < 1) {
@@ -336,19 +294,16 @@ function updateCartItemQuantity(productId, newQuantity) {
     const itemIndex = user.cart.findIndex(item => item.productId === productId);
     if (itemIndex > -1) {
         user.cart[itemIndex].quantity = newQuantity;
-
         // Update user data in session and localStorage
         sessionStorage.setItem('currentUser', JSON.stringify(user));
         const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
         allUsers[user.id] = user;
         localStorage.setItem('users', JSON.stringify(allUsers));
-
         // Update UI
         updateUIBasedOnUser(user);
         viewCart(); // Refresh cart view
     }
 }
-
 // Remove item from cart
 // Remove item from cart
 // Remove item from cart
@@ -357,13 +312,11 @@ function removeFromCart(productId) {
     if (!user) return;
     // Filter out the item
     user.cart = user.cart.filter(item => item.productId !== productId);
-
     // Update user data in session and localStorage
     sessionStorage.setItem('currentUser', JSON.stringify(user));
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
     allUsers[user.id] = user;
     localStorage.setItem('users', JSON.stringify(allUsers));
-
     // Update UI
     updateUIBasedOnUser(user);
     // Check if cart is now empty
@@ -377,7 +330,6 @@ function removeFromCart(productId) {
         viewCart();
     }
 }
-
 // Proceed to checkout
 async function proceedToCheckout() {
   const user = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -385,14 +337,12 @@ async function proceedToCheckout() {
     showCustomAlert("Your cart is empty.", "Cart Empty");
     return;
   }
-
   const orderItems = [];
   let total = 0;
-
   try {
     // Loop through each item in the user's cart and fetch its details
     for (const cartItem of user.cart) {
-      const response = await fetch(`/.netlify/functions/products?id=${cartItem.productId}`);
+      const response = await fetch(`/api/products?id=${cartItem.productId}`);
       if (!response.ok) {
         console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
         continue; // Skip this item if fetching fails
@@ -411,7 +361,6 @@ async function proceedToCheckout() {
         });
       }
     }
-
     // --- NEW: Get the current address from the user object ---
     const currentAddress = user.address || {
       street: "",
@@ -420,7 +369,6 @@ async function proceedToCheckout() {
       postalCode: "",
       country: "Nigeria"
     };
-
     // Create the order object with the calculated items and address
     const order = {
       id: Date.now(), // Consider using a UUID for production
@@ -432,7 +380,6 @@ async function proceedToCheckout() {
       // --- NEW: Add the address to the order ---
       deliveryAddress: currentAddress
     };
-
     // Save order to user's history (this part still updates local storage)
     user.orders.push(order);
     // Clear cart
@@ -442,23 +389,17 @@ async function proceedToCheckout() {
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
     allUsers[user.id] = user;
     localStorage.setItem('users', JSON.stringify(allUsers));
-
     // Update UI to reflect empty cart (this updates the cart count)
     updateUIBasedOnUser(user);
-
     // Close the cart modal first
     closeCartModal();
-
     // Then show payment simulation modal
     showPaymentSimulationModal(order);
-
   } catch (error) {
     console.error("Error preparing checkout:", error);
     showCustomAlert("Failed to prepare checkout. Please try again.", "Error");
   }
 }
-
-
 // Close Cart Modal (Assuming you add this button)
 function closeCartModal() {
     const modal = document.getElementById("cartModal");
@@ -467,7 +408,6 @@ function closeCartModal() {
         document.body.style.overflow = "";
     }
 }
-
 // Load user's order history (for account page)
 // Load user's order history (for account page)
 function loadOrderHistory() {
@@ -476,7 +416,6 @@ function loadOrderHistory() {
         document.getElementById('orderHistory').innerHTML = '<p>Please log in to view your order history.</p>';
         return;
     }
-
     // --- NEW: Populate Contact Info ---
     const userEmailElement = document.getElementById("userEmail");
     const userPhoneElement = document.getElementById("userPhone");
@@ -484,7 +423,6 @@ function loadOrderHistory() {
         userEmailElement.textContent = user.email || "Not set";
         userPhoneElement.textContent = user.phone || "Not set";
     }
-
     // --- NEW: Load and populate the Edit Address Form ---
     const editAddressForm = document.getElementById("editAddressForm");
     if (editAddressForm) {
@@ -493,7 +431,6 @@ function loadOrderHistory() {
         const cityInput = document.getElementById("editCity");
         const stateInput = document.getElementById("editState");
         const postalCodeInput = document.getElementById("editPostalCode");
-
         // Check if user has an address object
         if (user.address) {
             streetInput.value = user.address.street || "";
@@ -516,15 +453,12 @@ function loadOrderHistory() {
             localStorage.setItem('users', JSON.stringify(allUsers));
         }
     }
-
     const container = document.getElementById('orderHistory');
     if (!container) return;
-
     if (user.orders.length === 0) {
         container.innerHTML = '<p>No orders found.</p>';
         return;
     }
-
     // Sort orders by date (newest first)
     const sortedOrders = [...user.orders].sort((a, b) => {
         // Convert string dates to Date objects for comparison
@@ -532,15 +466,12 @@ function loadOrderHistory() {
         const dateB = new Date(b.date);
         return dateB - dateA; // Newest first (descending order)
     });
-
     let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
-
   // Inside the loadOrderHistory function, find the sortedOrders.forEach block
 sortedOrders.forEach(order => {
     // --- NEW: Format the delivery address for display ---
     const address = order.deliveryAddress || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
     const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
-
     historyHTML += `
         <div class="order-item">
             <p><strong>Order ID:</strong> ${order.id}</p>
@@ -578,30 +509,24 @@ sortedOrders.forEach(order => {
         </div>
     `;
 });
-
     historyHTML += '</div>';
     container.innerHTML = historyHTML;
 }
-
-
 // Add this function to your script.js
 function handleUpdateAddress(e) {
     e.preventDefault();
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!user) return;
-
     // Get the new address values
     const street = document.getElementById("editStreet").value.trim();
     const city = document.getElementById("editCity").value.trim();
     const state = document.getElementById("editState").value.trim();
     const postalCode = document.getElementById("editPostalCode").value.trim();
-
     // Validate required fields
     if (!street || !city || !state) {
         showCustomAlert("Please fill in all required address fields.", "Address Required", "error");
         return;
     }
-
     // Update the user's address
     user.address = {
         street: street,
@@ -610,17 +535,14 @@ function handleUpdateAddress(e) {
         postalCode: postalCode,
         country: "Nigeria"
     };
-
     // Save the updated user data in both session and local storage
     sessionStorage.setItem('currentUser', JSON.stringify(user));
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
     allUsers[user.id] = user;
     localStorage.setItem('users', JSON.stringify(allUsers));
-
     // Success message
     showCustomAlert("Your delivery address has been updated successfully.", "Address Updated", "success");
 }
-
 // Add this to your DOMContentLoaded event listener (around line 750)
 function checkOrderPaymentStatus(orderId) {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -631,7 +553,6 @@ function checkOrderPaymentStatus(orderId) {
     }
     let message = "Payment status: ";
     let type = "info";
-
     // Determine status based on paymentStatus field (if you added it)
     const paymentStatus = order.paymentStatus || 'unknown';
     if (paymentStatus === 'success') {
@@ -644,26 +565,20 @@ function checkOrderPaymentStatus(orderId) {
         message += "⏳ Pending";
         type = "info";
     }
-
     showCustomAlert(message, "Payment Status", type);
 }
-
 function reorderOrder(orderId) {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
     const order = user.orders.find(o => o.id === orderId);
     if (!order) return;
-
     // Add all items from this order back to cart
     order.items.forEach(item => {
         addToCart(item.productId); // Reuses your existing addToCart function
     });
     showCustomAlert(`Added ${order.items.length} items from Order #${orderId} to your cart.`, "Reordered");
 }
-
 // --- END NEW: Cart and User Management Functions ---
-
 let currentSimulatedOrder = null;
-
 function showPaymentSimulationModal(order) {
     currentSimulatedOrder = order;
     document.getElementById("simOrderID").textContent = order.id;
@@ -673,14 +588,12 @@ function showPaymentSimulationModal(order) {
     statusDisplay.className = "payment-status pending";
     document.getElementById("simulatePaymentBtn").disabled = false;
     document.getElementById("checkStatusBtn").disabled = true;
-
     const modal = document.getElementById("paymentModal");
     if (modal) {
         modal.classList.add("active");
         document.body.style.overflow = "hidden";
     }
 }
-
 function closePaymentModal() {
     const modal = document.getElementById("paymentModal");
     if (modal) {
@@ -688,17 +601,14 @@ function closePaymentModal() {
         document.body.style.overflow = "";
     }
 }
-
 function simulatePayment() {
     const statusDisplay = document.getElementById("paymentStatusDisplay");
     const simulateBtn = document.getElementById("simulatePaymentBtn");
     const checkStatusBtn = document.getElementById("checkStatusBtn");
-
     // Simulate payment processing delay
     simulateBtn.disabled = true;
     statusDisplay.textContent = "Processing payment...";
     statusDisplay.className = "payment-status pending";
-
     setTimeout(() => {
         // Randomly simulate success or failure (for demo purposes)
         const isSuccess = Math.random() > 0.3; // 70% chance of success
@@ -717,21 +627,17 @@ function simulatePayment() {
         checkStatusBtn.disabled = false;
     }, 2000); // 2-second delay
 }
-
 function checkPaymentStatus() {
     const statusDisplay = document.getElementById("paymentStatusDisplay");
     const checkStatusBtn = document.getElementById("checkStatusBtn");
-
     checkStatusBtn.disabled = true;
     statusDisplay.textContent = "Checking payment status...";
     statusDisplay.className = "payment-status pending";
-
     setTimeout(() => {
         // Get the current order status
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
         const order = user.orders.find(o => o.id === currentSimulatedOrder.id);
         const status = order?.paymentStatus || 'unknown';
-
         if (status === 'success') {
             statusDisplay.textContent = "✅ Payment Confirmed!";
             statusDisplay.className = "payment-status success";
@@ -745,20 +651,17 @@ function checkPaymentStatus() {
         checkStatusBtn.disabled = false;
     }, 1500);
 }
-
 function updateOrderPaymentStatus(orderId, status) {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
     const orderIndex = user.orders.findIndex(o => o.id === orderId);
     if (orderIndex !== -1) {
         user.orders[orderIndex].paymentStatus = status;
         user.orders[orderIndex].status = status === 'success' ? 'Paid' : 'Failed';
-
         // Update user data
         sessionStorage.setItem('currentUser', JSON.stringify(user));
         const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
         allUsers[user.id] = user;
         localStorage.setItem('users', JSON.stringify(allUsers));
-
         // Show final alert with correct icon based on status
         if (status === 'success') {
             showCustomAlert("Payment successful! Your order is confirmed.", "Payment Success", "success");
@@ -767,40 +670,33 @@ function updateOrderPaymentStatus(orderId, status) {
         }
     }
 }
-
 // Initialize products from localStorage or use default products
 // Initialize data (now handled by the database)
 function initializeData() {
     // Data is loaded from the database via API calls
     // No need to populate localStorage here
 }
-
 // Global variables for search and sort
 let allProducts = []; // Will be populated from API
 let filteredProducts = []; // Will be populated from API
 let currentProductInModal = null;
 let currentImageIndex = 0;
-
 // Load and display featured products
 async function loadFeaturedProducts() {
   const featuredContainer = document.getElementById("featuredProducts");
   if (!featuredContainer) return;
-
   try {
-    const response = await fetch('/.netlify/functions/products');
+    const response = await fetch('/api/products');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const products = await response.json();
-
     // Get the first 4 products for featured display
     const featuredProducts = products.slice(0, 4);
-
     if (featuredProducts.length === 0) {
       featuredContainer.innerHTML = '<p class="empty-state">No products available</p>';
       return;
     }
-
     featuredContainer.innerHTML = featuredProducts
       .map(
         (product) => `
@@ -820,31 +716,25 @@ async function loadFeaturedProducts() {
         `,
       )
       .join("");
-
   } catch (error) {
     console.error("Error loading featured products:", error);
     featuredContainer.innerHTML = '<p class="error-message">Failed to load featured products.</p>';
   }
 }
-
-
 // Load and display testimonials
 async function loadTestimonials() {
   const testimonialContainer = document.getElementById("testimonialsGrid");
   if (!testimonialContainer) return;
-
   try {
-    const response = await fetch('/.netlify/functions/testimonials');
+    const response = await fetch('/api/testimonials');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const testimonials = await response.json();
-
     if (testimonials.length === 0) {
       testimonialContainer.innerHTML = '<p class="empty-state">No testimonials available</p>';
       return;
     }
-
     testimonialContainer.innerHTML = testimonials
       .map(
         (testimonial) => `
@@ -862,34 +752,27 @@ async function loadTestimonials() {
         `,
       )
       .join("");
-
   } catch (error) {
     console.error("Error loading testimonials:", error);
     testimonialContainer.innerHTML = '<p class="error-message">Failed to load testimonials.</p>';
   }
 }
-
-
 // Load and display latest news
 async function loadLatestNews() {
   const newsContainer = document.getElementById("latestNews");
   if (!newsContainer) return;
-
   try {
-    const response = await fetch('/.netlify/functions/news');
+    const response = await fetch('/api/news');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const news = await response.json();
-
     // Get the first 4 news articles
     const latestNews = news.slice(0, 4);
-
     if (latestNews.length === 0) {
       newsContainer.innerHTML = '<p class="empty-state">No news available</p>';
       return;
     }
-
     newsContainer.innerHTML = latestNews
       .map(
         (article) => `
@@ -905,14 +788,11 @@ async function loadLatestNews() {
         `,
       )
       .join("");
-
   } catch (error) {
     console.error("Error loading latest news:", error);
     newsContainer.innerHTML = '<p class="error-message">Failed to load news.</p>';
   }
 }
-
-
 // Search functionality
 function handleSearch(e) {
   const searchTerm = e.target.value.toLowerCase();
@@ -925,13 +805,11 @@ function handleSearch(e) {
   applySorting();
   displayProducts(filteredProducts);
 }
-
 // Sort functionality
 function handleSort(e) {
   applySorting();
   displayProducts(filteredProducts);
 }
-
 // Format a number as Nigerian Naira with commas
 function formatNaira(price) {
     if (typeof price !== 'number') {
@@ -944,7 +822,6 @@ function formatNaira(price) {
         minimumFractionDigits: 0,
     }).format(price);
 }
-
 function applySorting() {
   const sortValue = document.getElementById("sortSelect").value;
   switch (sortValue) {
@@ -973,14 +850,12 @@ function applySorting() {
       filteredProducts.sort((a, b) => a.id - b.id);
   }
 }
-
 // Custom modal functions
 function showCustomAlert(message, title = "Success", type = "success") {
   const modal = document.getElementById("alertModal");
   const alertIcon = document.getElementById("alertIcon");
   const alertTitle = document.getElementById("alertTitle");
   const alertMessage = document.getElementById("alertMessage");
-
   alertTitle.textContent = title;
   alertMessage.textContent = message;
   alertIcon.textContent = type === "success" ? "✓" : "✕";
@@ -988,25 +863,21 @@ function showCustomAlert(message, title = "Success", type = "success") {
   modal.classList.add("active");
   document.body.style.overflow = "hidden";
 }
-
 function showCustomConfirm(message, title = "Confirm Action", onConfirm) {
   const modal = document.getElementById("confirmModal");
   const confirmTitle = document.getElementById("confirmTitle");
   const confirmMessage = document.getElementById("confirmMessage");
   const confirmYes = document.getElementById("confirmYes");
   const confirmNo = document.getElementById("confirmNo");
-
   confirmTitle.textContent = title;
   confirmMessage.textContent = message;
   modal.classList.add("active");
   document.body.style.overflow = "hidden";
-
   // Remove old listeners
   const newYes = confirmYes.cloneNode(true);
   const newNo = confirmNo.cloneNode(true);
   confirmYes.parentNode.replaceChild(newYes, confirmYes);
   confirmNo.parentNode.replaceChild(newNo, confirmNo);
-
   // Add new listeners
   newYes.addEventListener("click", () => {
     modal.classList.remove("active");
@@ -1018,11 +889,10 @@ function showCustomConfirm(message, title = "Confirm Action", onConfirm) {
     document.body.style.overflow = "";
   });
 }
-
 // View product details in modal
 function viewProduct(productId) {
   // Fetch the specific product from the API
-  fetch(`/.netlify/functions/products?id=${productId}`)
+  fetch(`/api/products?id=${productId}`)
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1034,7 +904,6 @@ function viewProduct(productId) {
         showCustomAlert("Product not found.", "Error");
         return;
       }
-
       currentProductInModal = product;
       currentImageIndex = 0;
       if (!product.images) {
@@ -1047,7 +916,6 @@ function viewProduct(productId) {
       const productDescription = document.getElementById("modalProductDescription");
       const thumbnailContainer = document.getElementById("thumbnailContainer");
       const addToCartButton = document.getElementById("modalAddToCart"); // NEW: Get the button
-
       productName.textContent = product.name;
       productPrice.textContent = formatNaira(product.price);
       productDescription.textContent = product.description;
@@ -1075,8 +943,6 @@ function viewProduct(productId) {
       showCustomAlert("Failed to load product details.", "Error");
     });
 }
-
-
 function changeImage(index) {
   if (!currentProductInModal) return;
   if (index < 0 || index >= currentProductInModal.images.length) {
@@ -1090,7 +956,6 @@ function changeImage(index) {
   });
   updateGalleryNav();
 }
-
 function updateGalleryNav() {
   if (!currentProductInModal) return;
   const prevBtn = document.getElementById("prevImage");
@@ -1098,7 +963,6 @@ function updateGalleryNav() {
   prevBtn.disabled = currentImageIndex === 0;
   nextBtn.disabled = currentImageIndex === currentProductInModal.images.length - 1;
 }
-
 function navigateGallery(direction) {
   if (!currentProductInModal) return;
   const newIndex = currentImageIndex + direction;
@@ -1112,7 +976,6 @@ function navigateGallery(direction) {
     updateGalleryNav();
   }
 }
-
 function closeProductModal() {
   const modal = document.getElementById("productModal");
   modal.classList.remove("active");
@@ -1120,7 +983,6 @@ function closeProductModal() {
   currentProductInModal = null;
   currentImageIndex = 0;
 }
-
 // Mobile menu initialization
 // Mobile menu initialization
 // Mobile menu initialization
@@ -1212,7 +1074,6 @@ function initMobileMenu() {
     }
   });
 }
-
 // Initialize everything when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
   initializeData();
@@ -1386,10 +1247,9 @@ function switchToLogin(e) {
     }
   });
 });
-
 function viewFullArticle(articleId) {
   // Fetch the specific news article from the API
-  fetch(`/.netlify/functions/news?id=${articleId}`)
+  fetch(`/api/news?id=${articleId}`)
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1403,11 +1263,10 @@ function viewFullArticle(articleId) {
       }
       const modal = document.getElementById("articleModal");
       if (!modal) return;
-
       document.getElementById("articleTitle").textContent = article.title;
       document.getElementById("articleDate").textContent = article.date;
       document.getElementById("articleImage").src = article.image || "/placeholder.svg";
-      document.getElementById("articleBody").innerHTML = `<p>${(article.fullContent || article.body || article.description).replace(/\n/g, "</p><p>")}</p>`;
+      document.getElementById("articleBody").innerHTML = `<p>${(article.fullContent || article.body || article.description).replace(/ /g, "</p><p>")}</p>`;
       modal.classList.add("active");
       document.body.style.overflow = "hidden";
     })
@@ -1416,8 +1275,6 @@ function viewFullArticle(articleId) {
       // Optionally show an alert or handle the error differently
     });
 }
-
-
 function closeArticleModal() {
   const modal = document.getElementById("articleModal");
   if (modal) {
@@ -1425,7 +1282,6 @@ function closeArticleModal() {
     document.body.style.overflow = "";
   }
 }
-
 // Add event listeners for payment simulation buttons
 const simulatePaymentBtn = document.getElementById("simulatePaymentBtn");
 if (simulatePaymentBtn) {
@@ -1435,7 +1291,6 @@ const checkStatusBtn = document.getElementById("checkStatusBtn");
 if (checkStatusBtn) {
     checkStatusBtn.addEventListener("click", checkPaymentStatus);
 }
-
 // Function to handle forgot password
 function handleForgotPassword() {
     const username = document.getElementById("username").value.trim();
@@ -1459,7 +1314,6 @@ function handleForgotPassword() {
     user.passwordHash = hashedPassword;
     allUsers[user.id] = user;
     localStorage.setItem('users', JSON.stringify(allUsers));
-
     // Show success message with the new password
     showCustomAlert(
         `Your password has been reset successfully!
@@ -1471,17 +1325,15 @@ Please change this password immediately after logging in.`,
     // Clear the password field
     document.getElementById("password").value = "";
 }
-
 // Helper function to generate random password
 function generateRandomPassword(length) {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz013456789!@#$%^&*()';
     let password = '';
     for (let i = 0; i < length; i++) {
         password += characters.charAt(Math.floor(Math.random() * characters.length));
     }
     return password;
 }
-
 // Add this function to your script.js
 function showForgotPasswordModal() {
     const modal = document.getElementById("forgotPasswordModal");
@@ -1492,7 +1344,6 @@ function showForgotPasswordModal() {
         document.body.style.overflow = "hidden";
     }
 }
-
 function closeForgotPasswordModal() {
     const modal = document.getElementById("forgotPasswordModal");
     if (modal) {
@@ -1500,32 +1351,26 @@ function closeForgotPasswordModal() {
         document.body.style.overflow = "";
     }
 }
-
 function handleForgotPasswordSubmit(e) {
     e.preventDefault();
     const username = document.getElementById("forgotPasswordUsername").value.trim();
     const email = document.getElementById("forgotPasswordEmail").value.trim();
-
     if (!username || !email) {
         document.getElementById("forgotPasswordError").textContent = "Username and email are required.";
         return;
     }
-
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
     const user = Object.values(allUsers).find(u => u.username === username && u.email === email);
-
     if (!user) {
         document.getElementById("forgotPasswordError").textContent = "Username or email not found.";
         return;
     }
-
     // Generate reset token (for demo purposes)
     const resetToken = Math.random().toString(36).substr(2, 15);
     user.resetToken = resetToken;
     user.resetTokenExpiry = Date.now() + 300000; // 5 minutes expiry
     allUsers[user.id] = user;
     localStorage.setItem('users', JSON.stringify(allUsers));
-
     // In a real app, you would send an email with the reset link
     showCustomAlert(
         `A password reset link has been sent to ${email}.

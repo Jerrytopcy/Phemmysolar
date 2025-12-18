@@ -484,175 +484,54 @@ function handleNavigation(e) {
 // Handle testimonial form submission
 // ... (inside admin.js, find handleTestimonialSubmit)
 
-async function handleTestimonialSubmit(event) {
-  event.preventDefault();
+async function handleTestimonialSubmit(e) {
+  e.preventDefault();
+  let finalImage = testimonialImage || document.getElementById("testimonialImageUrl").value || "";
 
-  console.log("--- Starting handleTestimonialSubmit ---");
-
-  const form = document.getElementById('testimonialForm');
-  if (!form) {
-      console.error("ERROR: Form element with ID 'testimonialForm' not found!");
-      await showAdminAlert("Form not found. Please refresh the page.", "Error");
-      return;
-  }
-
-  // Get the hidden ID field for updates
-  const idInput = document.getElementById('testimonialId');
-  const id = idInput ? idInput.value.trim() : '';
-  console.log("ID (testimonialId):", id, "Exists:", !!idInput, "Type:", typeof id);
-
-  // Get individual fields by ID
-  const nameInput = document.getElementById('name');
-  const roleInput = document.getElementById('role');
-  const textInput = document.getElementById('text');
-  const ratingInput = document.getElementById('rating');
-
-  // Log existence of elements first
-  console.log("Input Elements Found - Name:", !!nameInput, "Role:", !!roleInput, "Text:", !!textInput, "Rating:", !!ratingInput);
-
-  if (!nameInput || !roleInput || !textInput || !ratingInput) {
-      console.error("One or more required input elements were not found in the DOM.");
-      await showAdminAlert("Some form fields are missing. Please refresh the page.", "Error");
-      return;
-  }
-
-  // Read values using .value property
-  const name = nameInput.value.trim();
-  const role = roleInput.value.trim();
-  const text = textInput.value.trim();
-  const ratingValue = ratingInput.value; // Don't trim the rating value itself, it might be a number string
-  const rating = parseInt(ratingValue, 10); // Parse as base-10 integer
-
-  // Log the raw values read from the DOM
-  console.log("Raw Values Read:");
-  console.log("  nameInput.value:", JSON.stringify(nameInput.value)); // Use JSON.stringify to see if there are hidden characters
-  console.log("  roleInput.value:", JSON.stringify(roleInput.value));
-  console.log("  textInput.value:", JSON.stringify(textInput.value));
-  console.log("  ratingInput.value:", JSON.stringify(ratingInput.value));
-
-  // Log processed values
-  console.log("Processed Values:");
-  console.log("  Name (trimmed):", JSON.stringify(name), "Length:", name.length, "Is Truthy:", !!name);
-  console.log("  Role (trimmed):", JSON.stringify(role), "Length:", role.length, "Is Truthy:", !!role);
-  console.log("  Text (trimmed):", JSON.stringify(text), "Length:", text.length, "Is Truthy:", !!text);
-  console.log("  Rating (raw):", JSON.stringify(ratingValue), "Parsed Int:", rating, "Is NaN:", isNaN(rating));
-
-  // Perform validation checks step-by-step
-  const isNameValid = !!name;
-  const isRoleValid = !!role;
-  const isTextValid = !!text;
-  const isRatingValid = !isNaN(rating) && rating !== null && rating !== undefined;
-
-  console.log("Validation Checks:");
-  console.log("  isNameValid (name exists and is not empty after trim):", isNameValid);
-  console.log("  isRoleValid (role exists and is not empty after trim):", isRoleValid);
-  console.log("  isTextValid (text exists and is not empty after trim):", isTextValid);
-  console.log("  isRatingValid (rating parsed from value is a number):", isRatingValid);
-
-  if (!isNameValid || !isRoleValid || !isTextValid || !isRatingValid) {
-    console.log("Validation FAILED. One or more checks returned false.");
-    let errorMessage = "Please fill in all required fields (";
-    if (!isNameValid) errorMessage += "Name, ";
-    if (!isRoleValid) errorMessage += "Role, ";
-    if (!isTextValid) errorMessage += "Text, ";
-    if (!isRatingValid) errorMessage += "Rating, "; // Could also clarify if rating was invalid vs empty
-    errorMessage = errorMessage.slice(0, -2) + ")."; // Remove trailing comma and space
-    console.error("Detailed Validation Error Message:", errorMessage);
-    await showAdminAlert(errorMessage, "Validation Error");
-    return;
-  } else {
-    console.log("Validation PASSED.");
-  }
-
-  // Handle image upload if a new file is selected
-  const imageFileInput = document.getElementById('image');
-  let finalImage = document.getElementById('currentTestimonialImage')?.src || ''; // Default to existing image URL, fallback to empty string
-  console.log("Current Image URL:", finalImage);
-  if (imageFileInput && imageFileInput.files.length > 0) { // Check if a new file is selected
-    const imageFile = imageFileInput.files[0];
-    console.log("New image file selected:", imageFile.name, "Size:", imageFile.size, "Type:", imageFile.type);
-    try {
-       if (!imageFile.type.startsWith('image/')) {
-          console.error("Selected file is not an image.");
-          await showAdminAlert("Please select a valid image file (JPEG, PNG, etc.).", "Invalid File Type");
-          return;
-       }
-      finalImage = await convertToBase64(imageFile);
-      console.log("Successfully converted new image to Base64 (first 50 chars):", finalImage.substring(0, 50) + "...");
-    } catch (error) {
-      console.error("Error converting testimonial image:", error);
-      await showAdminAlert("Error processing the image file.", "Upload Error");
-      return;
-    }
-  } else {
-     console.log("No new image file selected, keeping existing URL or empty string.");
-  }
-
-  const method = id ? 'PUT' : 'POST';
-  const url = id ? `/api/testimonials/${id}` : '/api/testimonials';
-  console.log(`Preparing ${method} request to URL: ${url}`);
-
-  const requestBody = {
-    name: name,
-    role: role,
-    text: text,
-    rating: rating, // Send the integer value
-    image: finalImage
+  const testimonialData = {
+    name: document.getElementById("testimonialName").value,
+    role: document.getElementById("testimonialRole").value,
+    text: document.getElementById("testimonialText").value,
+    rating: Number.parseInt(document.getElementById("testimonialRating").value),
+    image: finalImage, // Updated to include profile image
   };
-  console.log("Request Body:", requestBody);
 
   try {
-    console.log("Sending fetch request...");
+    const testimonialId = document.getElementById("testimonialId").value;
+    const method = testimonialId ? 'PUT' : 'POST';
+    const url = testimonialId ? `/api/testimonials/${testimonialId}` : '/api/testimonials';
     const response = await fetch(url, {
       method: method,
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(testimonialData),
     });
 
-    console.log("Fetch response received. Status:", response.status, "OK:", response.ok);
-
     if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-        console.error("Server error response:", errorData);
-      } catch (e) {
-        console.warn("Server did not respond with JSON on error:", e);
-        errorMessage = `Server responded with status ${response.status}.`;
-      }
-      throw new Error(errorMessage);
+      const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` })); // Attempt to read error response
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
 
     const result = await response.json();
-    console.log("Server response JSON:", result);
     if (result.success) {
-      console.log("Testimonial operation successful.");
-      form.reset();
-      document.getElementById('testimonialModal').style.display = 'none';
-      document.getElementById('currentTestimonialImage').src = ''; // Reset if necessary
-      await showAdminAlert(`Testimonial ${id ? 'updated' : 'created'} successfully!`, "Success");
-      await loadTestimonials();
+      loadTestimonials();
+      hideTestimonialForm();
+      await showAdminAlert(testimonialId ? "Testimonial updated!" : "Testimonial added!", "Success");
     } else {
-      console.error("Server responded with success=false:", result);
-      throw new Error(result.error || `Failed to ${id ? 'update' : 'create'} testimonial.`);
+      throw new Error(result.error || "Failed to save testimonial.");
     }
   } catch (error) {
-    console.error("Final catch block - Error saving testimonial:", error);
-    if (error.message.includes('Failed to update') || error.message.includes('Failed to create')) {
-        await showAdminAlert(`Error saving testimonial: ${error.message}`, "Error");
-    } else if (error.message.includes('timeout') || error.message.includes('Failed to fetch')) {
-        await showAdminAlert("Request timed out or network error occurred.", "Network Error");
+    console.error("Error saving testimonial:", error); // Log the raw error for debugging
+    // Check for the specific error indicating server returned HTML (likely due to payload size)
+    if (error.message.includes("DOCTYPE") || error.message.includes("Unexpected token '<'")) {
+       await showAdminAlert("File size too large. Please reduce image size and try again.", "File Size Error");
     } else {
-        await showAdminAlert(`An unexpected error occurred: ${error.message}`, "Error");
+       // Handle other potential errors
+       await showAdminAlert(`Error saving testimonial: ${error.message}`, "Error");
     }
   }
 }
-
-// Similarly, update handleNewsSubmit if needed, but let's focus on testimonials first.
-// Remember to add the corresponding console.log debugs to handleNewsSubmit if you encounter the same issue there.
 
 // ... (rest of admin.js remains the same)
 
@@ -807,109 +686,51 @@ function removeTestimonialImage() {
 // Handle news form submission
 // ... (inside admin.js, find handleNewsSubmit)
 
-async function handleNewsSubmit(event) {
-  event.preventDefault();
+async function handleNewsSubmit(e) {
+  e.preventDefault();
+  let finalImage = newsImage || document.getElementById("newsImage").value || "";
 
-  const form = document.getElementById('newsForm');
-  const formData = new FormData(form);
-  const id = document.getElementById('newsId').value;
-  const title = formData.get('title');
-  const description = formData.get('description');
-  const fullContent = formData.get('fullContent');
-  const date = formData.get('date'); // Assuming date comes from an input field
-  const imageFile = formData.get('image'); // Get the File object
-
-  if (!title || !description || !fullContent || !date) {
-    await showAdminAlert("Please fill in all required fields (Title, Description, Full Content, Date).", "Validation Error");
-    return;
-  }
-
-  // Handle image upload if a new file is selected
-  let finalImage = document.getElementById('currentNewsImage').src; // Default to existing image URL
-  if (imageFile && imageFile.size > 0) { // Check if a new file is actually selected and has size
-    try {
-       // Validate file type and size here if desired (optional but recommended)
-       if (!imageFile.type.startsWith('image/')) {
-          await showAdminAlert("Please select a valid image file (JPEG, PNG, etc.).", "Invalid File Type");
-          return;
-       }
-       // Example size check (adjust limit as needed)
-       // if (imageFile.size > 5 * 1024 * 1024) {
-       //    await showAdminAlert("Image file is too large. Please keep it under 5MB.", "File Too Large");
-       //    return;
-       // }
-
-      finalImage = await convertToBase64(imageFile); // Convert new image to Base64
-      // console.log("Converted new news image to Base64:", finalImage.substring(0, 50) + "..."); // Log first 50 chars for debugging
-    } catch (error) {
-      console.error("Error converting news image:", error);
-      await showAdminAlert("Error processing the image file.", "Upload Error");
-      return;
-    }
-  } else if (!imageFile || imageFile.size === 0) {
-     // No new file selected, keep the existing image URL stored in the element's src attribute
-     // Ensure the hidden input 'currentNewsImage' contains the correct URL before submission
-     // finalImage remains as the URL from currentNewsImage.src
-  }
-
-
-  const method = id ? 'PUT' : 'POST';
-  const url = id ? `/api/news/${id}` : '/api/news';
-
-  const requestBody = {
-    title: title,
-    description: description,
-    fullContent: fullContent,
-    date: date, // Send the date string
-    image: finalImage // Send either the Base64 string or the existing URL string
+  const newsData = {
+    title: document.getElementById("newsTitle").value,
+    description: document.getElementById("newsDescription").value,
+    fullContent: document.getElementById("newsContent").value, // Save full content
+    image: finalImage,
+    date: formatDate(document.getElementById("newsDate").value),
   };
 
   try {
+    const newsId = document.getElementById("newsId").value;
+    const method = newsId ? 'PUT' : 'POST';
+    const url = newsId ? `/api/news/${newsId}` : '/api/news';
     const response = await fetch(url, {
       method: method,
       headers: {
-        'Content-Type': 'application/json', // Always send JSON to the server
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody), // Stringify the entire request body
+      body: JSON.stringify(newsData),
     });
 
-    if (!response.ok) {
-      // Attempt to get error details from the server's JSON response
-      let errorMessage = `HTTP error! status: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage; // Prefer server message
-      } catch (e) {
-        // If server didn't respond with JSON, use the HTTP status or a generic message
-        console.warn("Server did not respond with JSON on error:", e);
-        errorMessage = `Server responded with status ${response.status}.`;
-      }
-      throw new Error(errorMessage);
+     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` })); // Attempt to read error response
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
 
     const result = await response.json();
     if (result.success) {
-      // Clear the form (for create) or reset fields (for update if needed later)
-      form.reset();
-      document.getElementById('newsModal').style.display = 'none';
-      document.getElementById('currentNewsImage').src = ''; // Reset placeholder/src if needed on create
-      await showAdminAlert(`News article ${id ? 'updated' : 'created'} successfully!`, "Success");
-      await loadNews(); // Reload news list to reflect changes
+      loadNews();
+      hideNewsForm();
+      await showAdminAlert(newsId ? "Article updated!" : "Article added!", "Success");
     } else {
-      // Server responded with 200 OK but indicated failure in the body
-      throw new Error(result.error || `Failed to ${id ? 'update' : 'create'} news article.`); // Use server message or generic
+      throw new Error(result.error || "Failed to save article.");
     }
   } catch (error) {
-    console.error("Error saving news article:", error);
-    // Check for common specific errors from the server or fetch
-    if (error.message.includes('Failed to update') || error.message.includes('Failed to create')) {
-        // This captures the server's specific error message like "Failed to update news"
-        await showAdminAlert(`Error saving news article: ${error.message}`, "Error");
-    } else if (error.message.includes('timeout') || error.message.includes('Failed to fetch')) {
-        await showAdminAlert("Request timed out or network error occurred. Please check your connection and try again.", "Network Error");
+    console.error("Error saving article:", error); // Log the raw error for debugging
+    // Check for the specific error indicating server returned HTML (likely due to payload size)
+    if (error.message.includes("DOCTYPE") || error.message.includes("Unexpected token '<'")) {
+       await showAdminAlert("File size too large. Please reduce image size and try again.", "File Size Error");
     } else {
-        // Generic error message for other unexpected errors
-        await showAdminAlert(`An unexpected error occurred while saving the news article: ${error.message}`, "Error");
+       // Handle other potential errors
+       await showAdminAlert(`Error saving article: ${error.message}`, "Error");
     }
   }
 }

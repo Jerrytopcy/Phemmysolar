@@ -484,51 +484,109 @@ function handleNavigation(e) {
 // Handle testimonial form submission
 // ... (inside admin.js, find handleTestimonialSubmit)
 
-async function handleTestimonialSubmit(e) {
-  e.preventDefault();
-  let finalImage = testimonialImage || document.getElementById("testimonialImageUrl").value || "";
+async function handleTestimonialSubmit(event) {
+  event.preventDefault();
 
-  const testimonialData = {
-    name: document.getElementById("testimonialName").value,
-    role: document.getElementById("testimonialRole").value,
-    text: document.getElementById("testimonialText").value,
-    rating: Number.parseInt(document.getElementById("testimonialRating").value),
-    image: finalImage, // Updated to include profile image
+  const form = document.getElementById('testimonialForm');
+  const formData = new FormData(form);
+  const id = document.getElementById('testimonialId').value;
+  const name = formData.get('name');
+  const role = formData.get('role');
+  const text = formData.get('text');
+  const rating = parseInt(formData.get('rating')); // Ensure rating is a number
+  const imageFile = formData.get('image'); // Get the File object
+
+  if (!name || !role || !text || isNaN(rating)) {
+    await showAdminAlert("Please fill in all required fields (Name, Role, Text, Rating).", "Validation Error");
+    return;
+  }
+
+  // Handle image upload if a new file is selected
+  let finalImage = document.getElementById('currentTestimonialImage').src; // Default to existing image URL
+  if (imageFile && imageFile.size > 0) { // Check if a new file is actually selected and has size
+    try {
+      // Validate file type and size here if desired (optional but recommended)
+      if (!imageFile.type.startsWith('image/')) {
+         await showAdminAlert("Please select a valid image file (JPEG, PNG, etc.).", "Invalid File Type");
+         return;
+      }
+      // Example size check (adjust limit as needed, e.g., 5MB = 5 * 1024 * 1024 bytes)
+      // if (imageFile.size > 5 * 1024 * 1024) {
+      //    await showAdminAlert("Image file is too large. Please keep it under 5MB.", "File Too Large");
+      //    return;
+      // }
+
+      finalImage = await convertToBase64(imageFile); // Convert new image to Base64
+      // console.log("Converted new testimonial image to Base64:", finalImage.substring(0, 50) + "..."); // Log first 50 chars for debugging
+    } catch (error) {
+      console.error("Error converting testimonial image:", error);
+      await showAdminAlert("Error processing the image file.", "Upload Error");
+      return;
+    }
+  } else if (!imageFile || imageFile.size === 0) {
+     // No new file selected, keep the existing image URL stored in the element's src attribute
+     // Ensure the hidden input 'currentTestimonialImage' contains the correct URL before submission
+     // finalImage remains as the URL from currentTestimonialImage.src
+  }
+
+
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? `/api/testimonials/${id}` : '/api/testimonials';
+
+  const requestBody = {
+    name: name,
+    role: role,
+    text: text,
+    rating: rating, // Send the integer value
+    image: finalImage // Send either the Base64 string or the existing URL string
   };
 
   try {
-    const testimonialId = document.getElementById("testimonialId").value;
-    const method = testimonialId ? 'PUT' : 'POST';
-    const url = testimonialId ? `/api/testimonials/${testimonialId}` : '/api/testimonials';
     const response = await fetch(url, {
       method: method,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json', // Always send JSON to the server
       },
-      body: JSON.stringify(testimonialData),
+      body: JSON.stringify(requestBody), // Stringify the entire request body
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` })); // Attempt to read error response
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      // Attempt to get error details from the server's JSON response
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage; // Prefer server message
+      } catch (e) {
+        // If server didn't respond with JSON, use the HTTP status or a generic message
+        console.warn("Server did not respond with JSON on error:", e);
+        errorMessage = `Server responded with status ${response.status}.`;
+      }
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
     if (result.success) {
-      loadTestimonials();
-      hideTestimonialForm();
-      await showAdminAlert(testimonialId ? "Testimonial updated!" : "Testimonial added!", "Success");
+      // Clear the form (for create) or reset fields (for update if needed later)
+      form.reset();
+      document.getElementById('testimonialModal').style.display = 'none';
+      document.getElementById('currentTestimonialImage').src = ''; // Reset placeholder/src if needed on create
+      await showAdminAlert(`Testimonial ${id ? 'updated' : 'created'} successfully!`, "Success");
+      await loadTestimonials(); // Reload testimonials list to reflect changes
     } else {
-      throw new Error(result.error || "Failed to save testimonial.");
+      // Server responded with 200 OK but indicated failure in the body
+      throw new Error(result.error || `Failed to ${id ? 'update' : 'create'} testimonial.`); // Use server message or generic
     }
   } catch (error) {
-    console.error("Error saving testimonial:", error); // Log the raw error for debugging
-    // Check for the specific error indicating server returned HTML (likely due to payload size)
-    if (error.message.includes("DOCTYPE") || error.message.includes("Unexpected token '<'")) {
-       await showAdminAlert("File size too large. Please reduce image size and try again.", "File Size Error");
+    console.error("Error saving testimonial:", error);
+    // Check for common specific errors from the server or fetch
+    if (error.message.includes('Failed to update') || error.message.includes('Failed to create')) {
+        // This captures the server's specific error message like "Failed to update testimonial"
+        await showAdminAlert(`Error saving testimonial: ${error.message}`, "Error");
+    } else if (error.message.includes('timeout') || error.message.includes('Failed to fetch')) {
+        await showAdminAlert("Request timed out or network error occurred. Please check your connection and try again.", "Network Error");
     } else {
-       // Handle other potential errors
-       await showAdminAlert(`Error saving testimonial: ${error.message}`, "Error");
+        // Generic error message for other unexpected errors
+        await showAdminAlert(`An unexpected error occurred while saving the testimonial: ${error.message}`, "Error");
     }
   }
 }
@@ -686,51 +744,109 @@ function removeTestimonialImage() {
 // Handle news form submission
 // ... (inside admin.js, find handleNewsSubmit)
 
-async function handleNewsSubmit(e) {
-  e.preventDefault();
-  let finalImage = newsImage || document.getElementById("newsImage").value || "";
+async function handleNewsSubmit(event) {
+  event.preventDefault();
 
-  const newsData = {
-    title: document.getElementById("newsTitle").value,
-    description: document.getElementById("newsDescription").value,
-    fullContent: document.getElementById("newsContent").value, // Save full content
-    image: finalImage,
-    date: formatDate(document.getElementById("newsDate").value),
+  const form = document.getElementById('newsForm');
+  const formData = new FormData(form);
+  const id = document.getElementById('newsId').value;
+  const title = formData.get('title');
+  const description = formData.get('description');
+  const fullContent = formData.get('fullContent');
+  const date = formData.get('date'); // Assuming date comes from an input field
+  const imageFile = formData.get('image'); // Get the File object
+
+  if (!title || !description || !fullContent || !date) {
+    await showAdminAlert("Please fill in all required fields (Title, Description, Full Content, Date).", "Validation Error");
+    return;
+  }
+
+  // Handle image upload if a new file is selected
+  let finalImage = document.getElementById('currentNewsImage').src; // Default to existing image URL
+  if (imageFile && imageFile.size > 0) { // Check if a new file is actually selected and has size
+    try {
+       // Validate file type and size here if desired (optional but recommended)
+       if (!imageFile.type.startsWith('image/')) {
+          await showAdminAlert("Please select a valid image file (JPEG, PNG, etc.).", "Invalid File Type");
+          return;
+       }
+       // Example size check (adjust limit as needed)
+       // if (imageFile.size > 5 * 1024 * 1024) {
+       //    await showAdminAlert("Image file is too large. Please keep it under 5MB.", "File Too Large");
+       //    return;
+       // }
+
+      finalImage = await convertToBase64(imageFile); // Convert new image to Base64
+      // console.log("Converted new news image to Base64:", finalImage.substring(0, 50) + "..."); // Log first 50 chars for debugging
+    } catch (error) {
+      console.error("Error converting news image:", error);
+      await showAdminAlert("Error processing the image file.", "Upload Error");
+      return;
+    }
+  } else if (!imageFile || imageFile.size === 0) {
+     // No new file selected, keep the existing image URL stored in the element's src attribute
+     // Ensure the hidden input 'currentNewsImage' contains the correct URL before submission
+     // finalImage remains as the URL from currentNewsImage.src
+  }
+
+
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? `/api/news/${id}` : '/api/news';
+
+  const requestBody = {
+    title: title,
+    description: description,
+    fullContent: fullContent,
+    date: date, // Send the date string
+    image: finalImage // Send either the Base64 string or the existing URL string
   };
 
   try {
-    const newsId = document.getElementById("newsId").value;
-    const method = newsId ? 'PUT' : 'POST';
-    const url = newsId ? `/api/news/${newsId}` : '/api/news';
     const response = await fetch(url, {
       method: method,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json', // Always send JSON to the server
       },
-      body: JSON.stringify(newsData),
+      body: JSON.stringify(requestBody), // Stringify the entire request body
     });
 
-     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` })); // Attempt to read error response
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      // Attempt to get error details from the server's JSON response
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage; // Prefer server message
+      } catch (e) {
+        // If server didn't respond with JSON, use the HTTP status or a generic message
+        console.warn("Server did not respond with JSON on error:", e);
+        errorMessage = `Server responded with status ${response.status}.`;
+      }
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
     if (result.success) {
-      loadNews();
-      hideNewsForm();
-      await showAdminAlert(newsId ? "Article updated!" : "Article added!", "Success");
+      // Clear the form (for create) or reset fields (for update if needed later)
+      form.reset();
+      document.getElementById('newsModal').style.display = 'none';
+      document.getElementById('currentNewsImage').src = ''; // Reset placeholder/src if needed on create
+      await showAdminAlert(`News article ${id ? 'updated' : 'created'} successfully!`, "Success");
+      await loadNews(); // Reload news list to reflect changes
     } else {
-      throw new Error(result.error || "Failed to save article.");
+      // Server responded with 200 OK but indicated failure in the body
+      throw new Error(result.error || `Failed to ${id ? 'update' : 'create'} news article.`); // Use server message or generic
     }
   } catch (error) {
-    console.error("Error saving article:", error); // Log the raw error for debugging
-    // Check for the specific error indicating server returned HTML (likely due to payload size)
-    if (error.message.includes("DOCTYPE") || error.message.includes("Unexpected token '<'")) {
-       await showAdminAlert("File size too large. Please reduce image size and try again.", "File Size Error");
+    console.error("Error saving news article:", error);
+    // Check for common specific errors from the server or fetch
+    if (error.message.includes('Failed to update') || error.message.includes('Failed to create')) {
+        // This captures the server's specific error message like "Failed to update news"
+        await showAdminAlert(`Error saving news article: ${error.message}`, "Error");
+    } else if (error.message.includes('timeout') || error.message.includes('Failed to fetch')) {
+        await showAdminAlert("Request timed out or network error occurred. Please check your connection and try again.", "Network Error");
     } else {
-       // Handle other potential errors
-       await showAdminAlert(`Error saving article: ${error.message}`, "Error");
+        // Generic error message for other unexpected errors
+        await showAdminAlert(`An unexpected error occurred while saving the news article: ${error.message}`, "Error");
     }
   }
 }

@@ -11,7 +11,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Parse JSON bodies
 // Parse JSON bodies with increased limit to handle large Base64 image data
-app.use(express.json({ limit: '10mb' })); // Adjust the limit as needed (e.g., 10mb, 20mb)
+app.use(express.json({ limit: '500mb' })); // Adjust the limit as needed (e.g., 10mb, 20mb)
 
 // --- ADD THIS BLOCK ---
 const cors = require('cors');

@@ -487,77 +487,139 @@ function handleNavigation(e) {
 async function handleTestimonialSubmit(event) {
   event.preventDefault();
 
-  const form = document.getElementById('testimonialForm');
-  const formData = new FormData(form);
-  const id = document.getElementById('testimonialId').value;
-  const name = formData.get('name');
-  const role = formData.get('role');
-  const text = formData.get('text');
-  const rating = parseInt(formData.get('rating')); // Ensure rating is a number
-  const imageFile = formData.get('image'); // Get the File object
+  console.log("--- Starting handleTestimonialSubmit ---");
 
-  if (!name || !role || !text || isNaN(rating)) {
-    await showAdminAlert("Please fill in all required fields (Name, Role, Text, Rating).", "Validation Error");
+  const form = document.getElementById('testimonialForm');
+  if (!form) {
+      console.error("ERROR: Form element with ID 'testimonialForm' not found!");
+      await showAdminAlert("Form not found. Please refresh the page.", "Error");
+      return;
+  }
+
+  // Get the hidden ID field for updates
+  const idInput = document.getElementById('testimonialId');
+  const id = idInput ? idInput.value.trim() : '';
+  console.log("ID (testimonialId):", id, "Exists:", !!idInput, "Type:", typeof id);
+
+  // Get individual fields by ID
+  const nameInput = document.getElementById('name');
+  const roleInput = document.getElementById('role');
+  const textInput = document.getElementById('text');
+  const ratingInput = document.getElementById('rating');
+
+  // Log existence of elements first
+  console.log("Input Elements Found - Name:", !!nameInput, "Role:", !!roleInput, "Text:", !!textInput, "Rating:", !!ratingInput);
+
+  if (!nameInput || !roleInput || !textInput || !ratingInput) {
+      console.error("One or more required input elements were not found in the DOM.");
+      await showAdminAlert("Some form fields are missing. Please refresh the page.", "Error");
+      return;
+  }
+
+  // Read values using .value property
+  const name = nameInput.value.trim();
+  const role = roleInput.value.trim();
+  const text = textInput.value.trim();
+  const ratingValue = ratingInput.value; // Don't trim the rating value itself, it might be a number string
+  const rating = parseInt(ratingValue, 10); // Parse as base-10 integer
+
+  // Log the raw values read from the DOM
+  console.log("Raw Values Read:");
+  console.log("  nameInput.value:", JSON.stringify(nameInput.value)); // Use JSON.stringify to see if there are hidden characters
+  console.log("  roleInput.value:", JSON.stringify(roleInput.value));
+  console.log("  textInput.value:", JSON.stringify(textInput.value));
+  console.log("  ratingInput.value:", JSON.stringify(ratingInput.value));
+
+  // Log processed values
+  console.log("Processed Values:");
+  console.log("  Name (trimmed):", JSON.stringify(name), "Length:", name.length, "Is Truthy:", !!name);
+  console.log("  Role (trimmed):", JSON.stringify(role), "Length:", role.length, "Is Truthy:", !!role);
+  console.log("  Text (trimmed):", JSON.stringify(text), "Length:", text.length, "Is Truthy:", !!text);
+  console.log("  Rating (raw):", JSON.stringify(ratingValue), "Parsed Int:", rating, "Is NaN:", isNaN(rating));
+
+  // Perform validation checks step-by-step
+  const isNameValid = !!name;
+  const isRoleValid = !!role;
+  const isTextValid = !!text;
+  const isRatingValid = !isNaN(rating) && rating !== null && rating !== undefined;
+
+  console.log("Validation Checks:");
+  console.log("  isNameValid (name exists and is not empty after trim):", isNameValid);
+  console.log("  isRoleValid (role exists and is not empty after trim):", isRoleValid);
+  console.log("  isTextValid (text exists and is not empty after trim):", isTextValid);
+  console.log("  isRatingValid (rating parsed from value is a number):", isRatingValid);
+
+  if (!isNameValid || !isRoleValid || !isTextValid || !isRatingValid) {
+    console.log("Validation FAILED. One or more checks returned false.");
+    let errorMessage = "Please fill in all required fields (";
+    if (!isNameValid) errorMessage += "Name, ";
+    if (!isRoleValid) errorMessage += "Role, ";
+    if (!isTextValid) errorMessage += "Text, ";
+    if (!isRatingValid) errorMessage += "Rating, "; // Could also clarify if rating was invalid vs empty
+    errorMessage = errorMessage.slice(0, -2) + ")."; // Remove trailing comma and space
+    console.error("Detailed Validation Error Message:", errorMessage);
+    await showAdminAlert(errorMessage, "Validation Error");
     return;
+  } else {
+    console.log("Validation PASSED.");
   }
 
   // Handle image upload if a new file is selected
-  let finalImage = document.getElementById('currentTestimonialImage').src; // Default to existing image URL
-  if (imageFile && imageFile.size > 0) { // Check if a new file is actually selected and has size
+  const imageFileInput = document.getElementById('image');
+  let finalImage = document.getElementById('currentTestimonialImage')?.src || ''; // Default to existing image URL, fallback to empty string
+  console.log("Current Image URL:", finalImage);
+  if (imageFileInput && imageFileInput.files.length > 0) { // Check if a new file is selected
+    const imageFile = imageFileInput.files[0];
+    console.log("New image file selected:", imageFile.name, "Size:", imageFile.size, "Type:", imageFile.type);
     try {
-      // Validate file type and size here if desired (optional but recommended)
-      if (!imageFile.type.startsWith('image/')) {
-         await showAdminAlert("Please select a valid image file (JPEG, PNG, etc.).", "Invalid File Type");
-         return;
-      }
-      // Example size check (adjust limit as needed, e.g., 5MB = 5 * 1024 * 1024 bytes)
-      // if (imageFile.size > 5 * 1024 * 1024) {
-      //    await showAdminAlert("Image file is too large. Please keep it under 5MB.", "File Too Large");
-      //    return;
-      // }
-
-      finalImage = await convertToBase64(imageFile); // Convert new image to Base64
-      // console.log("Converted new testimonial image to Base64:", finalImage.substring(0, 50) + "..."); // Log first 50 chars for debugging
+       if (!imageFile.type.startsWith('image/')) {
+          console.error("Selected file is not an image.");
+          await showAdminAlert("Please select a valid image file (JPEG, PNG, etc.).", "Invalid File Type");
+          return;
+       }
+      finalImage = await convertToBase64(imageFile);
+      console.log("Successfully converted new image to Base64 (first 50 chars):", finalImage.substring(0, 50) + "...");
     } catch (error) {
       console.error("Error converting testimonial image:", error);
       await showAdminAlert("Error processing the image file.", "Upload Error");
       return;
     }
-  } else if (!imageFile || imageFile.size === 0) {
-     // No new file selected, keep the existing image URL stored in the element's src attribute
-     // Ensure the hidden input 'currentTestimonialImage' contains the correct URL before submission
-     // finalImage remains as the URL from currentTestimonialImage.src
+  } else {
+     console.log("No new image file selected, keeping existing URL or empty string.");
   }
-
 
   const method = id ? 'PUT' : 'POST';
   const url = id ? `/api/testimonials/${id}` : '/api/testimonials';
+  console.log(`Preparing ${method} request to URL: ${url}`);
 
   const requestBody = {
     name: name,
     role: role,
     text: text,
     rating: rating, // Send the integer value
-    image: finalImage // Send either the Base64 string or the existing URL string
+    image: finalImage
   };
+  console.log("Request Body:", requestBody);
 
   try {
+    console.log("Sending fetch request...");
     const response = await fetch(url, {
       method: method,
       headers: {
-        'Content-Type': 'application/json', // Always send JSON to the server
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody), // Stringify the entire request body
+      body: JSON.stringify(requestBody),
     });
 
+    console.log("Fetch response received. Status:", response.status, "OK:", response.ok);
+
     if (!response.ok) {
-      // Attempt to get error details from the server's JSON response
       let errorMessage = `HTTP error! status: ${response.status}`;
       try {
         const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage; // Prefer server message
+        errorMessage = errorData.error || errorMessage;
+        console.error("Server error response:", errorData);
       } catch (e) {
-        // If server didn't respond with JSON, use the HTTP status or a generic message
         console.warn("Server did not respond with JSON on error:", e);
         errorMessage = `Server responded with status ${response.status}.`;
       }
@@ -565,31 +627,32 @@ async function handleTestimonialSubmit(event) {
     }
 
     const result = await response.json();
+    console.log("Server response JSON:", result);
     if (result.success) {
-      // Clear the form (for create) or reset fields (for update if needed later)
+      console.log("Testimonial operation successful.");
       form.reset();
       document.getElementById('testimonialModal').style.display = 'none';
-      document.getElementById('currentTestimonialImage').src = ''; // Reset placeholder/src if needed on create
+      document.getElementById('currentTestimonialImage').src = ''; // Reset if necessary
       await showAdminAlert(`Testimonial ${id ? 'updated' : 'created'} successfully!`, "Success");
-      await loadTestimonials(); // Reload testimonials list to reflect changes
+      await loadTestimonials();
     } else {
-      // Server responded with 200 OK but indicated failure in the body
-      throw new Error(result.error || `Failed to ${id ? 'update' : 'create'} testimonial.`); // Use server message or generic
+      console.error("Server responded with success=false:", result);
+      throw new Error(result.error || `Failed to ${id ? 'update' : 'create'} testimonial.`);
     }
   } catch (error) {
-    console.error("Error saving testimonial:", error);
-    // Check for common specific errors from the server or fetch
+    console.error("Final catch block - Error saving testimonial:", error);
     if (error.message.includes('Failed to update') || error.message.includes('Failed to create')) {
-        // This captures the server's specific error message like "Failed to update testimonial"
         await showAdminAlert(`Error saving testimonial: ${error.message}`, "Error");
     } else if (error.message.includes('timeout') || error.message.includes('Failed to fetch')) {
-        await showAdminAlert("Request timed out or network error occurred. Please check your connection and try again.", "Network Error");
+        await showAdminAlert("Request timed out or network error occurred.", "Network Error");
     } else {
-        // Generic error message for other unexpected errors
-        await showAdminAlert(`An unexpected error occurred while saving the testimonial: ${error.message}`, "Error");
+        await showAdminAlert(`An unexpected error occurred: ${error.message}`, "Error");
     }
   }
 }
+
+// Similarly, update handleNewsSubmit if needed, but let's focus on testimonials first.
+// Remember to add the corresponding console.log debugs to handleNewsSubmit if you encounter the same issue there.
 
 // ... (rest of admin.js remains the same)
 

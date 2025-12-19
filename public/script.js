@@ -50,88 +50,95 @@ function closeAuthModal() {
 }
 // Handle login or signup form submission
 async function handleAuthSubmit(e) {
-  e.preventDefault();
-  const form = e.target;
-  const username = form.username.value.trim();
-  const password = form.password.value;
-  const isLogin = form.dataset.mode === "login";
-  if (!username || !password) {
-    document.getElementById("authError").textContent = "Username and password are required.";
-    return;
-  }
-  // Prepare data based on whether it's login or signup
-  let requestData = {
-    username: username,
-    password: password
-  };
-  if (!isLogin) {
-    // Collect extra signup fields
-    const email = document.getElementById("email").value.trim();
-    const phone = document.getElementById("phone").value.trim();
-    const street = document.getElementById("street").value.trim();
-    const city = document.getElementById("city").value.trim();
-    const state = document.getElementById("state").value.trim();
-    const postalCode = document.getElementById("postalCode").value.trim();
-    // Validate required fields for signup
-    if (!email || !phone || !street || !city || !state) {
-      document.getElementById("authError").textContent = "Please fill in all required fields.";
-      return;
+    e.preventDefault();
+    const form = e.target;
+    const username = form.username.value.trim(); // This is what the user types in
+    const password = form.password.value;
+    const isLogin = form.dataset.mode === "login";
+
+    if (!username || !password) {
+        document.getElementById("authError").textContent = "Username and password are required.";
+        return;
     }
-    requestData = {
-      ...requestData,
-      action: "signup",
-      email: email,
-      phone: phone,
-      address: {
-        street: street,
-        city: city,
-        state: state,
-        postalCode: postalCode,
-        country: "Nigeria"
-      }
+
+    // Prepare data based on whether it's login or signup
+    let requestData = {
+        password: password
     };
-  } else {
-    requestData.action = "login";
-  }
-  try {
-    const response = await fetch('/api/auth', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestData)
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      // Server responded with an error status (e.g., 400, 401, 500)
-      document.getElementById("authError").textContent = result.error || "An unexpected error occurred.";
-      return;
-    }
-    if (result.success) {
-      // Authentication successful
-      const userData = result.user;
-      // Store user data in session storage for this browser session
-      sessionStorage.setItem('currentUser', JSON.stringify(userData));
-      // Optionally store the user ID persistently in localStorage for easier re-login later
-      localStorage.setItem('currentUserId', userData.id);
-      // Update UI based on the logged-in user
-      updateUIBasedOnUser(userData);
-      // Close the modal
-      closeAuthModal();
-      // Show success message
-      if (isLogin) {
-        showCustomAlert(`Welcome back, ${username}!`, "Logged In");
-      } else {
-        showCustomAlert(`Welcome, ${username}! Your account has been created.`, "Account Created");
-      }
+
+    if (!isLogin) {
+        // For signup: use username as the 'username' field, and collect extra fields
+        requestData.username = username; // Keep this for signup
+        requestData.action = "signup";
+
+        // Collect extra signup fields
+        const email = document.getElementById("email").value.trim();
+        const phone = document.getElementById("phone").value.trim();
+        const street = document.getElementById("street").value.trim();
+        const city = document.getElementById("city").value.trim();
+        const state = document.getElementById("state").value.trim();
+        const postalCode = document.getElementById("postalCode").value.trim();
+
+        // Validate required fields for signup
+        if (!email || !phone || !street || !city || !state) {
+            document.getElementById("authError").textContent = "Please fill in all required fields.";
+            return;
+        }
+
+        requestData.email = email;
+        requestData.phone = phone;
+        requestData.address = {
+            street: street,
+            city: city,
+            state: state,
+            postalCode: postalCode,
+            country: "Nigeria"
+        };
+
     } else {
-      // Result indicates failure (e.g., incorrect credentials during login)
-      document.getElementById("authError").textContent = result.error || "Authentication failed.";
+        // For login: send the 'username' value as 'email' to match backend expectation
+        requestData.email = username; // 👈 THIS IS THE KEY CHANGE
+        requestData.action = "login";
     }
-  } catch (error) {
-    console.error("Network error during authentication:", error);
-    document.getElementById("authError").textContent = "Network error. Please try again.";
-  }
+
+    try {
+        const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            document.getElementById("authError").textContent = result.error || "An unexpected error occurred.";
+            return;
+        }
+
+        if (result.success) {
+            const userData = result.user;
+
+            // Store user data in session storage for this browser session
+            sessionStorage.setItem('currentUser', JSON.stringify(userData));
+            localStorage.setItem('currentUserId', userData.id);
+
+            updateUIBasedOnUser(userData);
+            closeAuthModal();
+
+            if (isLogin) {
+                showCustomAlert(`Welcome back, ${userData.username}!`, "Logged In");
+            } else {
+                showCustomAlert(`Welcome, ${userData.username}! Your account has been created.`, "Account Created");
+            }
+        } else {
+            document.getElementById("authError").textContent = result.error || "Authentication failed.";
+        }
+    } catch (error) {
+        console.error("Network error during authentication:", error);
+        document.getElementById("authError").textContent = "Network error. Please try again.";
+    }
 }
 // Simple password hashing simulation (NOT secure for real applications)
 // In a real app, use a proper library like bcrypt on the server side.

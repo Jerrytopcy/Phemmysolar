@@ -326,35 +326,69 @@ const bcrypt = require('bcryptjs');
 
 app.post('/api/auth', async (req, res) => {
     const { username, password, action } = req.body;
+
+    // Log the incoming request for debugging
+    console.log('Received auth request:', { username, action });
+
     try {
         if (action === 'login') {
+            // Validate input
+            if (!username || !password) {
+                return res.status(400).json({ error: 'Username and password are required' });
+            }
+
             const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
             if (result.rows.length === 0) {
                 return res.status(401).json({ error: 'Invalid credentials' });
             }
+
             const user = result.rows[0];
+
+            // Log the user found for debugging
+            console.log('Found user for login:', { id: user.id, username: user.username });
+
+            // Check if password is provided
+            if (!password) {
+                return res.status(400).json({ error: 'Password is required' });
+            }
+
             // Compare the plain text password with the stored hash
             const isMatch = await bcrypt.compare(password, user.passwordHash);
+
             if (!isMatch) {
                 return res.status(401).json({ error: 'Invalid credentials' });
             }
+
+            // Success - send user data
             res.json({ success: true, user });
+
         } else if (action === 'signup') {
             const { email, phone, address } = req.body;
+
+            // Validate required fields for signup
+            if (!username || !password || !email || !phone || !address || !address.street || !address.city || !address.state) {
+                return res.status(400).json({ error: 'All required fields must be filled' });
+            }
+
             // Hash the password on the server
             const saltRounds = 10;
             const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+            // Insert new user
             const result = await pool.query(
                 'INSERT INTO users (username, passwordHash, email, phone, address, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
                 [username, hashedPassword, email, phone, address, 'user']
             );
+
+            // Success - send new user data
             res.json({ success: true, user: result.rows[0] });
+
         } else {
             res.status(400).json({ error: 'Invalid action' });
         }
     } catch (err) {
-        console.error('Error in auth route:', err);
-        res.status(500).json({ error: 'Authentication failed' });
+        console.error('Detailed error in auth route:', err); // Log the full error object
+        res.status(500).json({ error: 'Authentication failed', details: err.message }); // Send more detail to client for debugging
     }
 });
 // --- ADMIN AUTHENTICATION ROUTE ---

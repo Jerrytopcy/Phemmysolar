@@ -50,22 +50,25 @@ function closeAuthModal() {
 }
 // Handle login or signup form submission
 // Handle login or signup form submission
+// Handle login or signup form submission
 async function handleAuthSubmit(e) {
     e.preventDefault();
     const form = e.target;
     const username = form.username.value.trim();
     const password = form.password.value; // Get the raw password
-    const isLogin = form.dataset.mode === "login";
 
-    if (!username || !password) {
+    // Add explicit check for password length
+    if (!username || !password || password.length === 0) {
         document.getElementById("authError").textContent = "Username and password are required.";
         return;
     }
 
+    const isLogin = form.dataset.mode === "login";
+
     // Prepare data based on whether it's login or signup
     let requestData = {
-        username: username, // 👈 Send username
-        password: password, // 👈 Send plain password (NO HASHING!)
+        username: username,
+        password: password, // 👈 Send plain password (This is correct for bcrypt.compare)
         action: isLogin ? "login" : "signup"
     };
 
@@ -103,11 +106,14 @@ async function handleAuthSubmit(e) {
             },
             body: JSON.stringify(requestData)
         });
+
         const result = await response.json();
+
         if (!response.ok) {
             document.getElementById("authError").textContent = result.error || "An unexpected error occurred.";
             return;
         }
+
         if (result.success) {
             const userData = result.user;
             sessionStorage.setItem('currentUser', JSON.stringify(userData));

@@ -54,7 +54,7 @@ async function handleAuthSubmit(e) {
     e.preventDefault();
     const form = e.target;
     const username = form.username.value.trim(); // This is what the user types in
-    const password = form.password.value;
+    const password = form.password.value; // Get the raw password
     const isLogin = form.dataset.mode === "login";
 
     if (!username || !password) {
@@ -62,9 +62,12 @@ async function handleAuthSubmit(e) {
         return;
     }
 
+    // --- NEW: Hash the password BEFORE sending it ---
+    const hashedPassword = hashPassword(password);
+
     // Prepare data based on whether it's login or signup
     let requestData = {
-        password: password,
+        password: hashedPassword, // 👈 SEND THE HASHED PASSWORD, NOT THE PLAIN TEXT
         action: isLogin ? "login" : "signup"
     };
 
@@ -78,13 +81,11 @@ async function handleAuthSubmit(e) {
         const city = document.getElementById("city").value.trim();
         const state = document.getElementById("state").value.trim();
         const postalCode = document.getElementById("postalCode").value.trim();
-
         // Validate required fields for signup
         if (!email || !phone || !street || !city || !state) {
             document.getElementById("authError").textContent = "Please fill in all required fields.";
             return;
         }
-
         requestData.email = email;
         requestData.phone = phone;
         requestData.address = {
@@ -107,14 +108,11 @@ async function handleAuthSubmit(e) {
             },
             body: JSON.stringify(requestData)
         });
-
         const result = await response.json();
-
         if (!response.ok) {
             document.getElementById("authError").textContent = result.error || "An unexpected error occurred.";
             return;
         }
-
         if (result.success) {
             const userData = result.user;
             // Store user data in session storage for this browser session
@@ -122,7 +120,6 @@ async function handleAuthSubmit(e) {
             localStorage.setItem('currentUserId', userData.id);
             updateUIBasedOnUser(userData);
             closeAuthModal();
-
             if (isLogin) {
                 showCustomAlert(`Welcome back, ${userData.username}!`, "Logged In");
             } else {

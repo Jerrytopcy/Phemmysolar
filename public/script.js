@@ -66,39 +66,45 @@ async function handleAuthSubmit(e) {
     const hashedPassword = hashPassword(password);
 
     // Prepare data based on whether it's login or signup
-    let requestData = {
-        password: hashedPassword, // 👈 SEND THE HASHED PASSWORD, NOT THE PLAIN TEXT
-        action: isLogin ? "login" : "signup"
-    };
+    // Prepare data based on whether it's login or signup
+let requestData = {
+    password: password, // 👈 We'll hash this below
+    action: isLogin ? "login" : "signup"
+};
 
-    if (!isLogin) {
-        // For signup: use username as the 'username' field, and collect extra fields
-        requestData.username = username; // Keep this for signup
-        // Collect extra signup fields
-        const email = document.getElementById("email").value.trim();
-        const phone = document.getElementById("phone").value.trim();
-        const street = document.getElementById("street").value.trim();
-        const city = document.getElementById("city").value.trim();
-        const state = document.getElementById("state").value.trim();
-        const postalCode = document.getElementById("postalCode").value.trim();
-        // Validate required fields for signup
-        if (!email || !phone || !street || !city || !state) {
-            document.getElementById("authError").textContent = "Please fill in all required fields.";
-            return;
-        }
-        requestData.email = email;
-        requestData.phone = phone;
-        requestData.address = {
-            street: street,
-            city: city,
-            state: state,
-            postalCode: postalCode,
-            country: "Nigeria"
-        };
-    } else {
-        // For login: send the 'username' value as 'username' to match backend expectation
-        requestData.username = username; // 👈 THIS IS THE KEY CHANGE - Send username, not email
+if (!isLogin) {
+    // For signup: use username as the 'username' field, and collect extra fields
+    requestData.username = username; // Keep this for signup
+    // Collect extra signup fields
+    const email = document.getElementById("email").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const street = document.getElementById("street").value.trim();
+    const city = document.getElementById("city").value.trim();
+    const state = document.getElementById("state").value.trim();
+    const postalCode = document.getElementById("postalCode").value.trim();
+
+    // Validate required fields for signup
+    if (!email || !phone || !street || !city || !state) {
+        document.getElementById("authError").textContent = "Please fill in all required fields.";
+        return;
     }
+
+    requestData.email = email;
+    requestData.phone = phone;
+    requestData.address = {
+        street: street,
+        city: city,
+        state: state,
+        postalCode: postalCode,
+        country: "Nigeria"
+    };
+} else {
+    // For login: send the 'username' value as 'username' to match backend expectation
+    requestData.username = username; // 👈 Send username for login
+}
+
+// --- NEW: Hash the password for BOTH login and signup ---
+requestData.password = hashPassword(requestData.password); // 👈 Hash it here for both actions
 
     try {
         const response = await fetch('/api/auth', {

@@ -42,99 +42,54 @@ function showAuthModal() {
 }
 // Close the login/signup modal
 function closeAuthModal() {
-    const modal = document.getElementById("authModal");
-    if (modal) {
-        modal.classList.remove("active");
-        document.body.style.overflow = "";
-    }
-}
-// Handle login or signup form submission
-// Handle login or signup form submission
+      const modal = document.getElementById("authModal");
+      if (modal) {
+          modal.classList.remove("active");
+          document.body.style.overflow = "";
+      }
+  }
+  // Handle login or signup form submission
+  // Handle login or signup form submission
 async function handleAuthSubmit(e) {
     e.preventDefault();
-    const form = e.target;
-    const username = form.username.value.trim(); // This is what the user types in
-    const password = form.password.value; // Get the raw password
-    const isLogin = form.dataset.mode === "login";
+    const form = document.getElementById('authForm');
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const action = form.dataset.mode; // 'login' or 'signup'
 
-    if (!username || !password) {
-        document.getElementById("authError").textContent = "Username and password are required.";
-        return;
+    let requestData = { username, password, action };
+
+    // For signup, include extra fields
+    if (action === 'signup') {
+        requestData.email = document.getElementById('email').value;
+        requestData.phone = document.getElementById('phone').value;
+        requestData.street = document.getElementById('street').value;
+        requestData.city = document.getElementById('city').value;
+        requestData.state = document.getElementById('state').value;
+        requestData.postalCode = document.getElementById('postalCode').value;
+        requestData.address = `${requestData.street}, ${requestData.city}, ${requestData.state} ${requestData.postalCode}`;
     }
-
-    // --- NEW: Hash the password BEFORE sending it ---
-    const hashedPassword = hashPassword(password);
-
-    // Prepare data based on whether it's login or signup
-    // Prepare data based on whether it's login or signup
-let requestData = {
-    password: password, // 👈 We'll hash this below
-    action: isLogin ? "login" : "signup"
-};
-
-if (!isLogin) {
-    // For signup: use username as the 'username' field, and collect extra fields
-    requestData.username = username; // Keep this for signup
-    // Collect extra signup fields
-    const email = document.getElementById("email").value.trim();
-    const phone = document.getElementById("phone").value.trim();
-    const street = document.getElementById("street").value.trim();
-    const city = document.getElementById("city").value.trim();
-    const state = document.getElementById("state").value.trim();
-    const postalCode = document.getElementById("postalCode").value.trim();
-
-    // Validate required fields for signup
-    if (!email || !phone || !street || !city || !state) {
-        document.getElementById("authError").textContent = "Please fill in all required fields.";
-        return;
-    }
-
-    requestData.email = email;
-    requestData.phone = phone;
-    requestData.address = {
-        street: street,
-        city: city,
-        state: state,
-        postalCode: postalCode,
-        country: "Nigeria"
-    };
-} else {
-    // For login: send the 'username' value as 'username' to match backend expectation
-    requestData.username = username; // 👈 Send username for login
-}
-
 
     try {
         const response = await fetch('/api/auth', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestData)
         });
+
         const result = await response.json();
-        if (!response.ok) {
-            document.getElementById("authError").textContent = result.error || "An unexpected error occurred.";
-            return;
-        }
+
         if (result.success) {
-            const userData = result.user;
-            // Store user data in session storage for this browser session
-            sessionStorage.setItem('currentUser', JSON.stringify(userData));
-            localStorage.setItem('currentUserId', userData.id);
-            updateUIBasedOnUser(userData);
+            localStorage.setItem('user', JSON.stringify(result.user));
+            showNotification('Login successful!', 'success');
             closeAuthModal();
-            if (isLogin) {
-                showCustomAlert(`Welcome back, ${userData.username}!`, "Logged In");
-            } else {
-                showCustomAlert(`Welcome, ${userData.username}! Your account has been created.`, "Account Created");
-            }
+            updateUIForLoggedInUser(result.user);
         } else {
-            document.getElementById("authError").textContent = result.error || "Authentication failed.";
+            document.getElementById('authError').textContent = result.error || 'Authentication failed';
         }
-    } catch (error) {
-        console.error("Network error during authentication:", error);
-        document.getElementById("authError").textContent = "Network error. Please try again.";
+    } catch (err) {
+        console.error('Auth error:', err);
+        document.getElementById('authError').textContent = 'Authentication failed';
     }
 }
 // Simple password hashing simulation (NOT secure for real applications)

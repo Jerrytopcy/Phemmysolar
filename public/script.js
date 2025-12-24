@@ -42,66 +42,58 @@ function showAuthModal() {
 }
 // Close the login/signup modal
 function closeAuthModal() {
-      const modal = document.getElementById("authModal");
-      if (modal) {
-          modal.classList.remove("active");
-          document.body.style.overflow = "";
-      }
-  }
-  // Handle login or signup form submission
-  // Handle login or signup form submission
-  async function handleAuthSubmit(e) {
-      e.preventDefault();
-      const form = e.target;
-      const username = form.username.value.trim(); // This is what the user types in
-      const password = form.password.value; // Get the raw password
-      const isLogin = form.dataset.mode === "login";
+    const modal = document.getElementById("authModal");
+    if (modal) {
+        modal.classList.remove("active");
+        document.body.style.overflow = "";
+    }
+}
+// Handle login or signup form submission
+// Handle login or signup form submission
+async function handleAuthSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const username = form.username.value.trim();
+    const password = form.password.value; // Get the raw password
+    const isLogin = form.dataset.mode === "login";
 
-      if (!username || !password) {
-          document.getElementById("authError").textContent = "Username and password are required.";
-          return;
-      }
+    if (!username || !password) {
+        document.getElementById("authError").textContent = "Username and password are required.";
+        return;
+    }
 
-    requestData.password = password; // 👈 Send plain text password
+    // Prepare data based on whether it's login or signup
+    let requestData = {
+        username: username, // 👈 Send username
+        password: password, // 👈 Send plain password (NO HASHING!)
+        action: isLogin ? "login" : "signup"
+    };
 
-      // Prepare data based on whether it's login or signup
-      // Prepare data based on whether it's login or signup
-  let requestData = {
-      password: password, // 👈 We'll hash this below
-      action: isLogin ? "login" : "signup"
-  };
+    if (!isLogin) {
+        // For signup: collect extra fields
+        const email = document.getElementById("email").value.trim();
+        const phone = document.getElementById("phone").value.trim();
+        const street = document.getElementById("street").value.trim();
+        const city = document.getElementById("city").value.trim();
+        const state = document.getElementById("state").value.trim();
+        const postalCode = document.getElementById("postalCode").value.trim();
 
-  if (!isLogin) {
-      // For signup: use username as the 'username' field, and collect extra fields
-      requestData.username = username; // Keep this for signup
-      // Collect extra signup fields
-      const email = document.getElementById("email").value.trim();
-      const phone = document.getElementById("phone").value.trim();
-      const street = document.getElementById("street").value.trim();
-      const city = document.getElementById("city").value.trim();
-      const state = document.getElementById("state").value.trim();
-      const postalCode = document.getElementById("postalCode").value.trim();
+        // Validate required fields for signup
+        if (!email || !phone || !street || !city || !state) {
+            document.getElementById("authError").textContent = "Please fill in all required fields.";
+            return;
+        }
 
-      // Validate required fields for signup
-      if (!email || !phone || !street || !city || !state) {
-          document.getElementById("authError").textContent = "Please fill in all required fields.";
-          return;
-      }
-
-      requestData.email = email;
-      requestData.phone = phone;
-      requestData.address = {
-          street: street,
-          city: city,
-          state: state,
-          postalCode: postalCode,
-          country: "Nigeria"
-      };
-  } else {
-      // For login: send the 'username' value as 'username' to match backend expectation
-      requestData.username = username; // 👈 Send username for login
-  }
-
+        requestData.email = email;
+        requestData.phone = phone;
+        requestData.address = {
+            street: street,
+            city: city,
+            state: state,
+            postalCode: postalCode,
+            country: "Nigeria"
+        };
+    }
 
     try {
         const response = await fetch('/api/auth', {
@@ -118,7 +110,6 @@ function closeAuthModal() {
         }
         if (result.success) {
             const userData = result.user;
-            // Store user data in session storage for this browser session
             sessionStorage.setItem('currentUser', JSON.stringify(userData));
             localStorage.setItem('currentUserId', userData.id);
             updateUIBasedOnUser(userData);
@@ -136,17 +127,16 @@ function closeAuthModal() {
         document.getElementById("authError").textContent = "Network error. Please try again.";
     }
 }
-// Simple password hashing simulation (NOT secure for real applications)
 // In a real app, use a proper library like bcrypt on the server side.
 function hashPassword(password) {
-    // Simple, deterministic hash for demo purposes only (NOT SECURE)
+    // A basic hash using Array reduce - very weak, just for client-side simulation
     let hash = 0;
     for (let i = 0; i < password.length; i++) {
         const char = password.charCodeAt(i);
         hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
+        hash = hash & hash; // Convert to 32-bit integer
     }
-    return Math.abs(hash).toString(); // Ensure positive number
+    return hash.toString();
 }
 // --- END NEW: Custom Modal Functions for Login/Signup ---
 // Simulate user logout with confirmation

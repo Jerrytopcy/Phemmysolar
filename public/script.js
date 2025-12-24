@@ -49,6 +49,7 @@ function closeAuthModal() {
     }
 }
 // Handle login or signup form submission
+// Handle login or signup form submission
 async function handleAuthSubmit(e) {
     e.preventDefault();
     const form = e.target;
@@ -63,14 +64,13 @@ async function handleAuthSubmit(e) {
 
     // Prepare data based on whether it's login or signup
     let requestData = {
-        password: password
+        password: password,
+        action: isLogin ? "login" : "signup"
     };
 
     if (!isLogin) {
         // For signup: use username as the 'username' field, and collect extra fields
         requestData.username = username; // Keep this for signup
-        requestData.action = "signup";
-
         // Collect extra signup fields
         const email = document.getElementById("email").value.trim();
         const phone = document.getElementById("phone").value.trim();
@@ -94,11 +94,9 @@ async function handleAuthSubmit(e) {
             postalCode: postalCode,
             country: "Nigeria"
         };
-
     } else {
-        // For login: send the 'username' value as 'email' to match backend expectation
-        requestData.email = username; // 👈 THIS IS THE KEY CHANGE
-        requestData.action = "login";
+        // For login: send the 'username' value as 'username' to match backend expectation
+        requestData.username = username; // 👈 THIS IS THE KEY CHANGE - Send username, not email
     }
 
     try {
@@ -119,11 +117,9 @@ async function handleAuthSubmit(e) {
 
         if (result.success) {
             const userData = result.user;
-
             // Store user data in session storage for this browser session
             sessionStorage.setItem('currentUser', JSON.stringify(userData));
             localStorage.setItem('currentUserId', userData.id);
-
             updateUIBasedOnUser(userData);
             closeAuthModal();
 

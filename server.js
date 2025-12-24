@@ -350,6 +350,27 @@ app.post('/api/auth', async (req, res) => {
     res.status(500).json({ error: 'Authentication failed' });
   }
 });
+// --- ADMIN AUTHENTICATION ROUTE ---
+// POST admin login
+app.post('/api/admin/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    // Hardcoded admin credentials (Replace with environment variables in production!)
+    const ADMIN_USERNAME = 'admin';
+    const ADMIN_PASSWORD = 'your_admin_password_here'; // 👈 Replace this with your actual admin password
+
+    try {
+        if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+            // Return a success response. You can also generate a JWT token here for real applications.
+            res.json({ success: true, message: "Admin logged in successfully." });
+        } else {
+            res.status(401).json({ error: "Invalid admin credentials" });
+        }
+    } catch (err) {
+        console.error('Error in admin login route:', err);
+        res.status(500).json({ error: 'Admin login failed' });
+    }
+});
 
 // --- REMITA WEBHOOK ROUTE ---
 // POST handle Remita payment callback

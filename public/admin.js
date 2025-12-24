@@ -109,49 +109,50 @@ function showDashboard() {
 }
 
 // Handle login
+// Handle login
 async function handleLogin(e) {
-  e.preventDefault();
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
-  const errorMessage = document.getElementById("errorMessage");
+    e.preventDefault();
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    const errorMessage = document.getElementById("errorMessage");
 
-  try {
-    const response = await fetch('/api/auth', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: username,
-        password: password,
-        action: 'login'
-      }),
-    });
+    try {
+        const response = await fetch('/api/admin/login', { // 👈 New endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password
+            }),
+        });
 
-    const result = await response.json();
+        const result = await response.json();
 
-    if (result.success) {
-      isAuthenticated = true;
-      sessionStorage.setItem("adminAuth", "true");
-      showDashboard();
-      errorMessage.textContent = "";
-    } else {
-      errorMessage.textContent = result.error || "Invalid username or password";
+        if (result.success) {
+            isAuthenticated = true;
+            sessionStorage.setItem("adminAuth", "true");
+            showDashboard();
+            errorMessage.textContent = "";
+        } else {
+            errorMessage.textContent = result.error || "Invalid username or password";
+        }
+    } catch (error) {
+        console.error("Login error:", error);
+        errorMessage.textContent = "An error occurred. Please try again.";
     }
-  } catch (error) {
-    console.error("Login error:", error);
-    errorMessage.textContent = "An error occurred. Please try again.";
-  }
 }
 
 // Handle logout
+// Handle logout
 async function handleLogout() {
-  const confirmed = await showAdminConfirm("Are you sure you want to logout?", "Confirm Logout");
-  if (confirmed) {
-    isAuthenticated = false;
-    sessionStorage.removeItem("adminAuth");
-    showLogin();
-  }
+    const confirmed = await showAdminConfirm("Are you sure you want to logout?", "Confirm Logout");
+    if (confirmed) {
+        isAuthenticated = false;
+        sessionStorage.removeItem("adminAuth"); // 👈 This is correct
+        showLogin();
+    }
 }
 
 // Format a number as Nigerian Naira with commas

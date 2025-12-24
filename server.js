@@ -322,9 +322,10 @@ app.delete('/api/users/:id', async (req, res) => {
 // --- AUTHENTICATION ROUTE ---
 // POST login/signup
 // --- AUTHENTICATION ROUTE ---
-// POST login/signup
+const bcrypt = require('bcryptjs');
+
 app.post('/api/auth', async (req, res) => {
-    const { username, password, action } = req.body; // 'password' here is now the hashed password from the client
+    const { username, password, action } = req.body;
     try {
         if (action === 'login') {
             const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
@@ -332,18 +333,20 @@ app.post('/api/auth', async (req, res) => {
                 return res.status(401).json({ error: 'Invalid credentials' });
             }
             const user = result.rows[0];
-            // Compare the received hashed password with the stored hashed password
-            // Since we are hashing the password on the client, we compare hashes directly.
-            if (user.passwordHash !== password) { // 👈 This is now comparing two hashes
+            // Compare the plain text password with the stored hash
+            const isMatch = await bcrypt.compare(password, user.passwordHash);
+            if (!isMatch) {
                 return res.status(401).json({ error: 'Invalid credentials' });
             }
             res.json({ success: true, user });
         } else if (action === 'signup') {
             const { email, phone, address } = req.body;
-            // For signup, we store the hashed password received from the client
+            // Hash the password on the server
+            const saltRounds = 10;
+            const hashedPassword = await bcrypt.hash(password, saltRounds);
             const result = await pool.query(
                 'INSERT INTO users (username, passwordHash, email, phone, address, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-                [username, password, email, phone, address, 'user'] // 👈 Store the hashed password
+                [username, hashedPassword, email, phone, address, 'user']
             );
             res.json({ success: true, user: result.rows[0] });
         } else {

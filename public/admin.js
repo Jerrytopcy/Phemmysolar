@@ -145,7 +145,6 @@ async function handleLogin(e) {
 }
 
 // Handle logout
-// Handle logout
 async function handleLogout() {
     const confirmed = await showAdminConfirm("Are you sure you want to logout?", "Confirm Logout");
     if (confirmed) {

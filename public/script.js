@@ -103,8 +103,6 @@ if (!isLogin) {
     requestData.username = username; // 👈 Send username for login
 }
 
-// --- NEW: Hash the password for BOTH login and signup ---
-requestData.password = hashPassword(requestData.password); // 👈 Hash it here for both actions
 
     try {
         const response = await fetch('/api/auth', {
@@ -142,14 +140,14 @@ requestData.password = hashPassword(requestData.password); // 👈 Hash it here 
 // Simple password hashing simulation (NOT secure for real applications)
 // In a real app, use a proper library like bcrypt on the server side.
 function hashPassword(password) {
-    // A basic hash using Array reduce - very weak, just for client-side simulation
+    // Simple, deterministic hash for demo purposes only (NOT SECURE)
     let hash = 0;
     for (let i = 0; i < password.length; i++) {
         const char = password.charCodeAt(i);
         hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32-bit integer
+        hash = hash & hash;
     }
-    return hash.toString();
+    return Math.abs(hash).toString(); // Ensure positive number
 }
 // --- END NEW: Custom Modal Functions for Login/Signup ---
 // Simulate user logout with confirmation

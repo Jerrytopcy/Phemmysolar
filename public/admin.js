@@ -971,7 +971,7 @@ async function handleUserSubmit(e) {
   const userId = document.getElementById("userId").value;
   const userData = {
     username: document.getElementById("username").value,
-    passwordHash: hashPassword(document.getElementById("password").value), // Use your existing hashPassword function
+    password: document.getElementById("password").value,
     email: document.getElementById("email").value,
     phone: document.getElementById("phone").value,
     address: {
@@ -1075,18 +1075,7 @@ async function deleteUser(userId) {
   }
 }
 
-// Simple password hashing simulation (NOT secure for real applications)
-// In a real app, use a proper library like bcrypt on the server side.
-function hashPassword(password) {
-    // A basic hash using Array reduce - very weak, just for client-side simulation
-    let hash = 0;
-    for (let i = 0; i < password.length; i++) {
-        const char = password.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32-bit integer
-    }
-    return hash.toString();
-}
+
 
 // Initialize admin panel
 document.addEventListener("DOMContentLoaded", () => {

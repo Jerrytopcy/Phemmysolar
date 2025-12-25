@@ -491,3 +491,32 @@ app.get('/health', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
+// Add this temporary route to server.js for testing (remove after testing)
+app.get('/test-admin-password', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, username, passwordhash FROM users WHERE username = $1 AND role = $2', ['admin', 'admin']);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Admin user not found' });
+        }
+
+        const admin = result.rows[0];
+        console.log('Found admin:', admin);
+
+        // Test comparing a known password (replace 'your_actual_admin_password_here' with the real one)
+        const testPassword = 'admin123'; // <-- Replace this with the actual password you expect for 'admin'
+        const isMatch = await bcrypt.compare(testPassword, admin.passwordhash);
+        console.log('Password match:', isMatch);
+
+        res.json({
+            success: true,
+            adminId: admin.id,
+            username: admin.username,
+            passwordHash: admin.passwordhash,
+            passwordMatches: isMatch
+        });
+    } catch (err) {
+        console.error('Test error:', err);
+        res.status(500).json({ error: 'Test failed', details: err.message });
+    }
+});

@@ -331,38 +331,41 @@ app.post('/api/auth', async (req, res) => {
     console.log('Received auth request:', { username, action });
 
     try {
-        if (action === 'login') {
-            // Validate input
-            if (!username || !password) {
-                return res.status(400).json({ error: 'Username and password are required' });
-            }
+       if (action === 'login') {
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+    }
 
-            const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-            if (result.rows.length === 0) {
-                return res.status(401).json({ error: 'Invalid credentials' });
-            }
+    const result = await pool.query(
+        'SELECT * FROM users WHERE username = $1',
+        [username]
+    );
 
-            const user = result.rows[0];
+    if (result.rows.length === 0) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-            // Log the user found for debugging
-            console.log('Found user for login:', { id: user.id, username: user.username });
+    const user = result.rows[0];
 
-            // Check if password is provided
-            if (!password) {
-                return res.status(400).json({ error: 'Password is required' });
-            }
+    console.log('Login attempt:', {
+        id: user.id,
+        username: user.username,
+        hashExists: !!user.passwordhash
+    });
 
-            // Compare the plain text password with the stored hash
-            const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!user.passwordhash || typeof user.passwordhash !== 'string') {
+        return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-            if (!isMatch) {
-                return res.status(401).json({ error: 'Invalid credentials' });
-            }
+    const isMatch = await bcrypt.compare(password, user.passwordhash);
 
-            // Success - send user data
-            res.json({ success: true, user });
+    if (!isMatch) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-        } else if (action === 'signup') {
+    return res.json({ success: true, user });
+}
+ else if (action === 'signup') {
             const { email, phone, address } = req.body;
 
             // Validate required fields for signup
@@ -390,9 +393,7 @@ app.post('/api/auth', async (req, res) => {
         console.error('Detailed error in auth route:', err); // Log the full error object
         res.status(500).json({ error: 'Authentication failed', details: err.message }); // Send more detail to client for debugging
     }
-    // Inside the login part of your /api/auth route
-console.log("Login attempt for:", username);
-console.log("Stored password hash (DB):", user.passwordHash); // Should start with $2a$ or similar
+
 });
 // --- ADMIN AUTHENTICATION ROUTE ---
 // POST admin login

@@ -400,22 +400,48 @@ app.post('/api/auth', async (req, res) => {
 app.post('/api/admin/login', async (req, res) => {
     const { username, password } = req.body;
 
-    // Hardcoded admin credentials (Replace with environment variables in production!)
-    const ADMIN_USERNAME = 'admin';
-    const ADMIN_PASSWORD = 'your_admin_password_here'; // 👈 Replace this with your actual admin password
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+    }
 
     try {
-        if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-            // Return a success response. You can also generate a JWT token here for real applications.
-            res.json({ success: true, message: "Admin logged in successfully." });
-        } else {
-            res.status(401).json({ error: "Invalid admin credentials" });
+        const result = await pool.query(
+            'SELECT id, username, passwordhash, role FROM users WHERE username = $1 AND role = $2',
+            [username, 'admin']
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(401).json({ error: 'Invalid admin credentials' });
         }
+
+        const admin = result.rows[0];
+
+        if (!admin.passwordhash || typeof admin.passwordhash !== 'string') {
+            return res.status(401).json({ error: 'Invalid admin credentials' });
+        }
+
+        const isMatch = await bcrypt.compare(password, admin.passwordhash);
+
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Invalid admin credentials' });
+        }
+
+        return res.json({
+            success: true,
+            message: 'Admin logged in successfully',
+            admin: {
+                id: admin.id,
+                username: admin.username,
+                role: admin.role
+            }
+        });
+
     } catch (err) {
-        console.error('Error in admin login route:', err);
+        console.error('Admin login error:', err);
         res.status(500).json({ error: 'Admin login failed' });
     }
 });
+
 
 // --- REMITA WEBHOOK ROUTE ---
 // POST handle Remita payment callback

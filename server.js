@@ -5,6 +5,12 @@ const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// --- ADD SENDGRID SETUP ---
+const sgMail = require('@sendgrid/mail');
+
+// Set your SendGrid API key (you can also use process.env.SENDGRID_API_KEY)
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// --- END SENDGRID SETUP ---
 
 // Serve static files from 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
@@ -396,6 +402,136 @@ app.post('/api/auth', async (req, res) => {
 
 });
 // --- ADMIN AUTHENTICATION ROUTE ---
+
+// --- FORGOT PASSWORD ROUTE ---
+app.post('/api/forgot-password', async (req, res) => {
+    const { username, email } = req.body;
+
+    // Validate input
+    if (!username || !email) {
+        return res.status(400).json({ error: 'Username and email are required.' });
+    }
+
+    try {
+        // Find the user by username and email
+        const result = await pool.query(
+            'SELECT id, username, email FROM users WHERE username = $1 AND email = $2',
+            [username, email]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found with the provided username and email.' });
+        }
+
+        const user = result.rows[0];
+
+        // Generate a unique reset token (for demo, we'll use a simple timestamp-based token)
+        // In a real app, use a cryptographically secure random string
+        const resetToken = `${user.id}:${Date.now()}:${Math.random().toString(36).substr(2)}`;
+        const resetTokenExpiry = Date.now() + 3600000; // 1 hour from now
+
+        // Save the token and expiry in the database (you need to add these columns to your users table)
+        // If you haven't added them yet, run this SQL in your PostgreSQL database:
+        /*
+        ALTER TABLE users ADD COLUMN reset_token VARCHAR;
+        ALTER TABLE users ADD COLUMN reset_token_expiry BIGINT;
+        */
+
+        await pool.query(
+            'UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE id = $3',
+            [resetToken, resetTokenExpiry, user.id]
+        );
+
+        // Construct the reset link
+        const resetLink = `https://phemmysolar-production.up.railway.app/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+        // Send the email using SendGrid
+        const msg = {
+            to: email,
+            from: 'noreply@phemmysolar.com', // Use a verified sender address in SendGrid
+            subject: 'Password Reset Request',
+            text: `Hello ${username},\n\nYou requested to reset your password. Please click the link below to reset it:\n${resetLink}\n\nThis link will expire in 1 hour.\n\nIf you did not request this, please ignore this email.`,
+            html: `<p>Hello ${username},</p>
+                   <p>You requested to reset your password. Please click the link below to reset it:</p>
+                   <p><a href="${resetLink}">${resetLink}</a></p>
+                   <p>This link will expire in 1 hour.</p>
+                   <p>If you did not request this, please ignore this email.</p>`
+        };
+
+        await sgMail.send(msg);
+
+        console.log(`Password reset email sent to ${email}`);
+
+        // Respond to client
+        res.json({
+            success: true,
+            message: 'A password reset link has been sent to your email.'
+        });
+
+    } catch (err) {
+        console.error('Error in forgot password route:', err);
+        res.status(500).json({ error: 'An error occurred while processing your request.' });
+    }
+});
+// --- END FORGOT PASSWORD ROUTE ---
+// --- RESET PASSWORD ROUTE ---
+app.post('/api/reset-password', async (req, res) => {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+        return res.status(400).json({ error: 'Token and new password are required.' });
+    }
+
+    try {
+        // Split the token to get user ID and validate
+        const parts = token.split(':');
+        if (parts.length !== 3) {
+            return res.status(400).json({ error: 'Invalid token format.' });
+        }
+
+        const userId = parseInt(parts[0]);
+        const expiry = parseInt(parts[1]);
+
+        if (isNaN(userId) || isNaN(expiry)) {
+            return res.status(400).json({ error: 'Invalid token.' });
+        }
+
+        // Check if token is expired
+        if (Date.now() > expiry) {
+            return res.status(400).json({ error: 'Token has expired.' });
+        }
+
+        // Verify token against database
+        const result = await pool.query(
+            'SELECT id FROM users WHERE id = $1 AND reset_token = $2',
+            [userId, token]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(400).json({ error: 'Invalid or expired token.' });
+        }
+
+        // Hash the new password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+        // Update the user's password and clear the reset token
+        await pool.query(
+            'UPDATE users SET passwordHash = $1, reset_token = NULL, reset_token_expiry = NULL WHERE id = $2',
+            [hashedPassword, userId]
+        );
+
+        res.json({
+            success: true,
+            message: 'Password reset successfully.'
+        });
+
+    } catch (err) {
+        console.error('Error resetting password:', err);
+        res.status(500).json({ error: 'An error occurred while resetting your password.' });
+    }
+});
+// --- END RESET PASSWORD ROUTE ---
 // POST admin login
 app.post('/api/admin/login', async (req, res) => {
     const { username, password } = req.body;
@@ -493,30 +629,3 @@ app.listen(PORT, () => {
 });
 
 // Add this temporary route to server.js for testing (remove after testing)
-app.get('/test-admin-password', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT id, username, passwordhash FROM users WHERE username = $1 AND role = $2', ['admin', 'admin']);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Admin user not found' });
-        }
-
-        const admin = result.rows[0];
-        console.log('Found admin:', admin);
-
-        // Test comparing a known password (replace 'your_actual_admin_password_here' with the real one)
-        const testPassword = 'admin123'; // <-- Replace this with the actual password you expect for 'admin'
-        const isMatch = await bcrypt.compare(testPassword, admin.passwordhash);
-        console.log('Password match:', isMatch);
-
-        res.json({
-            success: true,
-            adminId: admin.id,
-            username: admin.username,
-            passwordHash: admin.passwordhash,
-            passwordMatches: isMatch
-        });
-    } catch (err) {
-        console.error('Test error:', err);
-        res.status(500).json({ error: 'Test failed', details: err.message });
-    }
-});

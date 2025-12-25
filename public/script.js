@@ -1155,7 +1155,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 // Add event listener for Forgot Password link
 const forgotPasswordLink = document.getElementById("forgotPasswordLink");
-// Replace the previous forgot password link event listener with:
 if (forgotPasswordLink) {
     forgotPasswordLink.addEventListener("click", (e) => {
         e.preventDefault();
@@ -1330,48 +1329,7 @@ if (checkStatusBtn) {
     checkStatusBtn.addEventListener("click", checkPaymentStatus);
 }
 // Function to handle forgot password
-function handleForgotPassword() {
-    const username = document.getElementById("username").value.trim();
-    if (!username) {
-        showCustomAlert("Please enter your username.", "Error");
-        return;
-    }
-    // Get all users
-    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    // Find user by username
-    const user = Object.values(allUsers).find(u => u.username === username);
-    if (!user) {
-        showCustomAlert("Username not found. Please check and try again.", "User Not Found");
-        return;
-    }
-    // For demo purposes, we'll generate a new random password
-    // In a real application, you would send an email with a reset link
-    const newPassword = generateRandomPassword(8);
-    const hashedPassword = hashPassword(newPassword);
-    // Update user's password
-    user.passwordHash = hashedPassword;
-    allUsers[user.id] = user;
-    localStorage.setItem('users', JSON.stringify(allUsers));
-    // Show success message with the new password
-    showCustomAlert(
-        `Your password has been reset successfully!
-New Password: ${newPassword}
-Please change this password immediately after logging in.`,
-        "Password Reset",
-        "success"
-    );
-    // Clear the password field
-    document.getElementById("password").value = "";
-}
-// Helper function to generate random password
-function generateRandomPassword(length) {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz013456789!@#$%^&*()';
-    let password = '';
-    for (let i = 0; i < length; i++) {
-        password += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return password;
-}
+
 // Add this function to your script.js
 function showForgotPasswordModal() {
     const modal = document.getElementById("forgotPasswordModal");

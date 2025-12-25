@@ -109,7 +109,6 @@ function showDashboard() {
 }
 
 // Handle login
-// Handle login
 async function handleLogin(e) {
     e.preventDefault();
     const username = document.getElementById("username").value;
@@ -117,7 +116,7 @@ async function handleLogin(e) {
     const errorMessage = document.getElementById("errorMessage");
 
     try {
-        const response = await fetch('/api/admin/login', { // 👈 New endpoint
+        const response = await fetch('/api/admin/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -136,6 +135,7 @@ async function handleLogin(e) {
             showDashboard();
             errorMessage.textContent = "";
         } else {
+            // Show the error message returned by the server
             errorMessage.textContent = result.error || "Invalid username or password";
         }
     } catch (error) {

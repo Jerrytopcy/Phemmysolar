@@ -17,6 +17,12 @@ function initializeUserSession() {
     }
     updateUIBasedOnUser(user);
 }
+// Add event listener for Forgot Password Form
+const forgotPasswordForm = document.getElementById("forgotPasswordForm");
+if (forgotPasswordForm) {
+    forgotPasswordForm.addEventListener("submit", handleForgotPasswordSubmit);
+}
+
 function formatDate(dateString) {
     try {
         return new Date(dateString).toLocaleDateString('en-NG', { 

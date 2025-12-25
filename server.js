@@ -18,7 +18,7 @@ const cors = require('cors');
 
 // Enable CORS for development (allow all origins)
 app.use(cors({
-    origin: 'http://localhost:3000', // Or '*' for dev only
+    origin: true, // Or '*' for dev only
     credentials: true
 }));
 // --- END ADDITION ---
@@ -273,19 +273,19 @@ app.get('/api/users/:id', async (req, res) => {
 });
 
 // POST create user
-app.post('/api/users', async (req, res) => {
-  const { username, passwordHash, email, phone, address, role } = req.body;
-  try {
-    const result = await pool.query(
-      'INSERT INTO users (username, passwordHash, email, phone, address, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [username, passwordHash, email, phone, address, role]
-    );
-    res.json({ success: true, user: result.rows[0] });
-  } catch (err) {
-    console.error('Error creating user:', err);
-    res.status(500).json({ error: 'Failed to create user' });
-  }
-});
+// app.post('/api/users', async (req, res) => {
+//   const { username, passwordHash, email, phone, address, role } = req.body;
+//   try {
+//     const result = await pool.query(
+//       'INSERT INTO users (username, passwordHash, email, phone, address, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+//       [username, passwordHash, email, phone, address, role]
+//     );
+//     res.json({ success: true, user: result.rows[0] });
+//   } catch (err) {
+//     console.error('Error creating user:', err);
+//     res.status(500).json({ error: 'Failed to create user' });
+//   }
+// });
 
 // PUT update user
 app.put('/api/users/:id', async (req, res) => {
@@ -390,6 +390,9 @@ app.post('/api/auth', async (req, res) => {
         console.error('Detailed error in auth route:', err); // Log the full error object
         res.status(500).json({ error: 'Authentication failed', details: err.message }); // Send more detail to client for debugging
     }
+    // Inside the login part of your /api/auth route
+console.log("Login attempt for:", username);
+console.log("Stored password hash (DB):", user.passwordHash); // Should start with $2a$ or similar
 });
 // --- ADMIN AUTHENTICATION ROUTE ---
 // POST admin login

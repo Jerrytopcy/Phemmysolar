@@ -1307,56 +1307,74 @@ let currentImageIndex = 0;
 
 // Function to handle updating user's address
 function handleUpdateAddress(e) {
-    e.preventDefault();
-    const token = localStorage.getItem('token');
-    if (!token) {
-        showCustomAlert("Please log in to update your address.", "Login Required");
-        return;
+  e.preventDefault();
+  const token = localStorage.getItem('token');
+  if (!token) {
+    showCustomAlert("Please log in to update your address.", "Login Required");
+    return;
+  }
+
+  // Get the new address values
+  const street = document.getElementById("editStreet").value.trim();
+  const city = document.getElementById("editCity").value.trim();
+  const state = document.getElementById("editState").value.trim();
+  const postalCode = document.getElementById("editPostalCode").value.trim();
+
+  // Validate required fields
+  if (!street || !city || !state) {
+    showCustomAlert("Please fill in all required address fields.", "Address Required", "error");
+    return;
+  }
+
+  // Construct the address object
+  const address = {
+    street: street,
+    city: city,
+    state: state,
+    postalCode: postalCode,
+    country: "Nigeria" // You could make this dynamic if needed
+  };
+
+  // Send update to backend
+  fetch('/api/user/address', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ address }) // Send the address object
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Failed to update address');
+    }
+    return response.json();
+  })
+  .then(data => {
+    // Success message
+    showCustomAlert("Your delivery address has been updated successfully.", "Address Updated", "success");
+
+    // Optionally, update the sessionStorage with the new address
+    let currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (currentUser) {
+      currentUser.address = address; // Update the address in the stored user object
+      sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
     }
 
-    // Get the new address values
-    const street = document.getElementById("editStreet").value.trim();
-    const city = document.getElementById("editCity").value.trim();
-    const state = document.getElementById("editState").value.trim();
-    const postalCode = document.getElementById("editPostalCode").value.trim();
+    // Also, update the UI elements immediately
+    const userEmailElement = document.getElementById('userEmail');
+    const userPhoneElement = document.getElementById('userPhone');
+    if (userEmailElement) userEmailElement.textContent = currentUser.email || "Not provided";
+    if (userPhoneElement) userPhoneElement.textContent = currentUser.phone || "Not provided";
 
-    // Validate required fields
-    if (!street || !city || !state) {
-        showCustomAlert("Please fill in all required address fields.", "Address Required", "error");
-        return;
-    }
+    // If you want to reload the entire account page to reflect changes, uncomment this:
+    // loadOrderHistory(); // This will re-fetch the user profile as well
 
-    // Send update to backend
-    fetch('/api/user/address', {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-            address: {
-                street: street,
-                city: city,
-                state: state,
-                postalCode: postalCode,
-                country: "Nigeria"
-            }
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Failed to update address');
-        }
-        return response.json();
-    })
-    .then(data => {
-        // Success message
-        showCustomAlert("Your delivery address has been updated successfully.", "Address Updated", "success");
-    })
-    .catch(error => {
-        console.error("Error updating address:", error);
-        showCustomAlert("Failed to update address. Please try again.", "Error");
-    });
+  })
+  .catch(error => {
+    console.error("Error updating address:", error);
+    showCustomAlert("Failed to update address. Please try again.", "Error");
+  });
 }
 
 // View full article

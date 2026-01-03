@@ -509,17 +509,13 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
         o.delivery_address,
         json_agg(
           json_build_object(
-        'productId', oi.product_id,
-        'productName', p.name,
-        'productImage', p.images[1],   
-        'category', p.category,
-        'quantity', oi.quantity,
-        'price', oi.price
-      )
+            'productId', oi.product_id,
+            'quantity', oi.quantity,
+            'price', oi.price
+          )
         ) AS items
       FROM orders o
       JOIN order_items oi ON oi.order_id = o.id
-      JOIN products p ON p.id = oi.product_id 
       WHERE o.user_id = $1
       GROUP BY o.id
       ORDER BY o.date DESC

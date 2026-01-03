@@ -496,36 +496,26 @@ async function handleAuthSubmit(e) {
             return;
         }
 
-        if (result.token) {
-          localStorage.setItem('token', result.token);
+        if (result.success) {
+            const userData = result.user;
 
-          // Fetch full user profile
-          const profileResponse = await fetch('/api/user', {
-              headers: {
-                  Authorization: `Bearer ${result.token}`
-              }
-          });
+            // Store token if provided
+            if (result.token) {
+                localStorage.setItem('token', result.token);
+            }
 
-          if (profileResponse.ok) {
-              const fullUser = await profileResponse.json();
-              sessionStorage.setItem('currentUser', JSON.stringify(fullUser));
-          }
-          // Update UI elements with user contact info
-          const userEmailElement = document.getElementById('userEmail');
-          const userPhoneElement = document.getElementById('userPhone');
+            // Store user data in sessionStorage for UI purposes only
+            sessionStorage.setItem('currentUser', JSON.stringify(userData));
 
-          if (userEmailElement) userEmailElement.textContent = fullUser.email || "Not provided";
-          if (userPhoneElement) userPhoneElement.textContent = fullUser.phone || "Not provided";
-          updateUIBasedOnUser();
-          closeAuthModal();
+            // Update UI
+            updateUIBasedOnUser();
+            closeAuthModal();
 
-
-                if (isLogin) {
-          showCustomAlert(`Welcome back, ${fullUser.username}!`, "Logged In");
-          } else {
-              showCustomAlert(`Welcome, ${fullUser.username}! Your account has been created.`, "Account Created");
-          }
-
+            if (isLogin) {
+                showCustomAlert(`Welcome back, ${userData.username}!`, "Logged In");
+            } else {
+                showCustomAlert(`Welcome, ${userData.username}! Your account has been created.`, "Account Created");
+            }
         } else {
             document.getElementById("authError").textContent = result.error || "Authentication failed.";
         }
@@ -955,69 +945,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const accountLink = document.getElementById('accountLink');
-if (accountLink) {
-  accountLink.addEventListener('click', async (e) => {
-    e.preventDefault(); // Prevent default link behavior
-
-    // First, ensure we have the user's token
-    const token = localStorage.getItem('token');
-    if (!token) {
-      showCustomAlert("Please log in to view your account.", "Login Required");
-      showAuthModal();
-      return;
+    if (accountLink) {
+        accountLink.addEventListener('click', (e) => {
+            e.preventDefault(); // Prevent default link behavior
+            // Load order history
+            loadOrderHistory();
+            // Show account modal if it exists
+            const accountModal = document.getElementById("accountModal");
+            if (accountModal) {
+                accountModal.classList.add("active");
+                document.body.style.overflow = "hidden";
+            }
+        });
     }
-
-    try {
-      // Fetch the user profile
-      const userResponse = await fetch('/api/user', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (!userResponse.ok) {
-        throw new Error('Failed to load user profile');
-      }
-
-      const user = await userResponse.json();
-
-      // Store the user in sessionStorage for later use (optional, but good practice)
-      sessionStorage.setItem('currentUser', JSON.stringify(user));
-
-      // Update the UI elements with the user's contact info
-      const userEmailElement = document.getElementById('userEmail');
-      const userPhoneElement = document.getElementById('userPhone');
-
-      if (userEmailElement) userEmailElement.textContent = user.email || "Not provided";
-      if (userPhoneElement) userPhoneElement.textContent = user.phone || "Not provided";
-
-      // Also populate the edit address form with current values (if they exist)
-      const editStreet = document.getElementById('editStreet');
-      const editCity = document.getElementById('editCity');
-      const editState = document.getElementById('editState');
-      const editPostalCode = document.getElementById('editPostalCode');
-
-      if (editStreet && user.address?.street) editStreet.value = user.address.street;
-      if (editCity && user.address?.city) editCity.value = user.address.city;
-      if (editState && user.address?.state) editState.value = user.address.state;
-      if (editPostalCode && user.address?.postalCode) editPostalCode.value = user.address.postalCode;
-
-      // Now load the order history
-      await loadOrderHistory();
-
-      // Show the account modal
-      const accountModal = document.getElementById("accountModal");
-      if (accountModal) {
-        accountModal.classList.add("active");
-        document.body.style.overflow = "hidden";
-      }
-
-    } catch (error) {
-      console.error("Error loading user profile:", error);
-      showCustomAlert("Failed to load your profile. Please try again.", "Error");
-    }
-  });
-}
 
     // NEW: Add event listener for Account Modal Close Button
     const accountModalCloseBtn = document.getElementById("accountModal");
@@ -1307,74 +1247,56 @@ let currentImageIndex = 0;
 
 // Function to handle updating user's address
 function handleUpdateAddress(e) {
-  e.preventDefault();
-  const token = localStorage.getItem('token');
-  if (!token) {
-    showCustomAlert("Please log in to update your address.", "Login Required");
-    return;
-  }
-
-  // Get the new address values
-  const street = document.getElementById("editStreet").value.trim();
-  const city = document.getElementById("editCity").value.trim();
-  const state = document.getElementById("editState").value.trim();
-  const postalCode = document.getElementById("editPostalCode").value.trim();
-
-  // Validate required fields
-  if (!street || !city || !state) {
-    showCustomAlert("Please fill in all required address fields.", "Address Required", "error");
-    return;
-  }
-
-  // Construct the address object
-  const address = {
-    street: street,
-    city: city,
-    state: state,
-    postalCode: postalCode,
-    country: "Nigeria" // You could make this dynamic if needed
-  };
-
-  // Send update to backend
-  fetch('/api/user/address', {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({ address }) // Send the address object
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error('Failed to update address');
-    }
-    return response.json();
-  })
-  .then(data => {
-    // Success message
-    showCustomAlert("Your delivery address has been updated successfully.", "Address Updated", "success");
-
-    // Optionally, update the sessionStorage with the new address
-    let currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (currentUser) {
-      currentUser.address = address; // Update the address in the stored user object
-      sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+    e.preventDefault();
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showCustomAlert("Please log in to update your address.", "Login Required");
+        return;
     }
 
-    // Also, update the UI elements immediately
-    const userEmailElement = document.getElementById('userEmail');
-    const userPhoneElement = document.getElementById('userPhone');
-    if (userEmailElement) userEmailElement.textContent = currentUser.email || "Not provided";
-    if (userPhoneElement) userPhoneElement.textContent = currentUser.phone || "Not provided";
+    // Get the new address values
+    const street = document.getElementById("editStreet").value.trim();
+    const city = document.getElementById("editCity").value.trim();
+    const state = document.getElementById("editState").value.trim();
+    const postalCode = document.getElementById("editPostalCode").value.trim();
 
-    // If you want to reload the entire account page to reflect changes, uncomment this:
-    // loadOrderHistory(); // This will re-fetch the user profile as well
+    // Validate required fields
+    if (!street || !city || !state) {
+        showCustomAlert("Please fill in all required address fields.", "Address Required", "error");
+        return;
+    }
 
-  })
-  .catch(error => {
-    console.error("Error updating address:", error);
-    showCustomAlert("Failed to update address. Please try again.", "Error");
-  });
+    // Send update to backend
+    fetch('/api/user/address', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            address: {
+                street: street,
+                city: city,
+                state: state,
+                postalCode: postalCode,
+                country: "Nigeria"
+            }
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to update address');
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Success message
+        showCustomAlert("Your delivery address has been updated successfully.", "Address Updated", "success");
+    })
+    .catch(error => {
+        console.error("Error updating address:", error);
+        showCustomAlert("Failed to update address. Please try again.", "Error");
+    });
 }
 
 // View full article

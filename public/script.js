@@ -180,7 +180,7 @@ async function proceedToCheckout() {
                 total += itemTotal;
                 orderItems.push({
                     productId: product.id,
-                    productName: product.name,
+                    name: product.name,
                     price: product.price,
                     quantity: cartItem.quantity,
                     itemTotal: itemTotal
@@ -312,7 +312,7 @@ async function loadOrderHistory() {
 <img src="${imageUrl}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
 </div>
 <div class="order-item-details">
-< class="order-item-name">${productName}</div>
+<div class="order-item-name">${item.name}</div>
 <div class="order-item-meta">
 <span class="order-item-qty">Qty: ${item.quantity}</span>
 <span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>

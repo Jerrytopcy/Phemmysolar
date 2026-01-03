@@ -738,25 +738,25 @@ app.post('/api/webhook/remita', async (req, res) => {
 
 // --- CHECKOUT ROUTE ---
 // POST initiate checkout
-app.post('/api/checkout', async (req, res) => {
-  const { productId, email } = req.body;
-  try {
-    const product = await pool.query('SELECT * FROM products WHERE id = $1', [productId]);
-    if (product.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
+// app.post('/api/checkout', async (req, res) => {
+//   const { productId, email } = req.body;
+//   try {
+//     const product = await pool.query('SELECT * FROM products WHERE id = $1', [productId]);
+//     if (product.rows.length === 0) {
+//       return res.status(404).json({ error: 'Product not found' });
+//     }
 
-    const order = await pool.query(
-      'INSERT INTO orders (product_id, customer_email, status) VALUES ($1, $2, $3) RETURNING *',
-      [productId, email, 'pending']
-    );
+//     const order = await pool.query(
+//       'INSERT INTO orders (product_id, customer_email, status) VALUES ($1, $2, $3) RETURNING *',
+//       [productId, email, 'pending']
+//     );
 
-    res.json({ orderId: order.rows[0].id, message: 'Checkout initiated' });
-  } catch (err) {
-    console.error('Error in checkout route:', err);
-    res.status(500).json({ error: 'Checkout failed' });
-  }
-});
+//     res.json({ orderId: order.rows[0].id, message: 'Checkout initiated' });
+//   } catch (err) {
+//     console.error('Error in checkout route:', err);
+//     res.status(500).json({ error: 'Checkout failed' });
+//   }
+// });
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',

@@ -496,20 +496,24 @@ async function handleAuthSubmit(e) {
             return;
         }
 
-        if (result.success) {
-            const userData = result.user;
+        if (result.token) {
+          localStorage.setItem('token', result.token);
 
-            // Store token if provided
-            if (result.token) {
-                localStorage.setItem('token', result.token);
-            }
+          // Fetch full user profile
+          const profileResponse = await fetch('/api/user', {
+              headers: {
+                  Authorization: `Bearer ${result.token}`
+              }
+          });
 
-            // Store user data in sessionStorage for UI purposes only
-            sessionStorage.setItem('currentUser', JSON.stringify(userData));
+          if (profileResponse.ok) {
+              const fullUser = await profileResponse.json();
+              sessionStorage.setItem('currentUser', JSON.stringify(fullUser));
+          }
 
-            // Update UI
-            updateUIBasedOnUser();
-            closeAuthModal();
+      updateUIBasedOnUser();
+      closeAuthModal();
+
 
             if (isLogin) {
                 showCustomAlert(`Welcome back, ${userData.username}!`, "Logged In");

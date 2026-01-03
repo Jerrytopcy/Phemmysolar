@@ -36,59 +36,6 @@ async function addToCart(productId) {
         showCustomAlert("Failed to add product to cart. Please try again.", "Error");
     }
 }
-// Fetch profile after login/signup
-const profileResponse = await fetch('/api/user', {
-    headers: { Authorization: `Bearer ${result.token}` }
-});
-
-if (profileResponse.ok) {
-    const fullUser = await profileResponse.json();
-    sessionStorage.setItem('currentUser', JSON.stringify(fullUser));
-}
-
-
-document.addEventListener('DOMContentLoaded', () => {
-    const currentUserJSON = sessionStorage.getItem('currentUser');
-    if (!currentUserJSON) return; // no user logged in
-
-    const user = JSON.parse(currentUserJSON);
-
-    // Populate contact info
-    const emailSpan = document.getElementById('userEmail');
-    const phoneSpan = document.getElementById('userPhone');
-
-    if (emailSpan) emailSpan.textContent = user.email || '';
-    if (phoneSpan) phoneSpan.textContent = user.phone || '';
-
-    // Populate address form
-    if (user.address) {
-        const { street, city, state, postalCode } = user.address;
-        const streetInput = document.getElementById('editStreet');
-        const cityInput = document.getElementById('editCity');
-        const stateInput = document.getElementById('editState');
-        const postalInput = document.getElementById('editPostalCode');
-
-        if (streetInput) streetInput.value = street || '';
-        if (cityInput) cityInput.value = city || '';
-        if (stateInput) stateInput.value = state || '';
-        if (postalInput) postalInput.value = postalCode || '';
-    }
-});
-
-const authSection = document.getElementById('authSection');
-const loginBtn = document.getElementById('loginBtn');
-const logoutBtn = document.getElementById('logoutBtn');
-const accountLink = document.getElementById('accountLink');
-
-if (sessionStorage.getItem('currentUser')) {
-    if (loginBtn) loginBtn.style.display = 'none';
-    if (logoutBtn) logoutBtn.style.display = 'inline-block';
-    if (accountLink) accountLink.style.display = 'inline-block';
-} else {
-    if (loginBtn) loginBtn.style.display = 'inline-block';
-    if (logoutBtn) logoutBtn.style.display = 'none';
-    if (accountLink) accountLink.style.display = 'none';
-}
 
 
 // View Cart
@@ -1235,6 +1182,62 @@ async function loadLatestNews() {
         newsContainer.innerHTML = '<p class="error-message">Failed to load news.</p>';
     }
 }
+
+// Fetch profile after login/signup
+const profileResponse = await fetch('/api/user', {
+    headers: { Authorization: `Bearer ${result.token}` }
+});
+
+if (profileResponse.ok) {
+    const fullUser = await profileResponse.json();
+    sessionStorage.setItem('currentUser', JSON.stringify(fullUser));
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    const currentUserJSON = sessionStorage.getItem('currentUser');
+    if (!currentUserJSON) return; // no user logged in
+
+    const user = JSON.parse(currentUserJSON);
+
+    // Populate contact info
+    const emailSpan = document.getElementById('userEmail');
+    const phoneSpan = document.getElementById('userPhone');
+
+    if (emailSpan) emailSpan.textContent = user.email || '';
+    if (phoneSpan) phoneSpan.textContent = user.phone || '';
+
+    // Populate address form
+    if (user.address) {
+        const { street, city, state, postalCode } = user.address;
+        const streetInput = document.getElementById('editStreet');
+        const cityInput = document.getElementById('editCity');
+        const stateInput = document.getElementById('editState');
+        const postalInput = document.getElementById('editPostalCode');
+
+        if (streetInput) streetInput.value = street || '';
+        if (cityInput) cityInput.value = city || '';
+        if (stateInput) stateInput.value = state || '';
+        if (postalInput) postalInput.value = postalCode || '';
+    }
+});
+
+const authSection = document.getElementById('authSection');
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const accountLink = document.getElementById('accountLink');
+
+if (sessionStorage.getItem('currentUser')) {
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'inline-block';
+    if (accountLink) accountLink.style.display = 'inline-block';
+} else {
+    if (loginBtn) loginBtn.style.display = 'inline-block';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    if (accountLink) accountLink.style.display = 'none';
+}
+
+
 
 // Search functionality
 function handleSearch(e) {

@@ -7,6 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 // --- ADD SENDGRID SETUP ---
 const sgMail = require('@sendgrid/mail');
+const jwt = require('jsonwebtoken');
 
 // Set your SendGrid API key (you can also use process.env.SENDGRID_API_KEY)
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -32,6 +33,23 @@ app.use(cors({
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+
+
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No token' });
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_secret');
+    req.user = decoded;
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+};
 
 // --- PRODUCTS ROUTES ---
 // GET all products

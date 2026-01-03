@@ -124,7 +124,6 @@ async function handleAuthSubmit(e) {
             const userData = result.user;
             sessionStorage.setItem('currentUser', JSON.stringify(userData));
             localStorage.setItem('currentUserId', userData.id);
-            await loadCartFromBackend(); 
             updateUIBasedOnUser(userData);
             closeAuthModal();
             if (isLogin) {
@@ -193,71 +192,42 @@ function updateUIBasedOnUser(user) {
 }
 // Add item to cart
 async function addToCart(productId) {
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (!user) {
-        showCustomAlert("Please log in to add items to your cart.", "Login Required");
-        return;
-    }
-
-    // Fetch product details
+  let user = JSON.parse(sessionStorage.getItem('currentUser'));
+  if (!user) {
+    // Prompt for login/signup if not logged in
+    showAuthModal(); // Show the modal instead of prompt
+    return;
+  }
+  try {
+    // Fetch the specific product from the API
     const response = await fetch(`/api/products/${productId}`);
     if (!response.ok) {
-        showCustomAlert("Failed to load product details. Please try again.", "Error");
-        return;
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
     const product = await response.json();
-
-    // Get current cart from sessionStorage (fallback) or initialize
-    let cart = user.cart || [];
-
-    // Check if product already in cart
-    const existingItem = cart.find(item => item.productId === productId);
-    if (existingItem) {
-        existingItem.quantity += 1;
+    if (!product) {
+      showCustomAlert("Product not found.", "Error");
+      return;
+    }
+    // Check if item already exists in cart
+    const existingItemIndex = user.cart.findIndex(item => item.productId === productId);
+    if (existingItemIndex > -1) {
+      user.cart[existingItemIndex].quantity += 1;
     } else {
-        cart.push({
-            productId: productId,
-            name: product.name,
-            price: product.price,
-            image: product.images?.[0] || '/placeholder.svg',
-            quantity: 1
-        });
+      user.cart.push({ productId: productId, quantity: 1 });
     }
-
-    // Save cart to user object
-    user.cart = cart;
+    // Update user data in session and localStorage
     sessionStorage.setItem('currentUser', JSON.stringify(user));
-
-    // --- NEW: Save cart to backend ---
-    try {
-        const saveResponse = await fetch(`/api/cart/user/${user.id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                items: cart.map(item => ({
-                    productId: item.productId,
-                    quantity: item.quantity
-                }))
-            })
-        });
-
-        const saveResult = await saveResponse.json();
-        if (!saveResponse.ok) {
-            throw new Error(saveResult.error || 'Failed to sync cart');
-        }
-
-        console.log('Cart synced with backend:', saveResult.cart);
-
-    } catch (error) {
-        console.error('Error syncing cart with backend:', error);
-        // Optionally show alert? Or retry later?
-        // showCustomAlert("Cart saved locally but failed to sync. Try again later.", "Sync Failed");
-    }
-
-    updateCartCount();
-    updateCartModal();
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    allUsers[user.id] = user;
+    localStorage.setItem('users', JSON.stringify(allUsers));
+    // Update UI
+    updateUIBasedOnUser(user);
+    showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
+  } catch (error) {
+    console.error("Error fetching product for cart:", error);
+    showCustomAlert("Failed to add product to cart. Please try again.", "Error");
+  }
 }
 // View Cart (you can implement this in a modal or a dedicated page)
 // View Cart
@@ -331,141 +301,52 @@ async function viewCart() {
   }
 }
 // Update item quantity in cart
-async function updateCartItemQuantity(productId, newQty) {
+function updateCartItemQuantity(productId, newQuantity) {
+    if (newQuantity < 1) {
+        removeFromCart(productId);
+        return;
+    }
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!user) return;
-
-    // Update local cart
-    const cartItem = user.cart.find(item => item.productId === productId);
-    if (cartItem) {
-        cartItem.quantity = newQty;
-        if (newQty <= 0) {
-            user.cart = user.cart.filter(item => item.productId !== productId);
-        }
+    const itemIndex = user.cart.findIndex(item => item.productId === productId);
+    if (itemIndex > -1) {
+        user.cart[itemIndex].quantity = newQuantity;
+        // Update user data in session and localStorage
+        sessionStorage.setItem('currentUser', JSON.stringify(user));
+        const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+        allUsers[user.id] = user;
+        localStorage.setItem('users', JSON.stringify(allUsers));
+        // Update UI
+        updateUIBasedOnUser(user);
+        viewCart(); // Refresh cart view
     }
-
-    sessionStorage.setItem('currentUser', JSON.stringify(user));
-
-    // --- NEW: Save updated cart to backend ---
-    try {
-        const saveResponse = await fetch(`/api/cart/user/${user.id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                items: user.cart.map(item => ({
-                    productId: item.productId,
-                    quantity: item.quantity
-                }))
-            })
-        });
-
-        const saveResult = await saveResponse.json();
-        if (!saveResponse.ok) {
-            throw new Error(saveResult.error || 'Failed to sync cart');
-        }
-
-        console.log('Cart synced with backend after quantity update:', saveResult.cart);
-
-    } catch (error) {
-        console.error('Error syncing cart with backend after quantity update:', error);
-    }
-
-    updateCartCount();
-    updateCartModal();
 }
 // Remove item from cart
-async function removeFromCart(productId) {
+// Remove item from cart
+// Remove item from cart
+function removeFromCart(productId) {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!user) return;
-
-    // Remove from local cart
+    // Filter out the item
     user.cart = user.cart.filter(item => item.productId !== productId);
+    // Update user data in session and localStorage
     sessionStorage.setItem('currentUser', JSON.stringify(user));
-
-    // --- NEW: Save updated cart to backend ---
-    try {
-        const saveResponse = await fetch(`/api/cart/user/${user.id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                items: user.cart.map(item => ({
-                    productId: item.productId,
-                    quantity: item.quantity
-                }))
-            })
-        });
-
-        const saveResult = await saveResponse.json();
-        if (!saveResponse.ok) {
-            throw new Error(saveResult.error || 'Failed to sync cart');
-        }
-
-        console.log('Cart synced with backend after removal:', saveResult.cart);
-
-    } catch (error) {
-        console.error('Error syncing cart with backend after removal:', error);
-    }
-
-    updateCartCount();
-    updateCartModal();
-}
-
-
-async function loadCartFromBackend() {
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (!user) return;
-
-    try {
-        const response = await fetch(`/api/cart/user/${user.id}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const result = await response.json();
-
-        if (result.success && Array.isArray(result.cart.items)) {
-            // Convert backend cart format back to frontend format
-            const cartItems = [];
-            for (const item of result.cart.items) {
-                const productId = item.productId;
-                const qty = item.quantity;
-
-                // Fetch product details to populate cart
-                const productResponse = await fetch(`/api/products/${productId}`);
-                if (productResponse.ok) {
-                    const product = await productResponse.json();
-                    cartItems.push({
-                        productId: productId,
-                        name: product.name,
-                        price: product.price,
-                        image: product.images?.[0] || '/placeholder.svg',
-                        quantity: qty
-                    });
-                }
-            }
-
-            // Update user cart
-            user.cart = cartItems;
-            sessionStorage.setItem('currentUser', JSON.stringify(user));
-
-            // Update UI
-            updateCartCount();
-            updateCartModal();
-
-            console.log('Cart loaded from backend:', cartItems);
-
-        }
-
-    } catch (error) {
-        console.error('Error loading cart from backend:', error);
-        // Keep local cart if backend fails
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    allUsers[user.id] = user;
+    localStorage.setItem('users', JSON.stringify(allUsers));
+    // Update UI
+    updateUIBasedOnUser(user);
+    // Check if cart is now empty
+    if (user.cart.length === 0) {
+        // Close the cart modal
+        closeCartModal();
+        // Show a friendly message
+        showCustomAlert("Your cart is now empty.", "Cart Updated");
+    } else {
+        // Refresh cart view if items still remain
+        viewCart();
     }
 }
-
-
 // Proceed to checkout
 async function proceedToCheckout() {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -538,21 +419,6 @@ async function proceedToCheckout() {
         const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
         allUsers[user.id] = user;
         localStorage.setItem('users', JSON.stringify(allUsers));
-
-
-
-                // After successfully creating the order, clear cart
-        try {
-            await fetch(`/api/cart/user/${user.id}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ items: [] })
-            });
-        } catch (error) {
-            console.error('Error clearing cart after checkout:', error);
-        }
 
         // Update UI
         updateUIBasedOnUser(user);

@@ -50,12 +50,24 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-// --- CURRENT USER PROFILE ROUTE (CRITICAL FIX) ---
-// 🚨 This was missing — now added immediately after authMiddleware
+// --- CURRENT USER PROFILE ROUTE  ---
+
 app.get('/api/user', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, email, phone, address, role FROM users WHERE id = $1',
+      `SELECT 
+         id, 
+         username, 
+         email, 
+         phone, 
+         address->>'street' AS street,
+         address->>'city' AS city,
+         address->>'state' AS state,
+         address->>'country' AS country,
+         address->>'postalCode' AS postalCode,
+         role
+       FROM users
+       WHERE id = $1`,
       [req.user.id]
     );
 
@@ -69,6 +81,7 @@ app.get('/api/user', authMiddleware, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch user profile' });
   }
 });
+
 
 // --- PRODUCTS ROUTES ---
 app.get('/api/products', async (req, res) => {

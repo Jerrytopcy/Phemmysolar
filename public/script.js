@@ -496,31 +496,26 @@ async function handleAuthSubmit(e) {
             return;
         }
 
-        if (result.token) {
-          localStorage.setItem('token', result.token);
+        if (result.success) {
+            const userData = result.user;
 
-          // Fetch full user profile
-          const profileResponse = await fetch('/api/user', {
-              headers: {
-                  Authorization: `Bearer ${result.token}`
-              }
-          });
+            // Store token if provided
+            if (result.token) {
+                localStorage.setItem('token', result.token);
+            }
 
-          if (profileResponse.ok) {
-              const fullUser = await profileResponse.json();
-              sessionStorage.setItem('currentUser', JSON.stringify(fullUser));
-          }
+            // Store user data in sessionStorage for UI purposes only
+            sessionStorage.setItem('currentUser', JSON.stringify(userData));
 
-      updateUIBasedOnUser();
-      closeAuthModal();
-
+            // Update UI
+            updateUIBasedOnUser();
+            closeAuthModal();
 
             if (isLogin) {
-    showCustomAlert(`Welcome back, ${fullUser.username}!`, "Logged In");
-} else {
-    showCustomAlert(`Welcome, ${fullUser.username}! Your account has been created.`, "Account Created");
-}
-
+                showCustomAlert(`Welcome back, ${userData.username}!`, "Logged In");
+            } else {
+                showCustomAlert(`Welcome, ${userData.username}! Your account has been created.`, "Account Created");
+            }
         } else {
             document.getElementById("authError").textContent = result.error || "Authentication failed.";
         }

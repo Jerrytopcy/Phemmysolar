@@ -325,6 +325,147 @@ app.delete('/api/users/:id', async (req, res) => {
   }
 });
 
+// POST create new order for authenticated user
+app.post('/api/orders', async (req, res) => {
+    const { userId, items, total, deliveryAddress } = req.body;
+
+    if (!userId || !Array.isArray(items) || items.length === 0 || typeof total !== 'number' || !deliveryAddress) {
+        return res.status(400).json({ error: 'Invalid order data' });
+    }
+
+    try {
+        const result = await pool.query(
+            `INSERT INTO orders (user_id, items, total, delivery_address, status, payment_status)
+             VALUES ($1, $2, $3, $4, 'Pending', 'pending')
+             RETURNING *`,
+            [userId, items, total, deliveryAddress]
+        );
+
+        res.json({ success: true, order: result.rows[0] });
+    } catch (err) {
+        console.error('Error creating order:', err);
+        res.status(500).json({ error: 'Failed to create order' });
+    }
+});
+
+
+// GET all orders for a specific user
+app.get('/api/orders/user/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const result = await pool.query(
+            `SELECT * FROM orders WHERE user_id = $1 ORDER BY date DESC`,
+            [userId]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching user orders:', err);
+        res.status(500).json({ error: 'Failed to fetch orders' });
+    }
+});
+
+// PUT update order status or payment status
+app.put('/api/orders/:orderId', async (req, res) => {
+    const { orderId } = req.params;
+    const { status, paymentStatus } = req.body;
+
+    try {
+        const result = await pool.query(
+            `UPDATE orders SET 
+                status = COALESCE($1, status),
+                payment_status = COALESCE($2, payment_status),
+                updated_at = NOW()
+             WHERE id = $3
+             RETURNING *`,
+            [status, paymentStatus, orderId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        res.json({ success: true, order: result.rows[0] });
+    } catch (err) {
+        console.error('Error updating order:', err);
+        res.status(500).json({ error: 'Failed to update order' });
+    }
+});
+
+// POST save or update cart for user
+app.post('/api/cart/user/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const { items } = req.body;
+
+    if (!userId || !Array.isArray(items)) {
+        return res.status(400).json({ error: 'Invalid cart data' });
+    }
+
+    try {
+        // Check if cart exists
+        let result = await pool.query(
+            'SELECT * FROM carts WHERE user_id = $1',
+            [userId]
+        );
+
+        if (result.rows.length === 0) {
+            // Create new cart
+            result = await pool.query(
+                `INSERT INTO carts (user_id, items)
+                 VALUES ($1, $2)
+                 RETURNING *`,
+                [userId, items]
+            );
+        } else {
+            // Update existing cart
+            result = await pool.query(
+                `UPDATE carts SET items = $1, updated_at = NOW()
+                 WHERE user_id = $2
+                 RETURNING *`,
+                [items, userId]
+            );
+        }
+
+        res.json({ success: true, cart: result.rows[0] });
+
+    } catch (err) {
+        console.error('Error saving cart:', err);
+        res.status(500).json({ error: 'Failed to save cart' });
+    }
+});
+
+// GET cart for user
+app.get('/api/cart/user/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const result = await pool.query(
+            'SELECT * FROM carts WHERE user_id = $1',
+            [userId]
+        );
+
+        if (result.rows.length === 0) {
+            // Return empty cart if none exists
+            return res.json({
+                success: true,
+                cart: {
+                    user_id: parseInt(userId),
+                    items: [],
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }
+            });
+        }
+
+        res.json({ success: true, cart: result.rows[0] });
+
+    } catch (err) {
+        console.error('Error fetching cart:', err);
+        res.status(500).json({ error: 'Failed to fetch cart' });
+    }
+});
+
+
 // --- AUTHENTICATION ROUTE ---
 // POST login/signup
 // --- AUTHENTICATION ROUTE ---

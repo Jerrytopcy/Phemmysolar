@@ -124,6 +124,7 @@ async function handleAuthSubmit(e) {
             const userData = result.user;
             sessionStorage.setItem('currentUser', JSON.stringify(userData));
             localStorage.setItem('currentUserId', userData.id);
+            await loadCartFromBackend(); 
             updateUIBasedOnUser(userData);
             closeAuthModal();
             if (isLogin) {
@@ -192,42 +193,71 @@ function updateUIBasedOnUser(user) {
 }
 // Add item to cart
 async function addToCart(productId) {
-  let user = JSON.parse(sessionStorage.getItem('currentUser'));
-  if (!user) {
-    // Prompt for login/signup if not logged in
-    showAuthModal(); // Show the modal instead of prompt
-    return;
-  }
-  try {
-    // Fetch the specific product from the API
+    const user = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (!user) {
+        showCustomAlert("Please log in to add items to your cart.", "Login Required");
+        return;
+    }
+
+    // Fetch product details
     const response = await fetch(`/api/products/${productId}`);
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+        showCustomAlert("Failed to load product details. Please try again.", "Error");
+        return;
     }
     const product = await response.json();
-    if (!product) {
-      showCustomAlert("Product not found.", "Error");
-      return;
-    }
-    // Check if item already exists in cart
-    const existingItemIndex = user.cart.findIndex(item => item.productId === productId);
-    if (existingItemIndex > -1) {
-      user.cart[existingItemIndex].quantity += 1;
+
+    // Get current cart from sessionStorage (fallback) or initialize
+    let cart = user.cart || [];
+
+    // Check if product already in cart
+    const existingItem = cart.find(item => item.productId === productId);
+    if (existingItem) {
+        existingItem.quantity += 1;
     } else {
-      user.cart.push({ productId: productId, quantity: 1 });
+        cart.push({
+            productId: productId,
+            name: product.name,
+            price: product.price,
+            image: product.images?.[0] || '/placeholder.svg',
+            quantity: 1
+        });
     }
-    // Update user data in session and localStorage
+
+    // Save cart to user object
+    user.cart = cart;
     sessionStorage.setItem('currentUser', JSON.stringify(user));
-    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    allUsers[user.id] = user;
-    localStorage.setItem('users', JSON.stringify(allUsers));
-    // Update UI
-    updateUIBasedOnUser(user);
-    showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
-  } catch (error) {
-    console.error("Error fetching product for cart:", error);
-    showCustomAlert("Failed to add product to cart. Please try again.", "Error");
-  }
+
+    // --- NEW: Save cart to backend ---
+    try {
+        const saveResponse = await fetch(`/api/cart/user/${user.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                items: cart.map(item => ({
+                    productId: item.productId,
+                    quantity: item.quantity
+                }))
+            })
+        });
+
+        const saveResult = await saveResponse.json();
+        if (!saveResponse.ok) {
+            throw new Error(saveResult.error || 'Failed to sync cart');
+        }
+
+        console.log('Cart synced with backend:', saveResult.cart);
+
+    } catch (error) {
+        console.error('Error syncing cart with backend:', error);
+        // Optionally show alert? Or retry later?
+        // showCustomAlert("Cart saved locally but failed to sync. Try again later.", "Sync Failed");
+    }
+
+    updateCartCount();
+    updateCartModal();
 }
 // View Cart (you can implement this in a modal or a dedicated page)
 // View Cart
@@ -301,121 +331,242 @@ async function viewCart() {
   }
 }
 // Update item quantity in cart
-function updateCartItemQuantity(productId, newQuantity) {
-    if (newQuantity < 1) {
-        removeFromCart(productId);
-        return;
-    }
+async function updateCartItemQuantity(productId, newQty) {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!user) return;
-    const itemIndex = user.cart.findIndex(item => item.productId === productId);
-    if (itemIndex > -1) {
-        user.cart[itemIndex].quantity = newQuantity;
-        // Update user data in session and localStorage
+
+    // Update local cart
+    const cartItem = user.cart.find(item => item.productId === productId);
+    if (cartItem) {
+        cartItem.quantity = newQty;
+        if (newQty <= 0) {
+            user.cart = user.cart.filter(item => item.productId !== productId);
+        }
+    }
+
+    sessionStorage.setItem('currentUser', JSON.stringify(user));
+
+    // --- NEW: Save updated cart to backend ---
+    try {
+        const saveResponse = await fetch(`/api/cart/user/${user.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                items: user.cart.map(item => ({
+                    productId: item.productId,
+                    quantity: item.quantity
+                }))
+            })
+        });
+
+        const saveResult = await saveResponse.json();
+        if (!saveResponse.ok) {
+            throw new Error(saveResult.error || 'Failed to sync cart');
+        }
+
+        console.log('Cart synced with backend after quantity update:', saveResult.cart);
+
+    } catch (error) {
+        console.error('Error syncing cart with backend after quantity update:', error);
+    }
+
+    updateCartCount();
+    updateCartModal();
+}
+// Remove item from cart
+async function removeFromCart(productId) {
+    const user = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (!user) return;
+
+    // Remove from local cart
+    user.cart = user.cart.filter(item => item.productId !== productId);
+    sessionStorage.setItem('currentUser', JSON.stringify(user));
+
+    // --- NEW: Save updated cart to backend ---
+    try {
+        const saveResponse = await fetch(`/api/cart/user/${user.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                items: user.cart.map(item => ({
+                    productId: item.productId,
+                    quantity: item.quantity
+                }))
+            })
+        });
+
+        const saveResult = await saveResponse.json();
+        if (!saveResponse.ok) {
+            throw new Error(saveResult.error || 'Failed to sync cart');
+        }
+
+        console.log('Cart synced with backend after removal:', saveResult.cart);
+
+    } catch (error) {
+        console.error('Error syncing cart with backend after removal:', error);
+    }
+
+    updateCartCount();
+    updateCartModal();
+}
+
+
+async function loadCartFromBackend() {
+    const user = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (!user) return;
+
+    try {
+        const response = await fetch(`/api/cart/user/${user.id}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const result = await response.json();
+
+        if (result.success && Array.isArray(result.cart.items)) {
+            // Convert backend cart format back to frontend format
+            const cartItems = [];
+            for (const item of result.cart.items) {
+                const productId = item.productId;
+                const qty = item.quantity;
+
+                // Fetch product details to populate cart
+                const productResponse = await fetch(`/api/products/${productId}`);
+                if (productResponse.ok) {
+                    const product = await productResponse.json();
+                    cartItems.push({
+                        productId: productId,
+                        name: product.name,
+                        price: product.price,
+                        image: product.images?.[0] || '/placeholder.svg',
+                        quantity: qty
+                    });
+                }
+            }
+
+            // Update user cart
+            user.cart = cartItems;
+            sessionStorage.setItem('currentUser', JSON.stringify(user));
+
+            // Update UI
+            updateCartCount();
+            updateCartModal();
+
+            console.log('Cart loaded from backend:', cartItems);
+
+        }
+
+    } catch (error) {
+        console.error('Error loading cart from backend:', error);
+        // Keep local cart if backend fails
+    }
+}
+
+
+// Proceed to checkout
+async function proceedToCheckout() {
+    const user = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (!user || !user.cart || user.cart.length === 0) {
+        showCustomAlert("Your cart is empty.", "Cart Empty");
+        return;
+    }
+
+    const orderItems = [];
+    let total = 0;
+
+    try {
+        // Loop through each item in the user's cart and fetch its details
+        for (const cartItem of user.cart) {
+            const response = await fetch(`/api/products/${cartItem.productId}`);
+            if (!response.ok) {
+                console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
+                continue; // Skip this item if fetching fails
+            }
+            const product = await response.json();
+            if (product) {
+                const price = parseInt(product.price.replace(/\D/g, ''));
+                const itemTotal = price * cartItem.quantity;
+                total += itemTotal;
+                orderItems.push({
+                    productId: product.id,
+                    name: product.name,
+                    price: product.price,
+                    quantity: cartItem.quantity,
+                    itemTotal: itemTotal
+                });
+            }
+        }
+
+        // --- NEW: Get the current address from the user object ---
+        const currentAddress = user.address || {
+            street: "",
+            city: "",
+            state: "",
+            postalCode: "",
+            country: "Nigeria"
+        };
+
+        // Prepare order payload
+        const orderPayload = {
+            userId: user.id,
+            items: orderItems,
+            total: total,
+            deliveryAddress: currentAddress
+        };
+
+        // Send order to backend
+        const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(orderPayload)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to create order');
+        }
+
+        // Clear cart locally (since backend now has record)
+        user.cart = [];
         sessionStorage.setItem('currentUser', JSON.stringify(user));
         const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
         allUsers[user.id] = user;
         localStorage.setItem('users', JSON.stringify(allUsers));
+
+
+
+                // After successfully creating the order, clear cart
+        try {
+            await fetch(`/api/cart/user/${user.id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ items: [] })
+            });
+        } catch (error) {
+            console.error('Error clearing cart after checkout:', error);
+        }
+
         // Update UI
         updateUIBasedOnUser(user);
-        viewCart(); // Refresh cart view
-    }
-}
-// Remove item from cart
-// Remove item from cart
-// Remove item from cart
-function removeFromCart(productId) {
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (!user) return;
-    // Filter out the item
-    user.cart = user.cart.filter(item => item.productId !== productId);
-    // Update user data in session and localStorage
-    sessionStorage.setItem('currentUser', JSON.stringify(user));
-    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    allUsers[user.id] = user;
-    localStorage.setItem('users', JSON.stringify(allUsers));
-    // Update UI
-    updateUIBasedOnUser(user);
-    // Check if cart is now empty
-    if (user.cart.length === 0) {
-        // Close the cart modal
+
+        // Close cart modal
         closeCartModal();
-        // Show a friendly message
-        showCustomAlert("Your cart is now empty.", "Cart Updated");
-    } else {
-        // Refresh cart view if items still remain
-        viewCart();
+
+        // Show payment simulation modal
+        showPaymentSimulationModal(result.order); // Pass backend-created order
+
+    } catch (error) {
+        console.error("Error preparing checkout:", error);
+        showCustomAlert("Failed to process checkout. Please try again.", "Error");
     }
-}
-// Proceed to checkout
-async function proceedToCheckout() {
-  const user = JSON.parse(sessionStorage.getItem('currentUser'));
-  if (!user || !user.cart || user.cart.length === 0) {
-    showCustomAlert("Your cart is empty.", "Cart Empty");
-    return;
-  }
-  const orderItems = [];
-  let total = 0;
-  try {
-    // Loop through each item in the user's cart and fetch its details
-    for (const cartItem of user.cart) {
-      const response = await fetch(`/api/products/${cartItem.productId}`);
-      if (!response.ok) {
-        console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
-        continue; // Skip this item if fetching fails
-      }
-      const product = await response.json();
-      if (product) {
-        const price = parseInt(product.price.replace(/\D/g, ''));
-        const itemTotal = price * cartItem.quantity;
-        total += itemTotal;
-        orderItems.push({
-          productId: product.id,
-          name: product.name,
-          price: product.price,
-          quantity: cartItem.quantity,
-          itemTotal: itemTotal
-        });
-      }
-    }
-    // --- NEW: Get the current address from the user object ---
-    const currentAddress = user.address || {
-      street: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: "Nigeria"
-    };
-    // Create the order object with the calculated items and address
-    const order = {
-      id: Date.now(), // Consider using a UUID for production
-      date: new Date().toLocaleString(),
-      items: orderItems,
-      total: total,
-      status: 'Pending',
-      paymentStatus: 'pending',
-      // --- NEW: Add the address to the order ---
-      deliveryAddress: currentAddress
-    };
-    // Save order to user's history (this part still updates local storage)
-    user.orders.push(order);
-    // Clear cart
-    user.cart = [];
-    // Update user data in session and localStorage (this is temporary until you implement backend order saving)
-    sessionStorage.setItem('currentUser', JSON.stringify(user));
-    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    allUsers[user.id] = user;
-    localStorage.setItem('users', JSON.stringify(allUsers));
-    // Update UI to reflect empty cart (this updates the cart count)
-    updateUIBasedOnUser(user);
-    // Close the cart modal first
-    closeCartModal();
-    // Then show payment simulation modal
-    showPaymentSimulationModal(order);
-  } catch (error) {
-    console.error("Error preparing checkout:", error);
-    showCustomAlert("Failed to prepare checkout. Please try again.", "Error");
-  }
 }
 // Close Cart Modal (Assuming you add this button)
 function closeCartModal() {
@@ -433,6 +584,7 @@ async function loadOrderHistory() {
         document.getElementById('orderHistory').innerHTML = '<p>Please log in to view your order history.</p>';
         return;
     }
+
     // --- NEW: Populate Contact Info ---
     const userEmailElement = document.getElementById("userEmail");
     const userPhoneElement = document.getElementById("userPhone");
@@ -440,22 +592,21 @@ async function loadOrderHistory() {
         userEmailElement.textContent = user.email || "Not set";
         userPhoneElement.textContent = user.phone || "Not set";
     }
+
     // --- NEW: Load and populate the Edit Address Form ---
     const editAddressForm = document.getElementById("editAddressForm");
     if (editAddressForm) {
-        // Pre-fill the form with the user's current address
         const streetInput = document.getElementById("editStreet");
         const cityInput = document.getElementById("editCity");
         const stateInput = document.getElementById("editState");
         const postalCodeInput = document.getElementById("editPostalCode");
-        // Check if user has an address object
+
         if (user.address) {
             streetInput.value = user.address.street || "";
             cityInput.value = user.address.city || "";
             stateInput.value = user.address.state || "";
             postalCodeInput.value = user.address.postalCode || "";
         } else {
-            // Initialize empty address if none exists
             user.address = {
                 street: "",
                 city: "",
@@ -463,98 +614,107 @@ async function loadOrderHistory() {
                 postalCode: "",
                 country: "Nigeria"
             };
-            // Save the initialized address to localStorage
             sessionStorage.setItem('currentUser', JSON.stringify(user));
             const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
             allUsers[user.id] = user;
             localStorage.setItem('users', JSON.stringify(allUsers));
         }
     }
+
     const container = document.getElementById('orderHistory');
     if (!container) return;
-    if (user.orders.length === 0) {
-        container.innerHTML = '<p>No orders found.</p>';
-        return;
-    }
-    // Sort orders by date (newest first)
-    const sortedOrders = [...user.orders].sort((a, b) => {
-        // Convert string dates to Date objects for comparison
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return dateB - dateA; // Newest first (descending order)
-    });
-    let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
-  // Inside the loadOrderHistory function, find the sortedOrders.forEach block
-for (const order of sortedOrders) {
-    // --- NEW: Format the delivery address for display ---
-    const address = order.deliveryAddress || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
-    const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
 
-    let itemsHTML = '';
+    try {
+        // Fetch orders from backend
+        const response = await fetch(`/api/orders/user/${user.id}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const orders = await response.json();
 
-    // Process each item in the order
-    for (const item of order.items) {
-        try {
-            const productResponse = await fetch(`/api/products/${item.productId}`);
-            if (!productResponse.ok) throw new Error(`Failed to fetch product ${item.productId}`);
+        if (orders.length === 0) {
+            container.innerHTML = '<p>No orders found.</p>';
+            return;
+        }
 
-            const product = await productResponse.json();
-            const imageUrl = product.images?.[0] || '/placeholder.svg';
+        // Sort orders by date (newest first)
+        const sortedOrders = [...orders].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateB - dateA; // Newest first
+        });
 
-            itemsHTML += `
-                <div class="order-history-item">
-                    <div class="order-item-image-wrapper">
-                        <img src="${imageUrl}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
-                    </div>
-                    <div class="order-item-details">
-                        <div class="order-item-name">${item.name}</div>
-                        <div class="order-item-meta">
-                            <span class="order-item-qty">Qty: ${item.quantity}</span>
-                            <span class="order-item-price">${formatNaira(item.itemTotal)}</span>
+        let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
+
+        for (const order of sortedOrders) {
+            const address = order.delivery_address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
+            const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+
+            let itemsHTML = '';
+            for (const item of order.items) {
+                try {
+                    const productResponse = await fetch(`/api/products/${item.productId}`);
+                    if (!productResponse.ok) throw new Error(`Failed to fetch product ${item.productId}`);
+                    const product = await productResponse.json();
+                    const imageUrl = product.images?.[0] || '/placeholder.svg';
+                    itemsHTML += `
+                        <div class="order-history-item">
+                            <div class="order-item-image-wrapper">
+                                <img src="${imageUrl}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+                            </div>
+                            <div class="order-item-details">
+                                <div class="order-item-name">${item.name}</div>
+                                <div class="order-item-meta">
+                                    <span class="order-item-qty">Qty: ${item.quantity}</span>
+                                    <span class="order-item-price">${formatNaira(item.itemTotal)}</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            `;
-        } catch (error) {
-            console.error('Error loading product image for item:', item.productId, error);
-            // Fallback to placeholder
-            itemsHTML += `
-                <div class="order-history-item">
-                    <div class="order-item-image-wrapper">
-                        <img src="/placeholder.svg" alt="Image not available" onerror="this.src='/placeholder.svg';">
-                    </div>
-                    <div class="order-item-details">
-                        <div class="order-item-name">${item.name}</div>
-                        <div class="order-item-meta">
-                            <span class="order-item-qty">Qty: ${item.quantity}</span>
-                            <span class="order-item-price">${formatNaira(item.itemTotal)}</span>
+                    `;
+                } catch (error) {
+                    console.error('Error loading product image for item:', item.productId, error);
+                    itemsHTML += `
+                        <div class="order-history-item">
+                            <div class="order-item-image-wrapper">
+                                <img src="/placeholder.svg" alt="Image not available" onerror="this.src='/placeholder.svg';">
+                            </div>
+                            <div class="order-item-details">
+                                <div class="order-item-name">${item.name}</div>
+                                <div class="order-item-meta">
+                                    <span class="order-item-qty">Qty: ${item.quantity}</span>
+                                    <span class="order-item-price">${formatNaira(item.itemTotal)}</span>
+                                </div>
+                            </div>
                         </div>
+                    `;
+                }
+            }
+
+            historyHTML += `
+                <div class="order-item">
+                    <p><strong>Order ID:</strong> ${order.id}</p>
+                    <p><strong>Date:</strong> ${new Date(order.date).toLocaleString()}</p>
+                    <p><strong>Delivery Address:</strong> ${fullAddress}</p>
+                    <div class="order-status-actions">
+                        <p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
+                        <button class="btn-check-payment" onclick="checkOrderPaymentStatus(${order.id})">Check Payment 🔍</button>
+                        <button class="btn-reorder" onclick="reorderOrder(${order.id})">Reorder ➕</button>
+                    </div>
+                    <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
+                    <div class="order-items-list">
+                        ${itemsHTML}
                     </div>
                 </div>
             `;
         }
-    }
 
-    historyHTML += `
-        <div class="order-item">
-            <p><strong>Order ID:</strong> ${order.id}</p>
-            <p><strong>Date:</strong> ${order.date}</p>
-            <!-- --- NEW: Add the delivery address --- -->
-            <p><strong>Delivery Address:</strong> ${fullAddress}</p>
-            <div class="order-status-actions">
-                <p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
-                <button class="btn-check-payment" onclick="checkOrderPaymentStatus(${order.id})">Check Payment 🔍</button>
-                <button class="btn-reorder" onclick="reorderOrder(${order.id})">Reorder ➕</button>
-            </div>
-            <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
-            <div class="order-items-list">
-                ${itemsHTML}
-            </div>
-        </div>
-    `;
-}
-    historyHTML += '</div>';
-    container.innerHTML = historyHTML;
+        historyHTML += '</div>';
+        container.innerHTML = historyHTML;
+
+    } catch (error) {
+        console.error("Error loading order history:", error);
+        container.innerHTML = '<p class="error-message">Failed to load order history. Please try again.</p>';
+    }
 }
 // Add this function to your script.js
 function handleUpdateAddress(e) {
@@ -587,29 +747,36 @@ function handleUpdateAddress(e) {
     // Success message
     showCustomAlert("Your delivery address has been updated successfully.", "Address Updated", "success");
 }
-// Add this to your DOMContentLoaded event listener (around line 750)
-function checkOrderPaymentStatus(orderId) {
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
-    const order = user.orders.find(o => o.id === orderId);
-    if (!order) {
-        showCustomAlert("Order not found.", "Error");
-        return;
+
+async function checkOrderPaymentStatus(orderId) {
+    try {
+        const response = await fetch(`/api/orders/${orderId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const order = await response.json();
+
+        let message = "Payment status: ";
+        let type = "info";
+
+        const paymentStatus = order.payment_status || 'unknown';
+        if (paymentStatus === 'success') {
+            message += "✅ Paid";
+            type = "success";
+        } else if (paymentStatus === 'failed') {
+            message += "❌ Failed";
+            type = "error";
+        } else {
+            message += "⏳ Pending";
+            type = "info";
+        }
+
+        showCustomAlert(message, "Payment Status", type);
+
+    } catch (error) {
+        console.error("Error checking payment status:", error);
+        showCustomAlert("Failed to check payment status. Please try again.", "Error");
     }
-    let message = "Payment status: ";
-    let type = "info";
-    // Determine status based on paymentStatus field (if you added it)
-    const paymentStatus = order.paymentStatus || 'unknown';
-    if (paymentStatus === 'success') {
-        message += "✅ Paid";
-        type = "success";
-    } else if (paymentStatus === 'failed') {
-        message += "❌ Failed";
-        type = "error";
-    } else {
-        message += "⏳ Pending";
-        type = "info";
-    }
-    showCustomAlert(message, "Payment Status", type);
 }
 function reorderOrder(orderId) {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -695,23 +862,38 @@ function checkPaymentStatus() {
         checkStatusBtn.disabled = false;
     }, 1500);
 }
-function updateOrderPaymentStatus(orderId, status) {
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
-    const orderIndex = user.orders.findIndex(o => o.id === orderId);
-    if (orderIndex !== -1) {
-        user.orders[orderIndex].paymentStatus = status;
-        user.orders[orderIndex].status = status === 'success' ? 'Paid' : 'Failed';
-        // Update user data
-        sessionStorage.setItem('currentUser', JSON.stringify(user));
-        const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-        allUsers[user.id] = user;
-        localStorage.setItem('users', JSON.stringify(allUsers));
-        // Show final alert with correct icon based on status
+async function updateOrderPaymentStatus(orderId, status) {
+    try {
+        const response = await fetch(`/api/orders/${orderId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                status: status === 'success' ? 'Paid' : 'Failed',
+                paymentStatus: status
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to update order');
+        }
+
+        // Optionally refresh order history
+        loadOrderHistory();
+
+        // Show final alert
         if (status === 'success') {
             showCustomAlert("Payment successful! Your order is confirmed.", "Payment Success", "success");
         } else {
             showCustomAlert("Payment failed. Please try again or contact support.", "Payment Failed", "error");
         }
+
+    } catch (error) {
+        console.error("Error updating order payment status:", error);
+        showCustomAlert("Failed to update payment status. Please try again.", "Error");
     }
 }
 // Initialize products from localStorage or use default products

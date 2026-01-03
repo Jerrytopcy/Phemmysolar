@@ -60,11 +60,7 @@ app.get('/api/user', authMiddleware, async (req, res) => {
          username, 
          email, 
          phone, 
-         address->>'street' AS street,
-         address->>'city' AS city,
-         address->>'state' AS state,
-         address->>'country' AS country,
-         address->>'postalCode' AS postalCode,
+         address, 
          role
        FROM users
        WHERE id = $1`,

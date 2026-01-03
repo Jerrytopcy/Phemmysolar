@@ -516,9 +516,9 @@ async function handleAuthSubmit(e) {
 
 
            if (isLogin) {
-    showCustomAlert(`Welcome back, ${userData.username}!`, "Logged In");
+    showCustomAlert(`Welcome back!`, "Logged In");
 } else {
-    showCustomAlert(`Welcome, ${userData.username}! Your account has been created.`, "Account Created");
+    showCustomAlert(`Welcome! Your account has been created.`, "Account Created");
 }
 
         } else {

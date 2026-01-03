@@ -376,11 +376,19 @@ app.post('/api/auth', async (req, res) => {
         { expiresIn: '7d' }
       );
 
-      res.json({
-        success: true,
-        user,
-        token
-      });
+     res.json({
+  success: true,
+  user: {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    phone: user.phone,
+    address: user.address,
+    role: user.role
+  },
+  token
+});
+
     } else if (action === 'signup') {
       const { email, phone, address } = req.body;
 
@@ -413,56 +421,69 @@ app.post('/api/auth', async (req, res) => {
 });
 
 // --- ORDERS ROUTES (PROTECTED) ---
+// --- ORDERS ROUTES (PROTECTED) ---
 app.post('/api/orders', authMiddleware, async (req, res) => {
-  const userId = req.user.id;
-  const { items, total, deliveryAddress } = req.body;
+  try {
+    const userId = req.user.id;
+    const { items, total, deliveryAddress } = req.body;
 
-  const orderResult = await pool.query(
-    `INSERT INTO orders (user_id, total, delivery_address)
-     VALUES ($1, $2, $3)
-     RETURNING id, created_at`,
-    [userId, total, deliveryAddress]
-  );
-
-  const orderId = orderResult.rows[0].id;
-
-  for (const item of items) {
-    await pool.query(
-      `INSERT INTO order_items (order_id, product_id, quantity, price)
-       VALUES ($1, $2, $3, $4)`,
-      [orderId, item.productId, item.quantity, item.price]
+    const orderResult = await pool.query(
+      `INSERT INTO orders (user_id, total, delivery_address)
+       VALUES ($1, $2, $3)
+       RETURNING id, date`,
+      [userId, total, deliveryAddress]
     );
-  }
 
-  res.json({ success: true, orderId });
+    const orderId = orderResult.rows[0].id;
+
+    for (const item of items) {
+      await pool.query(
+        `INSERT INTO order_items (order_id, product_id, quantity, price)
+         VALUES ($1, $2, $3, $4)`,
+        [orderId, item.productId, item.quantity, item.price]
+      );
+    }
+
+    res.json({ success: true, orderId });
+
+  } catch (err) {
+    console.error('Order creation error:', err);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
 });
 
 app.get('/api/orders', authMiddleware, async (req, res) => {
-  const userId = req.user.id;
+  try {
+    const userId = req.user.id;
 
-  const result = await pool.query(`
-    SELECT 
-      o.id,
-      o.created_at AS date,
-      o.total,
-      o.status,
-      o.payment_status,
-      o.delivery_address,
-      json_agg(
-        json_build_object(
-          'productId', oi.product_id,
-          'quantity', oi.quantity,
-          'price', oi.price
-        )
-      ) AS items
-    FROM orders o
-    JOIN order_items oi ON oi.order_id = o.id
-    WHERE o.user_id = $1
-    GROUP BY o.id
-    ORDER BY o.created_at DESC
-  `, [userId]);
+    const result = await pool.query(`
+      SELECT 
+        o.id,
+        o.date,
+        o.total,
+        o.status,
+        o.payment_status,
+        o.delivery_address,
+        json_agg(
+          json_build_object(
+            'productId', oi.product_id,
+            'quantity', oi.quantity,
+            'price', oi.price
+          )
+        ) AS items
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      WHERE o.user_id = $1
+      GROUP BY o.id
+      ORDER BY o.date DESC
+    `, [userId]);
 
-  res.json(result.rows);
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error('Order fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
 });
 
 

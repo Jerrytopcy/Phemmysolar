@@ -515,6 +515,11 @@ async function handleAuthSubmit(e) {
         closeAuthModal();
 
 
+              if (isLogin) {
+      showCustomAlert(`Welcome back, ${fullUser.username}!`, "Logged In");
+  } else {
+      showCustomAlert(`Welcome, ${fullUser.username}! Your account has been created.`, "Account Created");
+  }
 
         } else {
             document.getElementById("authError").textContent = result.error || "Authentication failed.";

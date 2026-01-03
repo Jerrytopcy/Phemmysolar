@@ -511,15 +511,15 @@ async function handleAuthSubmit(e) {
               sessionStorage.setItem('currentUser', JSON.stringify(fullUser));
           }
 
-          updateUIBasedOnUser();
-          closeAuthModal();
+      updateUIBasedOnUser();
+      closeAuthModal();
 
 
-                if (isLogin) {
-          showCustomAlert(`Welcome back, ${fullUser.username}!`, "Logged In");
-          } else {
-              showCustomAlert(`Welcome, ${fullUser.username}! Your account has been created.`, "Account Created");
-          }
+            if (isLogin) {
+    showCustomAlert(`Welcome back, ${fullUser.username}!`, "Logged In");
+} else {
+    showCustomAlert(`Welcome, ${fullUser.username}! Your account has been created.`, "Account Created");
+}
 
         } else {
             document.getElementById("authError").textContent = result.error || "Authentication failed.";
@@ -949,70 +949,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    const accountLink = document.getElementById('accountLink');
-if (accountLink) {
-  accountLink.addEventListener('click', async (e) => {
-    e.preventDefault(); // Prevent default link behavior
-
-    // First, ensure we have the user's token
-    const token = localStorage.getItem('token');
-    if (!token) {
-      showCustomAlert("Please log in to view your account.", "Login Required");
-      showAuthModal();
-      return;
-    }
-
-    try {
-      // Fetch the user profile
-      const userResponse = await fetch('/api/user', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (!userResponse.ok) {
-        throw new Error('Failed to load user profile');
-      }
-
-      const user = await userResponse.json();
-
-      // Store the user in sessionStorage for later use (optional, but good practice)
-      sessionStorage.setItem('currentUser', JSON.stringify(user));
-
-      // Update the UI elements with the user's contact info
-      const userEmailElement = document.getElementById('userEmail');
-      const userPhoneElement = document.getElementById('userPhone');
-
-      if (userEmailElement) userEmailElement.textContent = user.email || "Not provided";
-      if (userPhoneElement) userPhoneElement.textContent = user.phone || "Not provided";
-
-      // Also populate the edit address form with current values (if they exist)
-      const editStreet = document.getElementById('editStreet');
-      const editCity = document.getElementById('editCity');
-      const editState = document.getElementById('editState');
-      const editPostalCode = document.getElementById('editPostalCode');
-
-      if (editStreet && user.address?.street) editStreet.value = user.address.street;
-      if (editCity && user.address?.city) editCity.value = user.address.city;
-      if (editState && user.address?.state) editState.value = user.address.state;
-      if (editPostalCode && user.address?.postalCode) editPostalCode.value = user.address.postalCode;
-
-      // Now load the order history
-      await loadOrderHistory();
-
-      // Show the account modal
-      const accountModal = document.getElementById("accountModal");
-      if (accountModal) {
-        accountModal.classList.add("active");
-        document.body.style.overflow = "hidden";
-      }
-
-    } catch (error) {
-      console.error("Error loading user profile:", error);
-      showCustomAlert("Failed to load your profile. Please try again.", "Error");
-    }
-  });
-}
+    
 
     // NEW: Add event listener for Account Modal Close Button
     const accountModalCloseBtn = document.getElementById("accountModal");

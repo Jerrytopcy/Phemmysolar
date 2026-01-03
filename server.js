@@ -77,7 +77,47 @@ app.get('/api/user', authMiddleware, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch user profile' });
   }
 });
+// --- UPDATE USER ADDRESS ROUTE (PROTECTED) ---
+app.put('/api/user/address', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { address } = req.body;
 
+    if (!address || typeof address !== 'object') {
+      return res.status(400).json({ error: 'Address must be an object.' });
+    }
+
+    // Validate required fields
+    if (!address.street || !address.city || !address.state) {
+      return res.status(400).json({ error: 'Street, city, and state are required.' });
+    }
+
+    // Ensure country defaults to "Nigeria" if not provided
+    if (!address.country) {
+      address.country = 'Nigeria';
+    }
+
+    // Update the user's address in the database
+    const result = await pool.query(
+      'UPDATE users SET address = $1 WHERE id = $2 RETURNING id, username, email, phone, address, role',
+      [address, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Address updated successfully.',
+      user: result.rows[0] // Return the updated user object
+    });
+
+  } catch (err) {
+    console.error('Error updating user address:', err);
+    res.status(500).json({ error: 'Failed to update address' });
+  }
+});
 
 // --- PRODUCTS ROUTES ---
 app.get('/api/products', async (req, res) => {
@@ -470,12 +510,14 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
         json_agg(
           json_build_object(
             'productId', oi.product_id,
+            'productName', p.name,        
             'quantity', oi.quantity,
             'price', oi.price
           )
         ) AS items
       FROM orders o
       JOIN order_items oi ON oi.order_id = o.id
+      JOIN products p ON p.id = oi.product_id 
       WHERE o.user_id = $1
       GROUP BY o.id
       ORDER BY o.date DESC

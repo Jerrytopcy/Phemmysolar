@@ -511,15 +511,15 @@ async function handleAuthSubmit(e) {
               sessionStorage.setItem('currentUser', JSON.stringify(fullUser));
           }
 
-        updateUIBasedOnUser();
-        closeAuthModal();
+      updateUIBasedOnUser();
+      closeAuthModal();
 
 
-              if (isLogin) {
-      showCustomAlert(`Welcome back, ${fullUser.username}!`, "Logged In");
-  } else {
-      showCustomAlert(`Welcome, ${fullUser.username}! Your account has been created.`, "Account Created");
-  }
+           if (isLogin) {
+    showCustomAlert(`Welcome back, ${userData.username}!`, "Logged In");
+} else {
+    showCustomAlert(`Welcome, ${userData.username}! Your account has been created.`, "Account Created");
+}
 
         } else {
             document.getElementById("authError").textContent = result.error || "Authentication failed.";

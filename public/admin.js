@@ -516,10 +516,13 @@ async function viewOrder(orderId) {
 
     // Buttons
     document.getElementById("printOrderBtn").onclick = () => window.print();
-   document.getElementById("updateOrderStatusBtn").onclick = () => {
-  updateOrderStatus(order.order_id, order.status);
-};
-
+    document.getElementById("updateOrderStatusBtn").onclick =
+      () => openOrderStatusModal(order.status)
+        .then(newStatus => {
+          if (newStatus && newStatus !== order.status) {
+            updateOrderStatus(order.order_id, newStatus);
+          }
+        });
 
     // Open modal
     document.getElementById("orderDetailsModal").style.display = "flex";
@@ -529,6 +532,31 @@ async function viewOrder(orderId) {
   }
 }
 
+let resolveOrderStatus;
+
+function openOrderStatusModal(currentStatus) {
+  const modal = document.getElementById("orderStatusModal");
+  const select = document.getElementById("orderStatusSelect");
+
+  select.value = currentStatus;
+  modal.style.display = "flex";
+
+  return new Promise(resolve => {
+    resolveOrderStatus = resolve;
+  });
+}
+
+document.getElementById("confirmStatusBtn").onclick = () => {
+  const modal = document.getElementById("orderStatusModal");
+  const value = document.getElementById("orderStatusSelect").value;
+  modal.style.display = "none";
+  resolveOrderStatus(value);
+};
+
+document.getElementById("cancelStatusBtn").onclick = () => {
+  document.getElementById("orderStatusModal").style.display = "none";
+  resolveOrderStatus(null);
+};
 
 
 async function updateOrderStatus(orderId, currentStatus) {

@@ -581,6 +581,26 @@
 </div>
 
 
+<div id="orderStatusModal" class="modal-overlay">
+  <div class="modal-card">
+    <h3>Update Order Status</h3>
+
+    <select id="orderStatusSelect">
+      <option value="Pending">Pending</option>
+      <option value="Paid">Paid</option>
+      <option value="Shipped">Shipped</option>
+      <option value="Delivered">Delivered</option>
+      <option value="Cancelled">Cancelled</option>
+    </select>
+
+    <div class="modal-actions">
+      <button id="cancelStatusBtn" class="btn-outline">Cancel</button>
+      <button id="confirmStatusBtn" class="btn-primary">Update</button>
+    </div>
+  </div>
+</div>
+
+
     <script src="admin.js"></script>
 
 </body>

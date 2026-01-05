@@ -1350,10 +1350,60 @@ body {
     }
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
 
+.modal-card {
+  background: #fff;
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
 
+.modal-card h3 {
+  margin-bottom: 16px;
+}
 
+.modal-card select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  margin-bottom: 20px;
+}
 
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.btn-primary {
+  background: #111;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #ccc;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
 
 
 

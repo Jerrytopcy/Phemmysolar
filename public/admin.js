@@ -1452,7 +1452,9 @@ const sidebar = document.querySelector(".sidebar");
 
 mobileNavToggle.addEventListener("click", () => {
     sidebar.classList.toggle("active");
+    mobileNavToggle.classList.toggle("open");
 });
+
 
 document.querySelectorAll(".sidebar .nav-item").forEach(item => {
     item.addEventListener("click", () => {

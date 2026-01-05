@@ -1221,6 +1221,19 @@ body {
 }
 
 @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: -260px;
+        width: 260px;
+        height: 100vh;
+        z-index: 9000;
+        transition: left 0.3s ease;
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
     .mobile-nav-toggle {
         display: flex !important;
         align-items: center;
@@ -1286,19 +1299,7 @@ body {
         top: 0;
     }
 
-       .sidebar {
-        position: fixed;
-        top: 0;
-        left: -260px;
-        width: 260px;
-        height: 100vh;
-        z-index: 9000;
-        transition: left 0.3s ease;
-    }
-
-    .sidebar.active {
-        left: 0;
-    }
+   
 }
 
 

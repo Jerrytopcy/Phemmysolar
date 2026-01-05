@@ -463,6 +463,7 @@ function handleNavigation(e) {
   // Update page title
   const titles = {
     products: "Product Management",
+    orders: "Order Management",
     settings: "Settings",
     testimonials: "Testimonial Management",
     news: "News Management",
@@ -478,7 +479,10 @@ function handleNavigation(e) {
     loadNews();
   } else if (targetSection === "users") {
     loadUsers(); // Add this line to load users when users section is opened
+  }else if (targetSection === "orders") {
+  loadOrders();
   }
+
 }
 
 // Handle testimonial form submission
@@ -1222,3 +1226,112 @@ if (productPriceInput) {
   });
 }
 });
+
+
+// Load orders
+async function loadOrders() {
+  const tableBody = document.getElementById("ordersTableBody");
+  try {
+    const response = await fetch("/api/orders");
+    if (!response.ok) throw new Error("Failed to load orders");
+
+    const orders = await response.json();
+
+    if (orders.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="empty-state">No orders found</td>
+        </tr>
+      `;
+      return;
+    }
+
+    tableBody.innerHTML = orders.map(order => `
+      <tr>
+        <td>#${order.id}</td>
+        <td>${order.customer?.name || "Guest"}</td>
+        <td>${formatNaira(order.total)}</td>
+        <td>
+          <span class="status-badge status-${order.status}">
+            ${order.status}
+          </span>
+        </td>
+        <td>${new Date(order.createdAt).toLocaleDateString()}</td>
+        <td>
+          <button class="btn-view" onclick="viewOrder(${order.id})">View</button>
+        </td>
+      </tr>
+    `).join("");
+
+  } catch (error) {
+    console.error("Orders error:", error);
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="6" class="error-message">${error.message}</td>
+      </tr>
+    `;
+  }
+}
+
+async function viewOrder(orderId) {
+  try {
+    const response = await fetch(`/api/orders/${orderId}`);
+    if (!response.ok) throw new Error("Failed to load order");
+
+    const order = await response.json();
+
+    let itemsHtml = order.items.map(item => `
+      <li>
+        ${item.name} × ${item.quantity}
+        — ${formatNaira(item.price)}
+      </li>
+    `).join("");
+
+    const confirmed = await showAdminConfirm(`
+      Customer: ${order.customer.name}
+      Email: ${order.customer.email}
+      Phone: ${order.customer.phone}
+
+      Items:
+      ${itemsHtml}
+
+      Total: ${formatNaira(order.total)}
+      Status: ${order.status}
+
+      Update status?
+    `, "Order Details");
+
+    if (confirmed) {
+      showStatusUpdate(order.id, order.status);
+    }
+
+  } catch (error) {
+    showAdminAlert(error.message, "Order Error");
+  }
+}
+
+async function showStatusUpdate(orderId, currentStatus) {
+  const statuses = ["pending", "paid", "shipped", "delivered", "cancelled"];
+
+  const newStatus = prompt(
+    `Current: ${currentStatus}\nChoose new status:\n${statuses.join(", ")}`
+  );
+
+  if (!statuses.includes(newStatus)) return;
+
+  try {
+    const response = await fetch(`/api/orders/${orderId}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus })
+    });
+
+    if (!response.ok) throw new Error("Failed to update status");
+
+    await showAdminAlert("Order status updated!", "Success");
+    loadOrders();
+
+  } catch (error) {
+    showAdminAlert(error.message, "Update Error");
+  }
+}

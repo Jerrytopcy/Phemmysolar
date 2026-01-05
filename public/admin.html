@@ -46,6 +46,10 @@
                     <span class="nav-icon">📦</span>
                     <span>Products</span>
                 </a>
+                <a href="#" class="nav-item" data-section="orders">
+                    <span class="nav-icon">🧾</span>
+                    <span>Orders</span>
+                </a>
                 <a href="#" class="nav-item" data-section="testimonials">
                     <span class="nav-icon">⭐</span>
                     <span>Testimonials</span>
@@ -54,15 +58,16 @@
                     <span class="nav-icon">📰</span>
                     <span>News & Blog</span>
                 </a>
-                <a href="#" class="nav-item" data-section="settings">
-                    <span class="nav-icon">⚙️</span>
-                    <span>Settings</span>
-                </a>
                 <!-- Add this inside the .sidebar-nav, after the "Settings" link -->
                 <a href="#" class="nav-item" data-section="users">
                     <span class="nav-icon">👤</span>
                     <span>Users</span>
                 </a>
+                <a href="#" class="nav-item" data-section="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Settings</span>
+                </a>
+
             </nav>
             <div class="sidebar-footer">
                 <a href="index.html" class="btn btn-secondary btn-sm" style="margin-bottom: 1rem; text-decoration: none;">← Back to Website</a>
@@ -166,6 +171,31 @@
                     </table>
                 </div>
             </section>
+            <!-- Orders Section -->
+            <section class="content-section" id="ordersSection" style="display: none;">
+                <div class="section-header">
+                    <h2>Order Management</h2>
+                </div>
+
+                <div class="orders-table-container">
+                    <table class="products-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <!-- Orders loaded by admin.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
 
             <!-- Testimonials Section -->
             <section class="content-section" id="testimonialsSection" style="display: none;">

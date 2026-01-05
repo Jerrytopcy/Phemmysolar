@@ -49,6 +49,73 @@ const authMiddleware = (req, res, next) => {
     res.status(401).json({ error: 'Invalid or expired token' });
   }
 };
+const adminOnly = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+};
+
+
+
+app.get('/api/admin/orders', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        o.id AS order_id,
+        o.date,
+        o.total,
+        o.status,
+        o.payment_status,
+        o.delivery_address,
+
+        u.id AS user_id,
+        u.username,
+        u.email,
+        u.phone,
+
+        json_agg(
+          json_build_object(
+            'productId', p.id,
+            'name', p.name,
+            'price', oi.price,
+            'quantity', oi.quantity
+          )
+        ) AS items
+
+      FROM orders o
+      JOIN users u ON u.id = o.user_id
+      JOIN order_items oi ON oi.order_id = o.id
+      JOIN products p ON p.id = oi.product_id
+
+      GROUP BY o.id, u.id
+      ORDER BY o.date DESC
+    `);
+
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error('Admin fetch orders error:', err);
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+app.put('/api/admin/orders/:id/status', authMiddleware, adminOnly, async (req, res) => {
+  const { status } = req.body;
+
+  try {
+    await pool.query(
+      'UPDATE orders SET status = $1 WHERE id = $2',
+      [status, req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update order status error:', err);
+    res.status(500).json({ error: 'Failed to update order status' });
+  }
+});
+
 
 // --- CURRENT USER PROFILE ROUTE  ---
 
@@ -543,13 +610,15 @@ app.post('/api/auth', async (req, res) => {
 app.post('/api/orders', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { items, total, deliveryAddress } = req.body;
+    const { items, total, deliveryAddress, paymentStatus, paymentReference } = req.body;
+
 
     const orderResult = await pool.query(
-      `INSERT INTO orders (user_id, total, delivery_address)
-       VALUES ($1, $2, $3)
+      `INSERT INTO orders (user_id, total, delivery_address, payment_status, transaction_id)
+      VALUES ($1, $2, $3, $4, $5)
+
        RETURNING id, date`,
-      [userId, total, deliveryAddress]
+      [userId, total, deliveryAddress, paymentStatus || 'paid', paymentReference]
     );
 
     const orderId = orderResult.rows[0].id;
@@ -717,13 +786,9 @@ app.post('/api/reset-password', async (req, res) => {
 app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body;
 
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required' });
-  }
-
   try {
     const result = await pool.query(
-      'SELECT id, username, passwordhash, role FROM users WHERE username = $1 AND role = $2',
+      'SELECT * FROM users WHERE username = $1 AND role = $2',
       [username, 'admin']
     );
 
@@ -732,20 +797,21 @@ app.post('/api/admin/login', async (req, res) => {
     }
 
     const admin = result.rows[0];
-
-    if (!admin.passwordhash || typeof admin.passwordhash !== 'string') {
-      return res.status(401).json({ error: 'Invalid admin credentials' });
-    }
-
     const isMatch = await bcrypt.compare(password, admin.passwordhash);
 
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid admin credentials' });
     }
 
+    const token = jwt.sign(
+      { id: admin.id, role: 'admin' },
+      process.env.JWT_SECRET || 'dev_secret',
+      { expiresIn: '7d' }
+    );
+
     res.json({
       success: true,
-      message: 'Admin logged in successfully',
+      token,
       admin: {
         id: admin.id,
         username: admin.username,
@@ -758,6 +824,7 @@ app.post('/api/admin/login', async (req, res) => {
     res.status(500).json({ error: 'Admin login failed' });
   }
 });
+
 
 // --- REMITA WEBHOOK ROUTE ---
 app.post('/api/webhook/remita', async (req, res) => {

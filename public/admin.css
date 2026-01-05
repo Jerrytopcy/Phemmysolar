@@ -257,7 +257,7 @@ body {
   padding: 1.5rem 2rem;
   box-shadow: var(--shadow);
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   align-items: center;
 }
 

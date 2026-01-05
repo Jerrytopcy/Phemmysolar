@@ -1460,7 +1460,9 @@ document.querySelectorAll(".sidebar .nav-item").forEach(item => {
     item.addEventListener("click", () => {
         if (window.innerWidth <= 768) {
             sidebar.classList.remove("active");
+            mobileNavToggle.classList.remove("open");
         }
     });
 });
+
 

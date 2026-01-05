@@ -559,15 +559,7 @@ document.getElementById("cancelStatusBtn").onclick = () => {
 };
 
 
-async function updateOrderStatus(orderId, currentStatus) {
-  const statuses = ["Pending", "Paid", "Shipped", "Delivered", "Cancelled"];
-
-  const newStatus = prompt(
-    `Current: ${currentStatus}\nChoose:\n${statuses.join(", ")}`
-  );
-
-  if (!statuses.includes(newStatus)) return;
-
+async function updateOrderStatus(orderId, newStatus) {
   try {
     const response = await fetch(
       `/api/admin/orders/${orderId}/status`,

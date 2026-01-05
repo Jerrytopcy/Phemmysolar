@@ -945,39 +945,51 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 
-async function loadAccountDetails() {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    async function loadAccountDetails() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
 
-    try {
-        const response = await fetch('/api/user', {
-            headers: {
-                Authorization: `Bearer ${token}`
+        try {
+            const response = await fetch('/api/user', {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load user profile');
             }
-        });
 
-        if (!response.ok) {
-            throw new Error('Failed to load user profile');
+            const user = await response.json();
+
+            /* =========================
+            CONTACT INFORMATION
+            ========================== */
+            const emailEl = document.getElementById('userEmail');
+            const phoneEl = document.getElementById('userPhone');
+
+            if (emailEl) emailEl.textContent = user.email || '—';
+            if (phoneEl) phoneEl.textContent = user.phone || '—';
+
+            /* =========================
+            ADDRESS (EDIT FORM INPUTS)
+            ========================== */
+            const streetInput = document.getElementById('editStreet');
+            const cityInput = document.getElementById('editCity');
+            const stateInput = document.getElementById('editState');
+            const postalInput = document.getElementById('editPostalCode');
+
+            if (streetInput) streetInput.value = user.address?.street || '';
+            if (cityInput) cityInput.value = user.address?.city || '';
+            if (stateInput) stateInput.value = user.address?.state || '';
+            if (postalInput) postalInput.value = user.address?.postalCode || '';
+
+        } catch (error) {
+            console.error('Error loading account details:', error);
+            showCustomAlert('Failed to load account details.', 'Error');
         }
-
-        const user = await response.json();
-
-        // Populate account fields
-        document.getElementById('accountUsername').textContent = user.username || '—';
-        document.getElementById('accountEmail').textContent = user.email || '—';
-        document.getElementById('accountPhone').textContent = user.phone || '—';
-
-        document.getElementById('accountStreet').textContent = user.address?.street || '—';
-        document.getElementById('accountCity').textContent = user.address?.city || '—';
-        document.getElementById('accountState').textContent = user.address?.state || '—';
-        document.getElementById('accountPostal').textContent = user.address?.postalCode || '—';
-        document.getElementById('accountCountry').textContent = user.address?.country || 'Nigeria';
-
-    } catch (error) {
-        console.error('Error loading account details:', error);
-        showCustomAlert("Failed to load account details.", "Error");
     }
-}
+
 
 
     const accountLink = document.getElementById('accountLink');

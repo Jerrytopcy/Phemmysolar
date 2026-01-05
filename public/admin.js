@@ -1448,14 +1448,4 @@ const orderDetailsOverlay =
 const closeOrderDetailsBtn =
   document.getElementById("closeOrderDetailsBtn");
 
-if (closeOrderDetailsBtn && orderDetailsOverlay) {
-  closeOrderDetailsBtn.onclick = () => {
-    orderDetailsOverlay.style.display = "none";
-  };
 
-  orderDetailsOverlay.onclick = (e) => {
-    if (e.target === orderDetailsOverlay) {
-      orderDetailsOverlay.style.display = "none";
-    }
-  };
-}

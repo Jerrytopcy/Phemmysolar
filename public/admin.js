@@ -1265,8 +1265,6 @@ async function deleteUser(userId) {
   }
 }
 
-
-
 // Initialize admin panel
 document.addEventListener("DOMContentLoaded", () => {
   checkAuth();

@@ -668,18 +668,7 @@ function handleNavigation(e) {
   }else if (targetSection === "orders") {
   loadOrders();
   }
- // Close sidebar on mobile after navigation
-  if (window.innerWidth <= 768) {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const mobileNavToggle = document.getElementById('mobileNavToggle');
-    
-    if (sidebar.classList.contains('active')) {
-      sidebar.classList.remove('active');
-      overlay.classList.remove('active');
-      mobileNavToggle.innerHTML = '☰';
-    }
-  }
+
 }
 
 // Handle testimonial form submission
@@ -1458,61 +1447,18 @@ const closeOrderDetailsBtn =
   document.getElementById("closeOrderDetailsBtn");
 
 
-// Add this function to handle mobile sidebar toggle
-function toggleSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
-  const mobileNavToggle = document.getElementById('mobileNavToggle');
-  
-  if (sidebar.classList.contains('active')) {
-    sidebar.classList.remove('active');
-    overlay.classList.remove('active');
-    mobileNavToggle.innerHTML = '☰';
-  } else {
-    sidebar.classList.add('active');
-    overlay.classList.add('active');
-    mobileNavToggle.innerHTML = '✕'; // Close icon when sidebar is open
-  }
-}
+const mobileNavToggle = document.getElementById("mobileNavToggle");
+const sidebar = document.querySelector(".sidebar");
 
-// Add event listeners for mobile navigation
-document.addEventListener('DOMContentLoaded', () => {
-  // ... your existing code ...
-  
-  // Mobile navigation toggle
-  const mobileNavToggle = document.getElementById('mobileNavToggle');
-  const sidebarOverlay = document.getElementById('sidebarOverlay');
-  
-  if (mobileNavToggle) {
-    mobileNavToggle.addEventListener('click', toggleSidebar);
-  }
-  
-  if (sidebarOverlay) {
-    sidebarOverlay.addEventListener('click', toggleSidebar);
-  }
-  
-  // Also close sidebar when clicking on navigation items (on mobile)
-  const navItems = document.querySelectorAll('.nav-item');
-  navItems.forEach(item => {
-    item.addEventListener('click', () => {
-      if (window.innerWidth <= 768) {
-        toggleSidebar();
-      }
-    });
-  });
-  
-  // Close sidebar when window is resized to desktop
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 768) {
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebarOverlay');
-      const mobileNavToggle = document.getElementById('mobileNavToggle');
-      
-      sidebar.classList.remove('active');
-      overlay.classList.remove('active');
-      mobileNavToggle.innerHTML = '☰';
-    }
-  });
-  
-  // ... rest of your existing code ...
+mobileNavToggle.addEventListener("click", () => {
+    sidebar.classList.toggle("active");
 });
+
+document.querySelectorAll(".sidebar .nav-item").forEach(item => {
+    item.addEventListener("click", () => {
+        if (window.innerWidth <= 768) {
+            sidebar.classList.remove("active");
+        }
+    });
+});
+

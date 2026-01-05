@@ -470,9 +470,12 @@ function applyOrderFilters() {
 
 async function viewOrder(orderId) {
   try {
+    const response = await fetch("/api/admin/orders", {
+      headers: adminAuthHeaders()
+    });
 
-    const order = allOrders.find(o => o.order_id === orderId);
-
+    const orders = await response.json();
+    const order = orders.find(o => o.order_id === orderId);
 
     if (!order) throw new Error("Order not found");
 
@@ -1440,12 +1443,6 @@ if (productPriceInput) {
       .addEventListener("input", applyOrderFilters);
   });
 
-document.body.style.overflow = "hidden";
 
-const orderDetailsOverlay =
-  document.getElementById("orderDetailsOverlay");
-
-const closeOrderDetailsBtn =
-  document.getElementById("closeOrderDetailsBtn");
 
 

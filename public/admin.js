@@ -516,13 +516,10 @@ async function viewOrder(orderId) {
 
     // Buttons
     document.getElementById("printOrderBtn").onclick = () => window.print();
-    document.getElementById("updateOrderStatusBtn").onclick =
-      () => openOrderStatusModal(order.status)
-        .then(newStatus => {
-          if (newStatus && newStatus !== order.status) {
-            updateOrderStatus(order.order_id, newStatus);
-          }
-        });
+   document.getElementById("updateOrderStatusBtn").onclick = () => {
+  updateOrderStatus(order.order_id, order.status);
+};
+
 
     // Open modal
     document.getElementById("orderDetailsModal").style.display = "flex";

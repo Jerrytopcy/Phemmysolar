@@ -1221,21 +1221,9 @@ body {
 }
 
 @media (max-width: 768px) {
-      .sidebar {
-        position: fixed;
-        top: 0;
-        left: -260px;
-        width: 260px;
-        height: 100vh;
-        z-index: 9000;
-        transition: left 0.3s ease;
-    }
 
-    .sidebar.active {
-        left: 0;
-    }
     .mobile-nav-toggle {
-        display: flex !important;
+        display: flex;
         align-items: center;
         justify-content: center;
         position: fixed;
@@ -1251,8 +1239,8 @@ body {
         transition: left 0.3s ease;
     }
 
-    /* Move button when sidebar opens */
-    .sidebar.active ~ .mobile-nav-toggle {
+    /* MOVE button when open */
+    .mobile-nav-toggle.open {
         left: 276px;
     }
 
@@ -1284,23 +1272,23 @@ body {
         top: 7px;
     }
 
-    /* Change ☰ to ✕ */
-    .sidebar.active ~ .mobile-nav-toggle .hamburger-icon {
+    /* TURN ☰ INTO ✕ */
+    .mobile-nav-toggle.open .hamburger-icon {
         background: transparent;
     }
 
-    .sidebar.active ~ .mobile-nav-toggle .hamburger-icon::before {
+    .mobile-nav-toggle.open .hamburger-icon::before {
         transform: rotate(45deg);
         top: 0;
     }
 
-    .sidebar.active ~ .mobile-nav-toggle .hamburger-icon::after {
+    .mobile-nav-toggle.open .hamburger-icon::after {
         transform: rotate(-45deg);
         top: 0;
     }
+}
 
    
-}
 
 
 

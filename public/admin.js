@@ -1465,4 +1465,20 @@ document.querySelectorAll(".sidebar .nav-item").forEach(item => {
     });
 });
 
+// Close sidebar when clicking outside
+document.addEventListener("click", (e) => {
+    const isClickInsideSidebar = sidebar.contains(e.target);
+    const isClickOnHamburger = mobileNavToggle.contains(e.target);
+
+    // Only run for mobile
+    if (window.innerWidth <= 768 && sidebar.classList.contains("active")) {
+        // If click is outside sidebar AND hamburger
+        if (!isClickInsideSidebar && !isClickOnHamburger) {
+            sidebar.classList.remove("active");
+            mobileNavToggle.classList.remove("open");
+        }
+    }
+});
+
+
 

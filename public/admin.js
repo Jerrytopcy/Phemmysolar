@@ -470,12 +470,9 @@ function applyOrderFilters() {
 
 async function viewOrder(orderId) {
   try {
-    const response = await fetch("/api/admin/orders", {
-      headers: adminAuthHeaders()
-    });
 
-    const orders = await response.json();
-    const order = orders.find(o => o.order_id === orderId);
+    const order = allOrders.find(o => o.order_id === orderId);
+
 
     if (!order) throw new Error("Order not found");
 
@@ -522,8 +519,7 @@ async function viewOrder(orderId) {
         });
 
     // Open modal
-    document.getElementById("orderDetailsModal")
-      .classList.add("active");
+    document.getElementById("orderDetailsOverlay").style.display = "flex";
 
   } catch (err) {
     showAdminAlert(err.message, "Order Error");
@@ -1299,14 +1295,23 @@ document.addEventListener("DOMContentLoaded", () => {
   if (cancelFormBtn) {
     cancelFormBtn.addEventListener("click", hideProductForm);
   }
-  const closeOrderDetailsBtn =
+  
+const closeOrderDetailsBtn =
   document.getElementById("closeOrderDetailsBtn");
 
-  if (closeOrderDetailsBtn) {
+const orderDetailsOverlay =
+  document.getElementById("orderDetailsOverlay");
+
+if (closeOrderDetailsBtn && orderDetailsOverlay) {
   closeOrderDetailsBtn.addEventListener("click", () => {
-    document
-      .getElementById("orderDetailsModal")
-      .classList.remove("active");
+    orderDetailsOverlay.style.display = "none";
+  });
+
+  // close when clicking outside modal
+  orderDetailsOverlay.addEventListener("click", (e) => {
+    if (e.target === orderDetailsOverlay) {
+      orderDetailsOverlay.style.display = "none";
+    }
   });
 }
 
@@ -1435,6 +1440,22 @@ if (productPriceInput) {
       .addEventListener("input", applyOrderFilters);
   });
 
+document.body.style.overflow = "hidden";
 
+const orderDetailsOverlay =
+  document.getElementById("orderDetailsOverlay");
 
+const closeOrderDetailsBtn =
+  document.getElementById("closeOrderDetailsBtn");
 
+if (closeOrderDetailsBtn && orderDetailsOverlay) {
+  closeOrderDetailsBtn.onclick = () => {
+    orderDetailsOverlay.style.display = "none";
+  };
+
+  orderDetailsOverlay.onclick = (e) => {
+    if (e.target === orderDetailsOverlay) {
+      orderDetailsOverlay.style.display = "none";
+    }
+  };
+}

@@ -176,6 +176,29 @@
                 <div class="section-header">
                     <h2>Order Management</h2>
                 </div>
+                <div class="order-filters">
+
+            <input
+                type="text"
+                id="orderSearchInput"
+                placeholder="Search by Order ID or Customer"
+            />
+
+            <select id="statusFilter">
+                <option value="">All Status</option>
+                <option value="Pending">Pending</option>
+                <option value="Processing">Processing</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+
+            <select id="paymentFilter">
+                <option value="">All Payments</option>
+                <option value="Paid">Paid</option>
+                <option value="Unpaid">Unpaid</option>
+            </select>
+
+            </div>
 
                 <div class="orders-table-container">
                     <table class="products-table">
@@ -548,29 +571,7 @@
 
   </div>
 </div>
-<div class="order-filters">
 
-  <input
-    type="text"
-    id="orderSearchInput"
-    placeholder="Search by Order ID or Customer"
-  />
-
-  <select id="statusFilter">
-    <option value="">All Status</option>
-    <option value="Pending">Pending</option>
-    <option value="Processing">Processing</option>
-    <option value="Delivered">Delivered</option>
-    <option value="Cancelled">Cancelled</option>
-  </select>
-
-  <select id="paymentFilter">
-    <option value="">All Payments</option>
-    <option value="Paid">Paid</option>
-    <option value="Unpaid">Unpaid</option>
-  </select>
-
-</div>
 
     <script src="admin.js"></script>
 

@@ -119,6 +119,81 @@ app.put('/api/user/address', authMiddleware, async (req, res) => {
   }
 });
 
+// --- CART ROUTES (PROTECTED) ---
+
+// Get user's cart
+app.get('/api/cart', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await pool.query(`
+      SELECT 
+        c.product_id AS "productId",
+        c.quantity,
+        p.name,
+        p.price,
+        p.images
+      FROM carts c
+      JOIN products p ON p.id = c.product_id
+      WHERE c.user_id = $1
+    `, [userId]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Fetch cart error:', err);
+    res.status(500).json({ error: 'Failed to fetch cart' });
+  }
+});
+
+
+// Save / update cart
+app.post('/api/cart', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { cart } = req.body;
+
+    if (!Array.isArray(cart)) {
+      return res.status(400).json({ error: 'Cart must be an array' });
+    }
+
+    // Clear existing cart
+    await pool.query('DELETE FROM carts WHERE user_id = $1', [userId]);
+
+    // Insert new cart items
+    for (const item of cart) {
+      await pool.query(
+        `INSERT INTO carts (user_id, product_id, quantity)
+         VALUES ($1, $2, $3)`,
+        [userId, item.productId, item.quantity]
+      );
+    }
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error('Save cart error:', err);
+    res.status(500).json({ error: 'Failed to save cart' });
+  }
+});
+
+
+// Clear cart (after checkout or logout)
+app.delete('/api/cart', authMiddleware, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM carts WHERE user_id = $1',
+      [req.user.id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Clear cart error:', err);
+    res.status(500).json({ error: 'Failed to clear cart' });
+  }
+});
+
+
+
 // --- PRODUCTS ROUTES ---
 app.get('/api/products', async (req, res) => {
   try {

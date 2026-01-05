@@ -31,6 +31,9 @@ async function addToCart(productId) {
         // Update UI
         updateUIBasedOnUser(); // This function will now check cart state
         showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
+        sessionStorage.setItem('cart', JSON.stringify(cart));
+        syncCartToDatabase();
+
     } catch (error) {
         console.error("Error fetching product for cart:", error);
         showCustomAlert("Failed to add product to cart. Please try again.", "Error");
@@ -125,6 +128,8 @@ function updateCartItemQuantity(productId, newQuantity) {
         updateUIBasedOnUser();
         viewCart(); // Refresh cart view
     }
+    sessionStorage.setItem('cart', JSON.stringify(cart));
+        syncCartToDatabase();
 }
 
 // Remove item from cart
@@ -146,6 +151,8 @@ function removeFromCart(productId) {
         // Refresh cart view if items still remain
         viewCart();
     }
+    sessionStorage.setItem('cart', JSON.stringify(cart));
+        syncCartToDatabase();
 }
 
 // Proceed to checkout
@@ -243,6 +250,13 @@ async function proceedToCheckout() {
 
         // Show success message
         showCustomAlert("Your order has been successfully placed!", "Order Placed", "success");
+        await fetch('/api/cart', {
+            method: 'DELETE',
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
 
     } catch (error) {
         console.error("Error placing order:", error);
@@ -513,6 +527,8 @@ async function handleAuthSubmit(e) {
 
             if (isLogin) {
                 showCustomAlert(`Welcome back, ${userData.username}!`, "Logged In");
+                await loadCartFromDatabase();
+
             } else {
                 showCustomAlert(`Welcome, ${userData.username}! Your account has been created.`, "Account Created");
             }
@@ -990,8 +1006,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-
-
     const accountLink = document.getElementById('accountLink');
     if (accountLink) {
         accountLink.addEventListener('click', (e) => {
@@ -1402,4 +1416,43 @@ function displayProducts(products) {
 }
 
 
+async function syncCartToDatabase() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        await fetch('/api/cart', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ cart })
+        });
+    } catch (error) {
+        console.error("Failed to sync cart:", error);
+    }
+}
+
+async function loadCartFromDatabase() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const response = await fetch('/api/cart', {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) return;
+
+        const savedCart = await response.json();
+        cart = savedCart;
+        sessionStorage.setItem('cart', JSON.stringify(cart));
+        updateUIBasedOnUser();
+    } catch (error) {
+        console.error("Failed to load cart from DB:", error);
+    }
+}
 

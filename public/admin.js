@@ -519,7 +519,7 @@ async function viewOrder(orderId) {
         });
 
     // Open modal
-    document.getElementById("orderDetailsOverlay").style.display = "flex";
+    document.getElementById("orderDetailsModal").style.display = "flex";
 
   } catch (err) {
     showAdminAlert(err.message, "Order Error");
@@ -1296,23 +1296,23 @@ document.addEventListener("DOMContentLoaded", () => {
     cancelFormBtn.addEventListener("click", hideProductForm);
   }
   
-const closeOrderDetailsBtn =
-  document.getElementById("closeOrderDetailsBtn");
 
-const orderDetailsOverlay =
-  document.getElementById("orderDetailsOverlay");
+const closeOrderDetailsBtn = document.getElementById("closeOrderDetailsBtn");
+const orderDetailsModal = document.getElementById("orderDetailsModal");
 
-if (closeOrderDetailsBtn && orderDetailsOverlay) {
-  closeOrderDetailsBtn.addEventListener("click", () => {
-    orderDetailsOverlay.style.display = "none";
-  });
-
-  // close when clicking outside modal
-  orderDetailsOverlay.addEventListener("click", (e) => {
-    if (e.target === orderDetailsOverlay) {
-      orderDetailsOverlay.style.display = "none";
-    }
-  });
+if (closeOrderDetailsBtn && orderDetailsModal) {
+    // Close button click
+    closeOrderDetailsBtn.addEventListener("click", () => {
+        orderDetailsModal.style.display = "none";
+    });
+// Close when clicking outside the modal content (on the overlay)
+    orderDetailsModal.addEventListener("click", (e) => {
+        // Check if the click was on the modal background/overlay itself, not the content
+        if (e.target === orderDetailsModal) {
+            orderDetailsModal.style.display = "none";
+        }
+    });
+  
 }
 
   // Product form submission

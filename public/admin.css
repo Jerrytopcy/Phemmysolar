@@ -1239,21 +1239,25 @@ body {
     }
 
     .mobile-nav-toggle {
-        display: flex;
+        display: flex !important;
         align-items: center;
         justify-content: center;
         position: fixed;
-        top: 15px;
-        left: 15px;
-        z-index: 2100;
-        width: 44px;
-        height: 44px;
-        font-size: 22px;
+        top: 16px;
+        left: 16px;
+        width: 48px;
+        height: 48px;
+        font-size: 24px;
         background: #111;
         color: #fff;
-        border-radius: 6px;
+        border-radius: 8px;
         border: none;
         cursor: pointer;
+        z-index: 9999; /* THIS is the key */
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+       .dashboard-header {
+        padding-left: 80px;
     }
 }
 
@@ -1261,3 +1265,9 @@ body {
 .mobile-nav-toggle {
     display: none;
 }
+
+
+
+
+
+

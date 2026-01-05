@@ -1222,13 +1222,14 @@ body {
 
 @media (max-width: 768px) {
 
+    /* ===== Hamburger Button ===== */
     .mobile-nav-toggle {
         display: flex;
         align-items: center;
         justify-content: center;
         position: fixed;
         top: 16px;
-        left: 16px;
+        right: 16px;
         width: 46px;
         height: 46px;
         background: #111;
@@ -1236,15 +1237,15 @@ body {
         border: none;
         cursor: pointer;
         z-index: 10000;
-        transition: left 0.3s ease;
+        transition: right 0.3s ease;
     }
 
-    /* MOVE button when open */
+    /* MOVE button when sidebar opens */
     .mobile-nav-toggle.open {
-        left: 276px;
+        right: 276px;
     }
 
-    /* Hamburger lines */
+    /* ===== Hamburger Icon ===== */
     .hamburger-icon {
         position: relative;
         width: 22px;
@@ -1287,20 +1288,22 @@ body {
         top: 0;
     }
 
-     .sidebar {
+    /* ===== Sidebar (Right Slide) ===== */
+    .sidebar {
         position: fixed;
         top: 0;
-        left: -260px;
+        right: -260px;
         width: 260px;
         height: 100vh;
         z-index: 9000;
-        transition: left 0.3s ease;
+        transition: right 0.3s ease;
     }
 
     .sidebar.active {
-        left: 0;
+        right: 0;
     }
 }
+
 
    
 

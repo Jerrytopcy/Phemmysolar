@@ -668,8 +668,7 @@ function handleNavigation(e) {
   }else if (targetSection === "orders") {
   loadOrders();
   }
-
-   // Close sidebar on mobile after navigation
+ // Close sidebar on mobile after navigation
   if (window.innerWidth <= 768) {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
@@ -681,7 +680,6 @@ function handleNavigation(e) {
       mobileNavToggle.innerHTML = '☰';
     }
   }
-
 }
 
 // Handle testimonial form submission
@@ -1479,7 +1477,7 @@ function toggleSidebar() {
 
 // Add event listeners for mobile navigation
 document.addEventListener('DOMContentLoaded', () => {
-  // ... existing code ...
+  // ... your existing code ...
   
   // Mobile navigation toggle
   const mobileNavToggle = document.getElementById('mobileNavToggle');
@@ -1501,6 +1499,19 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleSidebar();
       }
     });
+  });
+  
+  // Close sidebar when window is resized to desktop
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      const mobileNavToggle = document.getElementById('mobileNavToggle');
+      
+      sidebar.classList.remove('active');
+      overlay.classList.remove('active');
+      mobileNavToggle.innerHTML = '☰';
+    }
   });
   
   // ... rest of your existing code ...

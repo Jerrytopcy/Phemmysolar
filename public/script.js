@@ -944,11 +944,48 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+
+async function loadAccountDetails() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const response = await fetch('/api/user', {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load user profile');
+        }
+
+        const user = await response.json();
+
+        // Populate account fields
+        document.getElementById('accountUsername').textContent = user.username || '—';
+        document.getElementById('accountEmail').textContent = user.email || '—';
+        document.getElementById('accountPhone').textContent = user.phone || '—';
+
+        document.getElementById('accountStreet').textContent = user.address?.street || '—';
+        document.getElementById('accountCity').textContent = user.address?.city || '—';
+        document.getElementById('accountState').textContent = user.address?.state || '—';
+        document.getElementById('accountPostal').textContent = user.address?.postalCode || '—';
+        document.getElementById('accountCountry').textContent = user.address?.country || 'Nigeria';
+
+    } catch (error) {
+        console.error('Error loading account details:', error);
+        showCustomAlert("Failed to load account details.", "Error");
+    }
+}
+
+
     const accountLink = document.getElementById('accountLink');
     if (accountLink) {
         accountLink.addEventListener('click', (e) => {
             e.preventDefault(); // Prevent default link behavior
             // Load order history
+            loadAccountDetails();   // ✅ ADD THIS
             loadOrderHistory();
             // Show account modal if it exists
             const accountModal = document.getElementById("accountModal");
@@ -1354,36 +1391,3 @@ function displayProducts(products) {
 
 
 
-async function loadAccountDetails() {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-        const response = await fetch('/api/user', {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to load user profile');
-        }
-
-        const user = await response.json();
-
-        // Populate account fields
-        document.getElementById('accountUsername').textContent = user.username || '—';
-        document.getElementById('accountEmail').textContent = user.email || '—';
-        document.getElementById('accountPhone').textContent = user.phone || '—';
-
-        document.getElementById('accountStreet').textContent = user.address?.street || '—';
-        document.getElementById('accountCity').textContent = user.address?.city || '—';
-        document.getElementById('accountState').textContent = user.address?.state || '—';
-        document.getElementById('accountPostal').textContent = user.address?.postalCode || '—';
-        document.getElementById('accountCountry').textContent = user.address?.country || 'Nigeria';
-
-    } catch (error) {
-        console.error('Error loading account details:', error);
-        showCustomAlert("Failed to load account details.", "Error");
-    }
-}

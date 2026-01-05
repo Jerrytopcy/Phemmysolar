@@ -488,8 +488,35 @@ async function viewOrder(orderId) {
     document.getElementById("od-name").textContent = order.username;
     document.getElementById("od-email").textContent = order.email;
     document.getElementById("od-phone").textContent = order.phone;
-    document.getElementById("od-address").textContent =
-      order.delivery_address;
+    
+
+    // Safely display delivery address
+let deliveryAddressDisplay = "No address provided";
+
+if (order.delivery_address != null) {
+  if (typeof order.delivery_address === 'string') {
+    // If it's a string, use it directly
+    deliveryAddressDisplay = order.delivery_address;
+  } else if (typeof order.delivery_address === 'object') {
+    // If it's an object, try to format it
+    const addr = order.delivery_address;
+    const street = typeof addr.street === 'string' ? addr.street : '';
+    const city = typeof addr.city === 'string' ? addr.city : '';
+    const state = typeof addr.state === 'string' ? addr.state : '';
+    const postalCode = typeof addr.postalCode === 'string' ? addr.postalCode : '';
+    const country = typeof addr.country === 'string' ? addr.country : 'Nigeria';
+
+    deliveryAddressDisplay = `${street}, ${city}, ${state} ${postalCode}, ${country}`.trim();
+    if (deliveryAddressDisplay.length <= 2) { // Fallback if only punctuation
+      deliveryAddressDisplay = "Incomplete address";
+    }
+  } else {
+    // Fallback for any other type
+    deliveryAddressDisplay = String(order.delivery_address);
+  }
+}
+
+document.getElementById('od-address').textContent = deliveryAddressDisplay;
 
     // Items
     const itemsBody = document.getElementById("od-items");

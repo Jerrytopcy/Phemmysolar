@@ -35,6 +35,10 @@
 
     <!-- Admin Dashboard -->
     <div class="dashboard-container" id="dashboardContainer" style="display: none;">
+          <!-- Mobile Navigation Toggle -->
+        <button class="mobile-nav-toggle" id="mobileNavToggle">
+            <span>☰</span>
+        </button>
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
@@ -388,8 +392,7 @@
                     </form>
                 </div>
             </section>
-            <!--  new "Users" content section-->
-           <!-- Add this after the settingsSection -->
+         
             <!-- Add this after the settingsSection -->
             <section class="content-section" id="usersSection" style="display: none;">
                     <div class="section-actions">
@@ -465,6 +468,7 @@
         </main>
     </div>
 
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
     <!-- Custom Alert Modal -->
     <div class="admin-modal-overlay" id="adminAlertModal">
         <div class="admin-modal admin-modal-alert">

@@ -7,6 +7,16 @@ let testimonialImage = "";
 let newsImage = "";
 let currentEditingUserId = null;
 
+
+
+function adminAuthHeaders() {
+  const token = sessionStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`
+  };
+}
+
 // Custom Alert Modal
 function showAdminAlert(message, title = "Alert") {
   return new Promise((resolve) => {
@@ -132,6 +142,8 @@ async function handleLogin(e) {
         if (result.success) {
             isAuthenticated = true;
             sessionStorage.setItem("adminAuth", "true");
+            sessionStorage.setItem("adminToken", result.token);
+
             showDashboard();
             errorMessage.textContent = "";
         } else {
@@ -1231,8 +1243,12 @@ if (productPriceInput) {
 // Load orders
 async function loadOrders() {
   const tableBody = document.getElementById("ordersTableBody");
+
   try {
-    const response = await fetch("/api/orders");
+    const response = await fetch("/api/admin/orders", {
+      headers: adminAuthHeaders()
+    });
+
     if (!response.ok) throw new Error("Failed to load orders");
 
     const orders = await response.json();
@@ -1241,97 +1257,108 @@ async function loadOrders() {
       tableBody.innerHTML = `
         <tr>
           <td colspan="6" class="empty-state">No orders found</td>
-        </tr>
-      `;
+        </tr>`;
       return;
     }
 
     tableBody.innerHTML = orders.map(order => `
       <tr>
-        <td>#${order.id}</td>
-        <td>${order.customer?.name || "Guest"}</td>
+        <td>#${order.order_id}</td>
+        <td>${order.username}</td>
         <td>${formatNaira(order.total)}</td>
         <td>
-          <span class="status-badge status-${order.status}">
+          <span class="status-badge status-${order.status.toLowerCase()}">
             ${order.status}
           </span>
         </td>
-        <td>${new Date(order.createdAt).toLocaleDateString()}</td>
+        <td>${new Date(order.date).toLocaleDateString()}</td>
         <td>
-          <button class="btn-view" onclick="viewOrder(${order.id})">View</button>
+          <button class="btn-view" onclick="viewOrder(${order.order_id})">
+            View
+          </button>
         </td>
       </tr>
     `).join("");
 
-  } catch (error) {
-    console.error("Orders error:", error);
+  } catch (err) {
+    console.error(err);
     tableBody.innerHTML = `
       <tr>
-        <td colspan="6" class="error-message">${error.message}</td>
-      </tr>
-    `;
+        <td colspan="6" class="error-message">${err.message}</td>
+      </tr>`;
   }
 }
+
 
 async function viewOrder(orderId) {
   try {
-    const response = await fetch(`/api/orders/${orderId}`);
-    if (!response.ok) throw new Error("Failed to load order");
+    const response = await fetch("/api/admin/orders", {
+      headers: adminAuthHeaders()
+    });
 
-    const order = await response.json();
+    const orders = await response.json();
+    const order = orders.find(o => o.order_id === orderId);
 
-    let itemsHtml = order.items.map(item => `
-      <li>
-        ${item.name} × ${item.quantity}
-        — ${formatNaira(item.price)}
-      </li>
-    `).join("");
+    if (!order) throw new Error("Order not found");
+
+    const items = order.items.map(i =>
+      `${i.name} × ${i.quantity} — ${formatNaira(i.price)}`
+    ).join("\n");
 
     const confirmed = await showAdminConfirm(`
-      Customer: ${order.customer.name}
-      Email: ${order.customer.email}
-      Phone: ${order.customer.phone}
+Customer: ${order.username}
+Email: ${order.email}
+Phone: ${order.phone}
 
-      Items:
-      ${itemsHtml}
+Delivery Address:
+${order.delivery_address}
 
-      Total: ${formatNaira(order.total)}
-      Status: ${order.status}
+Items:
+${items}
 
-      Update status?
-    `, "Order Details");
+Total: ${formatNaira(order.total)}
+Payment: ${order.payment_status}
+Status: ${order.status}
+
+Update order status?
+`, "Order Details");
 
     if (confirmed) {
-      showStatusUpdate(order.id, order.status);
+      updateOrderStatus(orderId, order.status);
     }
 
-  } catch (error) {
-    showAdminAlert(error.message, "Order Error");
+  } catch (err) {
+    showAdminAlert(err.message, "Order Error");
   }
 }
 
-async function showStatusUpdate(orderId, currentStatus) {
-  const statuses = ["pending", "paid", "shipped", "delivered", "cancelled"];
+
+async function updateOrderStatus(orderId, currentStatus) {
+  const statuses = ["Pending", "Paid", "Shipped", "Delivered", "Cancelled"];
 
   const newStatus = prompt(
-    `Current: ${currentStatus}\nChoose new status:\n${statuses.join(", ")}`
+    `Current: ${currentStatus}\nChoose:\n${statuses.join(", ")}`
   );
 
   if (!statuses.includes(newStatus)) return;
 
   try {
-    const response = await fetch(`/api/orders/${orderId}/status`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus })
-    });
+    const response = await fetch(
+      `/api/admin/orders/${orderId}/status`,
+      {
+        method: "PUT",
+        headers: adminAuthHeaders(),
+        body: JSON.stringify({ status: newStatus })
+      }
+    );
 
-    if (!response.ok) throw new Error("Failed to update status");
+    if (!response.ok) throw new Error("Status update failed");
 
-    await showAdminAlert("Order status updated!", "Success");
+    await showAdminAlert("Order status updated", "Success");
     loadOrders();
 
-  } catch (error) {
-    showAdminAlert(error.message, "Update Error");
+  } catch (err) {
+    showAdminAlert(err.message, "Update Error");
   }
 }
+

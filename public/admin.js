@@ -382,7 +382,128 @@ async function handleProductSubmit(e) {
   }
 }
 
-// ... (rest of admin.js remains the same)
+// Load orders
+async function loadOrders() {
+  const tableBody = document.getElementById("ordersTableBody");
+
+  try {
+    const response = await fetch("/api/admin/orders", {
+      headers: adminAuthHeaders()
+    });
+
+    if (!response.ok) throw new Error("Failed to load orders");
+
+    const orders = await response.json();
+
+    if (orders.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="empty-state">No orders found</td>
+        </tr>`;
+      return;
+    }
+
+    tableBody.innerHTML = orders.map(order => `
+      <tr>
+        <td>#${order.order_id}</td>
+        <td>${order.username}</td>
+        <td>${formatNaira(order.total)}</td>
+        <td>
+          <span class="status-badge status-${order.status.toLowerCase()}">
+            ${order.status}
+          </span>
+        </td>
+        <td>${new Date(order.date).toLocaleDateString()}</td>
+        <td>
+          <button class="btn-view" onclick="viewOrder(${order.order_id})">
+            View
+          </button>
+        </td>
+      </tr>
+    `).join("");
+
+  } catch (err) {
+    console.error(err);
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="6" class="error-message">${err.message}</td>
+      </tr>`;
+  }
+}
+
+
+async function viewOrder(orderId) {
+  try {
+    const response = await fetch("/api/admin/orders", {
+      headers: adminAuthHeaders()
+    });
+
+    const orders = await response.json();
+    const order = orders.find(o => o.order_id === orderId);
+
+    if (!order) throw new Error("Order not found");
+
+    const items = order.items.map(i =>
+      `${i.name} × ${i.quantity} — ${formatNaira(i.price)}`
+    ).join("\n");
+
+    const confirmed = await showAdminConfirm(`
+Customer: ${order.username}
+Email: ${order.email}
+Phone: ${order.phone}
+
+Delivery Address:
+${order.delivery_address}
+
+Items:
+${items}
+
+Total: ${formatNaira(order.total)}
+Payment: ${order.payment_status}
+Status: ${order.status}
+
+Update order status?
+`, "Order Details");
+
+    if (confirmed) {
+      updateOrderStatus(orderId, order.status);
+    }
+
+  } catch (err) {
+    showAdminAlert(err.message, "Order Error");
+  }
+}
+
+
+async function updateOrderStatus(orderId, currentStatus) {
+  const statuses = ["Pending", "Paid", "Shipped", "Delivered", "Cancelled"];
+
+  const newStatus = prompt(
+    `Current: ${currentStatus}\nChoose:\n${statuses.join(", ")}`
+  );
+
+  if (!statuses.includes(newStatus)) return;
+
+  try {
+    const response = await fetch(
+      `/api/admin/orders/${orderId}/status`,
+      {
+        method: "PUT",
+        headers: adminAuthHeaders(),
+        body: JSON.stringify({ status: newStatus })
+      }
+    );
+
+    if (!response.ok) throw new Error("Status update failed");
+
+    await showAdminAlert("Order status updated", "Success");
+    loadOrders();
+
+  } catch (err) {
+    showAdminAlert(err.message, "Update Error");
+  }
+}
+
 
 // Edit product
 async function editProduct(productId) {
@@ -1240,125 +1361,4 @@ if (productPriceInput) {
 });
 
 
-// Load orders
-async function loadOrders() {
-  const tableBody = document.getElementById("ordersTableBody");
-
-  try {
-    const response = await fetch("/api/admin/orders", {
-      headers: adminAuthHeaders()
-    });
-
-    if (!response.ok) throw new Error("Failed to load orders");
-
-    const orders = await response.json();
-
-    if (orders.length === 0) {
-      tableBody.innerHTML = `
-        <tr>
-          <td colspan="6" class="empty-state">No orders found</td>
-        </tr>`;
-      return;
-    }
-
-    tableBody.innerHTML = orders.map(order => `
-      <tr>
-        <td>#${order.order_id}</td>
-        <td>${order.username}</td>
-        <td>${formatNaira(order.total)}</td>
-        <td>
-          <span class="status-badge status-${order.status.toLowerCase()}">
-            ${order.status}
-          </span>
-        </td>
-        <td>${new Date(order.date).toLocaleDateString()}</td>
-        <td>
-          <button class="btn-view" onclick="viewOrder(${order.order_id})">
-            View
-          </button>
-        </td>
-      </tr>
-    `).join("");
-
-  } catch (err) {
-    console.error(err);
-    tableBody.innerHTML = `
-      <tr>
-        <td colspan="6" class="error-message">${err.message}</td>
-      </tr>`;
-  }
-}
-
-
-async function viewOrder(orderId) {
-  try {
-    const response = await fetch("/api/admin/orders", {
-      headers: adminAuthHeaders()
-    });
-
-    const orders = await response.json();
-    const order = orders.find(o => o.order_id === orderId);
-
-    if (!order) throw new Error("Order not found");
-
-    const items = order.items.map(i =>
-      `${i.name} × ${i.quantity} — ${formatNaira(i.price)}`
-    ).join("\n");
-
-    const confirmed = await showAdminConfirm(`
-Customer: ${order.username}
-Email: ${order.email}
-Phone: ${order.phone}
-
-Delivery Address:
-${order.delivery_address}
-
-Items:
-${items}
-
-Total: ${formatNaira(order.total)}
-Payment: ${order.payment_status}
-Status: ${order.status}
-
-Update order status?
-`, "Order Details");
-
-    if (confirmed) {
-      updateOrderStatus(orderId, order.status);
-    }
-
-  } catch (err) {
-    showAdminAlert(err.message, "Order Error");
-  }
-}
-
-
-async function updateOrderStatus(orderId, currentStatus) {
-  const statuses = ["Pending", "Paid", "Shipped", "Delivered", "Cancelled"];
-
-  const newStatus = prompt(
-    `Current: ${currentStatus}\nChoose:\n${statuses.join(", ")}`
-  );
-
-  if (!statuses.includes(newStatus)) return;
-
-  try {
-    const response = await fetch(
-      `/api/admin/orders/${orderId}/status`,
-      {
-        method: "PUT",
-        headers: adminAuthHeaders(),
-        body: JSON.stringify({ status: newStatus })
-      }
-    );
-
-    if (!response.ok) throw new Error("Status update failed");
-
-    await showAdminAlert("Order status updated", "Success");
-    loadOrders();
-
-  } catch (err) {
-    showAdminAlert(err.message, "Update Error");
-  }
-}
 

@@ -1215,29 +1215,12 @@ body {
     }
 }
 
+/* ===== Mobile Nav Toggle (Animated) ===== */
+.mobile-nav-toggle {
+    display: none;
+}
 
-/* ===== Mobile Sidebar Behavior ===== */
 @media (max-width: 768px) {
-    .sidebar {
-        position: fixed;
-        left: -260px;
-        top: 0;
-        width: 260px;
-        height: 100vh;
-        background: #111;
-        z-index: 2000;
-        transition: left 0.3s ease;
-    }
-
-    .sidebar.active {
-        left: 0;
-    }
-
-    .main-content {
-        margin-left: 0;
-        width: 100%;
-    }
-
     .mobile-nav-toggle {
         display: flex !important;
         align-items: center;
@@ -1245,26 +1228,79 @@ body {
         position: fixed;
         top: 16px;
         left: 16px;
-        width: 48px;
-        height: 48px;
-        font-size: 24px;
+        width: 46px;
+        height: 46px;
         background: #111;
-        color: #fff;
         border-radius: 8px;
         border: none;
         cursor: pointer;
-        z-index: 9999; /* THIS is the key */
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        z-index: 10000;
+        transition: left 0.3s ease;
     }
-       .dashboard-header {
-        padding-left: 80px;
+
+    /* Move button when sidebar opens */
+    .sidebar.active ~ .mobile-nav-toggle {
+        left: 276px;
+    }
+
+    /* Hamburger lines */
+    .hamburger-icon {
+        position: relative;
+        width: 22px;
+        height: 2px;
+        background: #fff;
+        transition: all 0.3s ease;
+    }
+
+    .hamburger-icon::before,
+    .hamburger-icon::after {
+        content: "";
+        position: absolute;
+        width: 22px;
+        height: 2px;
+        background: #fff;
+        left: 0;
+        transition: all 0.3s ease;
+    }
+
+    .hamburger-icon::before {
+        top: -7px;
+    }
+
+    .hamburger-icon::after {
+        top: 7px;
+    }
+
+    /* Change ☰ to ✕ */
+    .sidebar.active ~ .mobile-nav-toggle .hamburger-icon {
+        background: transparent;
+    }
+
+    .sidebar.active ~ .mobile-nav-toggle .hamburger-icon::before {
+        transform: rotate(45deg);
+        top: 0;
+    }
+
+    .sidebar.active ~ .mobile-nav-toggle .hamburger-icon::after {
+        transform: rotate(-45deg);
+        top: 0;
+    }
+
+       .sidebar {
+        position: fixed;
+        top: 0;
+        left: -260px;
+        width: 260px;
+        height: 100vh;
+        z-index: 9000;
+        transition: left 0.3s ease;
+    }
+
+    .sidebar.active {
+        left: 0;
     }
 }
 
-/* Hide hamburger on desktop */
-.mobile-nav-toggle {
-    display: none;
-}
 
 
 

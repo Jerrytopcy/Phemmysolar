@@ -1089,82 +1089,50 @@ function reverseDateFormat(formattedDate) {
 }
 
 // Load users into table
-// Load users into table
 async function loadUsers() {
-    const tableBody = document.getElementById("usersTableBody");
-    try {
-        const response = await fetch('/api/users');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const users = await response.json();
-
-        // 👇 TEMPORARY DEBUG: Remove this after you've checked the console
-        console.log("Loaded Users Data:", users);
-
-        if (users.length === 0) {
-            tableBody.innerHTML = `
-<tr>
-<td colspan="6" class="empty-state">
-<p>No users found.</p>
-</td>
-</tr>
-`;
-            return;
-        }
-
-        tableBody.innerHTML = users
-            .map((user) => {
-                // Safely get the address. Assume it's an object or a string.
-                let fullAddress = "No address provided";
-
-                // Check if address exists and is not null/undefined
-                if (user.address != null) { // This covers both undefined and null
-                    if (typeof user.address === 'string') {
-                        // If it's a string, use it directly
-                        fullAddress = user.address;
-                    } else if (typeof user.address === 'object') {
-                        // If it's an object, try to extract parts safely
-                        const addrObj = user.address;
-                        const street = typeof addrObj.street === 'string' ? addrObj.street : '';
-                        const city = typeof addrObj.city === 'string' ? addrObj.city : '';
-                        const state = typeof addrObj.state === 'string' ? addrObj.state : '';
-                        const postalCode = typeof addrObj.postalCode === 'string' ? addrObj.postalCode : '';
-                        const country = typeof addrObj.country === 'string' ? addrObj.country : 'Nigeria';
-
-                        fullAddress = `${street}, ${city}, ${state} ${postalCode}, ${country}`.trim();
-
-                        // If the result is just commas or empty, fall back to a default
-                        if (fullAddress.trim().length <= 2) { // Very basic check for mostly punctuation
-                            fullAddress = "Incomplete address";
-                        }
-                    } else {
-                        // If it's neither string nor object, convert to string as fallback
-                        fullAddress = String(user.address);
-                    }
-                }
-
-                return `
-<tr>
-<td>${user.username}</td>
-<td>${user.email || "Not set"}</td>
-<td>${user.phone || "Not set"}</td>
-<td>${fullAddress}</td> <!-- Use the safe fullAddress variable -->
-<td>${user.orders ? user.orders.length : 0}</td>
-<td>
-<div class="product-actions">
-<button class="btn-edit" onclick="editUser(${user.id})">Edit</button>
-<button class="btn-delete" onclick="deleteUser(${user.id})">Delete</button>
-</div>
-</td>
-</tr>
-`
-            })
-            .join("");
-    } catch (error) {
-        console.error("Error loading users:", error);
-        tableBody.innerHTML = `<tr><td colspan="6" class="error-message"><p>Error loading users: ${error.message}</p></td></tr>`;
+  const tableBody = document.getElementById("usersTableBody");
+  try {
+    const response = await fetch('/api/users');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    const users = await response.json(); // Assuming your API returns an array of users
+    if (users.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="empty-state">
+            <p>No users found.</p>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+    tableBody.innerHTML = users
+      .map((user) => {
+        // Format address for display
+        const address = user.address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
+        const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+        return `
+            <tr>
+              <td>${user.username}</td>
+              <td>${user.email || "Not set"}</td>
+              <td>${user.phone || "Not set"}</td>
+              <td>${fullAddress}</td>
+              <td>${user.orders ? user.orders.length : 0}</td>
+              <td>
+                <div class="product-actions">
+                  <button class="btn-edit" onclick="editUser(${user.id})">Edit</button>
+                  <button class="btn-delete" onclick="deleteUser(${user.id})">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `
+      })
+      .join("");
+  } catch (error) {
+    console.error("Error loading users:", error);
+    tableBody.innerHTML = `<tr><td colspan="6" class="error-message"><p>Error loading users: ${error.message}</p></td></tr>`;
+  }
 }
 
 // Show user form

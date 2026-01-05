@@ -468,7 +468,17 @@ app.delete('/api/news/:id', async (req, res) => {
 // --- USERS ROUTES ---
 app.get('/api/users', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM users ORDER BY id');
+    const result = await pool.query(`
+  SELECT 
+    id,
+    username,
+    email,
+    phone,
+    address::json AS address, -- 👈 Force PostgreSQL to return address as JSON object
+    role
+  FROM users 
+  ORDER BY id
+`);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching users:', err);
@@ -478,7 +488,16 @@ app.get('/api/users', async (req, res) => {
 
 app.get('/api/users/:id', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.params.id]);
+    const result = await pool.query(`
+      SELECT 
+        id,
+        username,
+        email,
+        phone,
+        address::json AS address, -- 👈 Add this
+        role
+      FROM users WHERE id = $1
+    `, [req.params.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }

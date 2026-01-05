@@ -381,7 +381,9 @@ async function handleProductSubmit(e) {
     }
   }
 }
+let allOrders = [];
 
+// Load orders
 // Load orders
 async function loadOrders() {
   const tableBody = document.getElementById("ordersTableBody");
@@ -393,34 +395,11 @@ async function loadOrders() {
 
     if (!response.ok) throw new Error("Failed to load orders");
 
-    const orders = await response.json();
+    // ✅ STORE orders globally
+    allOrders = await response.json();
 
-    if (orders.length === 0) {
-      tableBody.innerHTML = `
-        <tr>
-          <td colspan="6" class="empty-state">No orders found</td>
-        </tr>`;
-      return;
-    }
-
-    tableBody.innerHTML = orders.map(order => `
-      <tr>
-        <td>#${order.order_id}</td>
-        <td>${order.username}</td>
-        <td>${formatNaira(order.total)}</td>
-        <td>
-          <span class="status-badge status-${order.status.toLowerCase()}">
-            ${order.status}
-          </span>
-        </td>
-        <td>${new Date(order.date).toLocaleDateString()}</td>
-        <td>
-          <button class="btn-view" onclick="viewOrder(${order.order_id})">
-            View
-          </button>
-        </td>
-      </tr>
-    `).join("");
+    // ✅ Render using shared function
+    renderOrders(allOrders);
 
   } catch (err) {
     console.error(err);
@@ -431,6 +410,63 @@ async function loadOrders() {
   }
 }
 
+
+function renderOrders(orders) {
+  const tableBody = document.getElementById("ordersTableBody");
+
+  if (!orders || orders.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="6" class="empty-state">No orders found</td>
+      </tr>`;
+    return;
+  }
+
+  tableBody.innerHTML = orders.map(order => `
+    <tr>
+      <td>#${order.order_id}</td>
+      <td>${order.username}</td>
+      <td>${formatNaira(order.total)}</td>
+      <td>
+        <span class="status-badge status-${order.status.toLowerCase()}">
+          ${order.status}
+        </span>
+      </td>
+      <td>${new Date(order.date).toLocaleDateString()}</td>
+      <td>
+        <button class="btn-view" onclick="viewOrder(${order.order_id})">
+          View
+        </button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+
+function applyOrderFilters() {
+  const search = document
+    .getElementById("orderSearchInput")
+    .value.toLowerCase();
+
+  const status = document.getElementById("statusFilter").value;
+  const payment = document.getElementById("paymentFilter").value;
+
+  const filtered = allOrders.filter(order => {
+    const matchesSearch =
+      order.username.toLowerCase().includes(search) ||
+      String(order.order_id).includes(search);
+
+    const matchesStatus =
+      !status || order.status === status;
+
+    const matchesPayment =
+      !payment || order.payment_status === payment;
+
+    return matchesSearch && matchesStatus && matchesPayment;
+  });
+
+  renderOrders(filtered);
+}
 
 async function viewOrder(orderId) {
   try {
@@ -443,36 +479,57 @@ async function viewOrder(orderId) {
 
     if (!order) throw new Error("Order not found");
 
-    const items = order.items.map(i =>
-      `${i.name} × ${i.quantity} — ${formatNaira(i.price)}`
-    ).join("\n");
+    // Fill meta
+    document.getElementById("od-order-id").textContent = `#${order.order_id}`;
+    document.getElementById("od-date").textContent =
+      new Date(order.date).toLocaleString();
+    document.getElementById("od-status").textContent = order.status;
+    document.getElementById("od-status").className =
+      `status-badge status-${order.status.toLowerCase()}`;
 
-    const confirmed = await showAdminConfirm(`
-Customer: ${order.username}
-Email: ${order.email}
-Phone: ${order.phone}
+    // Customer
+    document.getElementById("od-name").textContent = order.username;
+    document.getElementById("od-email").textContent = order.email;
+    document.getElementById("od-phone").textContent = order.phone;
+    document.getElementById("od-address").textContent =
+      order.delivery_address;
 
-Delivery Address:
-${order.delivery_address}
+    // Items
+    const itemsBody = document.getElementById("od-items");
+    itemsBody.innerHTML = order.items.map(i => `
+      <tr>
+        <td>${i.name}</td>
+        <td>${i.quantity}</td>
+        <td>${formatNaira(i.price)}</td>
+        <td>${formatNaira(i.price * i.quantity)}</td>
+      </tr>
+    `).join("");
 
-Items:
-${items}
+    // Summary
+    document.getElementById("od-payment").textContent =
+      order.payment_status;
+    document.getElementById("od-total").textContent =
+      formatNaira(order.total);
 
-Total: ${formatNaira(order.total)}
-Payment: ${order.payment_status}
-Status: ${order.status}
+    // Buttons
+    document.getElementById("printOrderBtn").onclick = () => window.print();
+    document.getElementById("updateOrderStatusBtn").onclick =
+      () => openOrderStatusModal(order.status)
+        .then(newStatus => {
+          if (newStatus && newStatus !== order.status) {
+            updateOrderStatus(order.order_id, newStatus);
+          }
+        });
 
-Update order status?
-`, "Order Details");
-
-    if (confirmed) {
-      updateOrderStatus(orderId, order.status);
-    }
+    // Open modal
+    document.getElementById("orderDetailsModal")
+      .classList.add("active");
 
   } catch (err) {
     showAdminAlert(err.message, "Order Error");
   }
 }
+
 
 
 async function updateOrderStatus(orderId, currentStatus) {
@@ -1242,6 +1299,17 @@ document.addEventListener("DOMContentLoaded", () => {
   if (cancelFormBtn) {
     cancelFormBtn.addEventListener("click", hideProductForm);
   }
+  const closeOrderDetailsBtn =
+  document.getElementById("closeOrderDetailsBtn");
+
+  if (closeOrderDetailsBtn) {
+  closeOrderDetailsBtn.addEventListener("click", () => {
+    document
+      .getElementById("orderDetailsModal")
+      .classList.remove("active");
+  });
+}
+
   // Product form submission
   const productForm = document.getElementById("productForm");
   if (productForm) {
@@ -1359,6 +1427,14 @@ if (productPriceInput) {
   });
 }
 });
+
+["orderSearchInput", "statusFilter", "paymentFilter"]
+  .forEach(id => {
+    document
+      .getElementById(id)
+      .addEventListener("input", applyOrderFilters);
+  });
+
 
 
 

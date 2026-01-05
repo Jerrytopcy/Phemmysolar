@@ -470,6 +470,107 @@
             </div>
         </div>
     </div>
+<div id="orderDetailsModal" class="admin-modal">
+  <div class="admin-modal-content large">
+
+    <!-- Header -->
+    <div class="modal-header">
+      <h2>Order Details</h2>
+      <button class="modal-close" id="closeOrderDetailsBtn">×</button>
+    </div>
+
+    <!-- Printable Area -->
+    <div id="orderPrintArea">
+
+      <!-- Order Meta -->
+      <div class="order-meta">
+        <div>
+          <strong>Order ID:</strong> <span id="od-order-id"></span>
+        </div>
+        <div>
+          <strong>Date:</strong> <span id="od-date"></span>
+        </div>
+        <div>
+          <strong>Status:</strong>
+          <span id="od-status" class="status-badge"></span>
+        </div>
+      </div>
+
+      <!-- Customer -->
+      <div class="order-section">
+        <h3>Customer Information</h3>
+        <p><strong>Name:</strong> <span id="od-name"></span></p>
+        <p><strong>Email:</strong> <span id="od-email"></span></p>
+        <p><strong>Phone:</strong> <span id="od-phone"></span></p>
+        <p><strong>Delivery Address:</strong><br>
+          <span id="od-address"></span>
+        </p>
+      </div>
+
+      <!-- Items -->
+      <div class="order-section">
+        <h3>Order Items</h3>
+        <table class="order-items-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="od-items"></tbody>
+        </table>
+      </div>
+
+      <!-- Summary -->
+      <div class="order-summary">
+        <div>
+          <strong>Payment:</strong>
+          <span id="od-payment"></span>
+        </div>
+        <div class="order-total">
+          Total: <span id="od-total"></span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="modal-actions">
+      <button id="printOrderBtn" class="btn-secondary">
+        Print / Invoice
+      </button>
+      <button id="updateOrderStatusBtn" class="btn-primary">
+        Update Status
+      </button>
+    </div>
+
+  </div>
+</div>
+<div class="order-filters">
+
+  <input
+    type="text"
+    id="orderSearchInput"
+    placeholder="Search by Order ID or Customer"
+  />
+
+  <select id="statusFilter">
+    <option value="">All Status</option>
+    <option value="Pending">Pending</option>
+    <option value="Processing">Processing</option>
+    <option value="Delivered">Delivered</option>
+    <option value="Cancelled">Cancelled</option>
+  </select>
+
+  <select id="paymentFilter">
+    <option value="">All Payments</option>
+    <option value="Paid">Paid</option>
+    <option value="Unpaid">Unpaid</option>
+  </select>
+
+</div>
 
     <script src="admin.js"></script>
 

@@ -1220,7 +1220,7 @@ body {
     display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
 
     /* ===== Hamburger Button ===== */
     .mobile-nav-toggle {

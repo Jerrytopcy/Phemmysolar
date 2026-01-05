@@ -1438,7 +1438,7 @@ if (productPriceInput) {
       .addEventListener("input", applyOrderFilters);
   });
 
-document.body.style.overflow = "hidden";
+
 
 const orderDetailsOverlay =
   document.getElementById("orderDetailsOverlay");

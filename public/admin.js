@@ -1110,9 +1110,17 @@ async function loadUsers() {
     tableBody.innerHTML = users
       .map((user) => {
         // Format address for display
-        const address = user.address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
-        const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
-        return `
+        // Safely get the address object, defaulting to empty object if null/undefined
+        const address = user.address || {};
+        // Ensure we have string values for each part
+        const street = typeof address.street === 'string' ? address.street : '';
+        const city = typeof address.city === 'string' ? address.city : '';
+        const state = typeof address.state === 'string' ? address.state : '';
+        const postalCode = typeof address.postalCode === 'string' ? address.postalCode : '';
+        const country = typeof address.country === 'string' ? address.country : 'Nigeria';
+
+        const fullAddress = `${street}, ${city}, ${state} ${postalCode}, ${country}`;
+                return `
             <tr>
               <td>${user.username}</td>
               <td>${user.email || "Not set"}</td>
@@ -1458,7 +1466,7 @@ mobileNavToggle.addEventListener("click", () => {
 
 document.querySelectorAll(".sidebar .nav-item").forEach(item => {
     item.addEventListener("click", () => {
-        if (window.innerWidth <= 768) {
+        if (window.innerWidth <= 1200) {
             sidebar.classList.remove("active");
             mobileNavToggle.classList.remove("open");
         }

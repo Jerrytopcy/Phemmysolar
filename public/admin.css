@@ -257,13 +257,17 @@ body {
   padding: 1.5rem 2rem;
   box-shadow: var(--shadow);
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
   align-items: center;
 }
 
 .dashboard-header h1 {
   font-size: 1.75rem;
   color: var(--dark-color);
+}
+.dashboard-header span {
+  margin-right: 4rem;
+  padding-right: 2rem;
 }
 
 .user-info {

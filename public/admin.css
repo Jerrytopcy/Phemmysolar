@@ -1288,14 +1288,3 @@ body {
 .sidebar-overlay.active {
   display: block;
 }
-/* Ensure main content is scrollable on mobile */
-@media (max-width: 768px) {
-  .main-content {
-    overflow-y: auto;
-    height: calc(100vh - 60px); /* Adjust based on your header height */
-  }
-  
-  .content-section {
-    min-height: calc(100vh - 120px); /* Adjust as needed */
-  }
-}

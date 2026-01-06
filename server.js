@@ -625,14 +625,13 @@ app.post('/api/auth', async (req, res) => {
   }
 });
 
-// --- ADD THIS NEW ENDPOINT FOR VALIDATION BEFORE SIGNUP ---
 // --- REAL-TIME VALIDATION ENDPOINT ---
 app.post('/api/auth/check', async (req, res) => {
     const { username = "", email = "", phone = "" } = req.body;
 
-    // Trim and normalize
+    // Normalize: trim and lowercase where appropriate
     const cleanUsername = username.trim();
-    const cleanEmail = email.trim();
+    const cleanEmail = email.trim().toLowerCase();
     const cleanPhone = phone.trim();
 
     try {
@@ -663,6 +662,7 @@ app.post('/api/auth/check', async (req, res) => {
             });
         }
 
+        // Construct query dynamically
         const query = `
             SELECT 
                 EXISTS(SELECT 1 FROM users WHERE ${conditions.join(' OR ')}) AS exists,
@@ -671,7 +671,7 @@ app.post('/api/auth/check', async (req, res) => {
                 EXISTS(SELECT 1 FROM users WHERE phone = $3) AS phoneExists
         `;
 
-        // Add placeholders for username, email, phone (even if empty, we pass them)
+        // Execute query with parameters (even if some are empty, we pass them)
         const result = await pool.query(query, [
             cleanUsername || null,
             cleanEmail || null,

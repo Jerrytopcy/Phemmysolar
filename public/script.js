@@ -428,7 +428,7 @@ function updateUIBasedOnUser() {
     }
 }
 
-// Simulate user logout with confirmation
+
 function handleLogout() {
     showCustomConfirm(
         "Are you sure you want to log out? You will need to log in again to access your account and cart.",
@@ -474,27 +474,26 @@ function closeAuthModal() {
 // Handle login or signup form submission
 async function handleAuthSubmit(e) {
     e.preventDefault();
+
     const form = e.target;
     const username = form.username.value.trim();
-    const password = form.password.value; // Get the raw password
+    const password = form.password.value;
 
-    // Add explicit check for password length
-    if (!username || !password || password.length === 0) {
-        document.getElementById("authError").textContent = "Username and password are required.";
+    if (!username || !password) {
+        document.getElementById("authError").textContent =
+            "Username and password are required.";
         return;
     }
 
     const isLogin = form.dataset.mode === "login";
 
-    // Prepare data based on whether it's login or signup
     let requestData = {
-        username: username,
-        password: password,
+        username,
+        password,
         action: isLogin ? "login" : "signup"
     };
 
     if (!isLogin) {
-        // For signup: collect extra fields
         const email = document.getElementById("email").value.trim();
         const phone = document.getElementById("phone").value.trim();
         const street = document.getElementById("street").value.trim();
@@ -502,78 +501,108 @@ async function handleAuthSubmit(e) {
         const state = document.getElementById("state").value.trim();
         const postalCode = document.getElementById("postalCode").value.trim();
 
-        // Validate required fields for signup
         if (!email || !phone || !street || !city || !state) {
-            document.getElementById("authError").textContent = "Please fill in all required fields.";
+            document.getElementById("authError").textContent =
+                "Please fill in all required fields.";
             return;
         }
 
         requestData.email = email;
         requestData.phone = phone;
         requestData.address = {
-            street: street,
-            city: city,
-            state: state,
-            postalCode: postalCode,
+            street,
+            city,
+            state,
+            postalCode,
             country: "Nigeria"
         };
     }
 
     showLoader(isLogin ? "Logging in..." : "Creating your account...");
+
     try {
-        const response = await fetch('/api/auth', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+        // MAIN AUTH REQUEST (login OR signup)
+        const response = await fetch("/api/auth", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestData)
         });
 
         const result = await response.json();
 
-        if (!response.ok) {
-            document.getElementById("authError").textContent = result.error || "An unexpected error occurred.";
+        if (!response.ok || !result.success) {
+            document.getElementById("authError").textContent =
+                result.error || "Authentication failed.";
             return;
         }
 
-        if (result.success) {
-            const userData = result.user;
+        // ======================
+        // LOGIN FLOW
+        // ======================
+        if (isLogin) {
+            localStorage.setItem("token", result.token);
+            localStorage.setItem("currentUser", JSON.stringify(result.user));
 
-            // Store token if provided
-            if (result.token) {
-                localStorage.setItem('token', result.token);
-            }
-
-            // Store user data in sessionStorage for UI purposes only
-            sessionStorage.setItem('currentUser', JSON.stringify(userData));
-
-            // Update UI
             updateUIBasedOnUser();
             closeAuthModal();
-            if (isLogin) {
-                showCustomAlert(`Welcome back, ${userData.username}!`, "Logged In");
-                await loadCartFromDatabase();
-           } else {
+
             showCustomAlert(
+                `Welcome back, ${result.user.username}!`,
+                "Logged In",
+                "success"
+            );
+
+            await loadCartFromDatabase();
+            return;
+        }
+
+        // ======================
+        // SIGNUP FLOW → AUTO LOGIN
+        // ======================
+          showCustomAlert(
                 `Welcome, ${userData.username}! Your account has been created and you are now logged in.`,
                 "Account Created",
                 "success"
             );
 
-            // Auto login behavior
-            await loadCartFromDatabase();
-            }
+        // AUTO LOGIN AFTER SIGNUP
+        const loginResponse = await fetch("/api/auth", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username,
+                password,
+                action: "login"
+            })
+        });
 
-        } else {
-            document.getElementById("authError").textContent = result.error || "Authentication failed.";
+        const loginResult = await loginResponse.json();
+
+        if (!loginResponse.ok || !loginResult.success || !loginResult.token) {
+            document.getElementById("authError").textContent =
+                "Account created, but auto login failed. Please log in.";
+            return;
         }
+
+        localStorage.setItem("token", loginResult.token);
+        localStorage.setItem(
+            "currentUser",
+            JSON.stringify(loginResult.user)
+        );
+
+        updateUIBasedOnUser();
+        closeAuthModal();
+        await loadCartFromDatabase();
+
     } catch (error) {
-        console.error("Network error during authentication:", error);
-        document.getElementById("authError").textContent = "Network error. Please try again.";
+        console.error("Auth error:", error);
+        document.getElementById("authError").textContent =
+            "Network error. Please try again.";
     } finally {
         hideLoader();
     }
 }
+
 
 // Add event listener for Forgot Password Form
 const forgotPasswordForm = document.getElementById("forgotPasswordForm");

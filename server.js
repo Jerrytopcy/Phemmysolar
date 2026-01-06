@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 3000;
 // --- ADD SENDGRID SETUP ---
 const sgMail = require('@sendgrid/mail');
 const jwt = require('jsonwebtoken');
+const rateLimit = require("express-rate-limit");
+
 
 // Set your SendGrid API key
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -27,7 +29,13 @@ app.use(cors({
     credentials: true
 }));
 // --- END CORS ---
-
+const checkLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 5, // 5 requests per IP per minute
+    message: {
+        error: "Too many requests. Please wait a minute and try again."
+    },
+});
 // Connect to PostgreSQL (Railway auto-provides DATABASE_URL)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -626,7 +634,7 @@ app.post('/api/auth', async (req, res) => {
 });
 
 // --- REAL-TIME VALIDATION ENDPOINT ---
-app.post('/api/auth/check', async (req, res) => {
+app.post('/api/auth/check', checkLimiter, async (req, res) => {
     const { username = "", email = "", phone = "" } = req.body;
 
     // Normalize: trim and lowercase where appropriate

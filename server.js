@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 3000;
 // --- ADD SENDGRID SETUP ---
 const sgMail = require('@sendgrid/mail');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 
 // Set your SendGrid API key
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -31,6 +32,18 @@ app.use(cors({
 // Connect to PostgreSQL (Railway auto-provides DATABASE_URL)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+});
+// ======================
+// RATE LIMITER FOR AUTH CHECK
+// ======================
+const checkLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 5, // 5 requests per IP per minute
+    message: {
+        error: "Too many requests. Please wait a minute and try again."
+    },
+    standardHeaders: true,
+    legacyHeaders: false
 });
 
 // --- AUTH MIDDLEWARE ---
@@ -625,35 +638,20 @@ app.post('/api/auth', async (req, res) => {
   }
 });
 
-// --- REAL-TIME VALIDATION ENDPOINT ---
-app.post('/api/auth/check', async (req, res) => {
+
+// ======================
+// REAL-TIME VALIDATION ENDPOINT
+// ======================
+app.post("/api/auth/check", checkLimiter, async (req, res) => {
     const { username = "", email = "", phone = "" } = req.body;
 
-    // Normalize: trim and lowercase where appropriate
     const cleanUsername = username.trim();
     const cleanEmail = email.trim().toLowerCase();
     const cleanPhone = phone.trim();
 
     try {
-        // Build dynamic WHERE clauses only for non-empty fields
-        let conditions = [];
-        let params = [];
-
-        if (cleanUsername) {
-            conditions.push(`username = $${params.length + 1}`);
-            params.push(cleanUsername);
-        }
-        if (cleanEmail) {
-            conditions.push(`email = $${params.length + 1}`);
-            params.push(cleanEmail);
-        }
-        if (cleanPhone) {
-            conditions.push(`phone = $${params.length + 1}`);
-            params.push(cleanPhone);
-        }
-
-        // If no fields provided, return no conflicts
-        if (conditions.length === 0) {
+        // If nothing to check
+        if (!cleanUsername && !cleanEmail && !cleanPhone) {
             return res.json({
                 exists: false,
                 usernameExists: false,
@@ -662,29 +660,38 @@ app.post('/api/auth/check', async (req, res) => {
             });
         }
 
-        // Construct query dynamically
-        const query = `
-            SELECT 
-                EXISTS(SELECT 1 FROM users WHERE ${conditions.join(' OR ')}) AS exists,
-                EXISTS(SELECT 1 FROM users WHERE username = $1) AS usernameExists,
-                EXISTS(SELECT 1 FROM users WHERE email = $2) AS emailExists,
-                EXISTS(SELECT 1 FROM users WHERE phone = $3) AS phoneExists
-        `;
+        // Individual checks (safe and fast with indexes)
+        const result = await pool.query(
+            `
+            SELECT
+                EXISTS(SELECT 1 FROM users WHERE username = $1) AS "usernameExists",
+                EXISTS(SELECT 1 FROM users WHERE email = $2) AS "emailExists",
+                EXISTS(SELECT 1 FROM users WHERE phone = $3) AS "phoneExists"
+            `,
+            [
+                cleanUsername || null,
+                cleanEmail || null,
+                cleanPhone || null
+            ]
+        );
 
-        // Execute query with parameters (even if some are empty, we pass them)
-        const result = await pool.query(query, [
-            cleanUsername || null,
-            cleanEmail || null,
-            cleanPhone || null
-        ]);
+        const { usernameExists, emailExists, phoneExists } = result.rows[0];
 
-        res.json(result.rows[0]);
+        res.json({
+            exists: usernameExists || emailExists || phoneExists,
+            usernameExists,
+            emailExists,
+            phoneExists
+        });
 
     } catch (err) {
-        console.error('Error checking availability:', err);
-        res.status(500).json({ error: 'Server error while checking availability' });
+        console.error("Error checking availability:", err);
+        res.status(500).json({
+            error: "Server error while checking availability"
+        });
     }
 });
+
 
 
 // --- ORDERS ROUTES (PROTECTED) ---

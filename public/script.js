@@ -24,25 +24,19 @@ function hideLoader() {
 // Add item to cart
 async function addToCart(productId) {
     showLoader("Adding item to cart...");
-
     try {
         const token = localStorage.getItem("token");
 
         // Fetch product (for name + validation only)
         const response = await fetch(`/api/products/${productId}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const product = await response.json();
         if (!product) {
             showCustomAlert("Product not found.", "Error");
             return;
         }
 
-        // ===============================
-        // LOGGED IN USER → DATABASE CART
-        // ===============================
+        // LOGGED-IN USER → add directly to DB cart
         if (token) {
             await fetch("/api/cart/add", {
                 method: "POST",
@@ -55,31 +49,24 @@ async function addToCart(productId) {
                     quantity: 1
                 })
             });
-
-            await loadCartFromDatabase();
-            updateUIBasedOnUser();
-
+            await loadCartFromDatabase(); // refresh cart UI
             showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
             return;
         }
 
-        // ===============================
-        // GUEST USER → SESSION CART
-        // ===============================
-        const existingItem = cart.find(item => item.product_id === productId);
-
+        // GUEST USER → session cart
+        const existingItem = cart.find(item => item.productId === productId);
         if (existingItem) {
             existingItem.quantity += 1;
         } else {
             cart.push({
-                product_id: productId,
+                productId: productId,
                 quantity: 1
             });
         }
 
         sessionStorage.setItem("cart", JSON.stringify(cart));
-        updateUIBasedOnUser();
-
+        updateUIBasedOnUser(); // updates cart count and cart display
         showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
 
     } catch (error) {
@@ -89,6 +76,7 @@ async function addToCart(productId) {
         hideLoader();
     }
 }
+
 
 
 // View Cart

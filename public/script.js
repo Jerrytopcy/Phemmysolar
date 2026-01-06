@@ -330,6 +330,7 @@ function formatOrderDate(dateString) {
     return new Date(dateString).toLocaleString('en-US', options);
 }
 
+// Load user's order history (fixed)
 async function loadOrderHistory() {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -350,31 +351,20 @@ async function loadOrderHistory() {
             return;
         }
 
+        // Sort newest first
         orders.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
         for (const order of orders) {
+            // Correctly get delivery address
             const address = order.delivery_address || {};
             const fullAddress = `${address.street || ""}, ${address.city || ""}, ${address.state || ""} ${address.postalCode || ""}, ${address.country || "Nigeria"}`;
 
             let itemsHTML = '';
             for (const item of order.items) {
+                // Fallback for product name if missing
                 const name = item.name || "Product Name";
-                let imageUrl = '/placeholder.svg';
-
-                // Try fetching product to get image
-                try {
-                    const productResponse = await fetch(`/api/products/${item.productId}`);
-                    if (productResponse.ok) {
-                        const product = await productResponse.json();
-                        if (product.images?.length) {
-                            imageUrl = product.images[0];
-                        }
-                    }
-                } catch (err) {
-                    console.warn("Could not load product image for order item:", item.productId, err);
-                }
-
+                const imageUrl = item.image || '/placeholder.svg';
                 itemsHTML += `
 <div class="order-history-item">
     <div class="order-item-image-wrapper">
@@ -413,7 +403,6 @@ async function loadOrderHistory() {
         hideLoader();
     }
 }
-
 
 
 

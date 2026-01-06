@@ -2315,11 +2315,111 @@ section {
   }
 }
 
-/* ========================================
-   EXTRA SMALL SCREENS (UP TO 480px)
-   ======================================== */
 
+  
+  /* ========================================
+EXTRA SMALL SCREENS (UP TO 480px)
+======================================== */
 @media (max-width: 480px) {
+
+  /* --- MODAL FIXES FOR SMALL SCREENS --- */
+  .modal-container {
+    max-width: 95vw; /* Use 95% of viewport width */
+    width: 95vw; /* Explicitly set width */
+    max-height: 90vh; /* Limit height to 90% of viewport height */
+    overflow-y: auto; /* Enable scrolling if content overflows */
+    padding: 1rem; /* Reduce padding for smaller screens */
+    border-radius: 12px; /* Slightly smaller radius for mobile */
+  }
+
+  .modal-content {
+    padding: 1.5rem; /* Reduce padding inside modal */
+    max-height: 80vh; /* Limit content height */
+    overflow-y: auto; /* Ensure content scrolls if needed */
+  }
+
+  /* Adjust modal close button position for better accessibility */
+  .modal-close {
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 32px;
+    height: 32px;
+    font-size: 1.5rem;
+  }
+
+  /* Make sure modal images scale properly */
+  .modal-main-image,
+  .modal-container img {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  /* Adjust gallery navigation buttons for smaller screens */
+  .gallery-nav {
+    width: 30px;
+    height: 30px;
+    font-size: 1.2rem;
+  }
+
+  /* Ensure thumbnails are smaller and fit horizontally */
+  .thumbnail {
+    width: 50px;
+    height: 50px;
+  }
+
+  /* Adjust product details text sizes */
+  .modal-product-name {
+    font-size: 1.5rem;
+  }
+  
+  .modal-product-price {
+    font-size: 1.75rem;
+  }
+
+  /* Ensure buttons are full width and have proper spacing */
+  .modal-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* For account and cart modals specifically */
+  #accountModal .modal-content,
+  #cartModal .modal-content {
+    padding: 1.5rem;
+  }
+
+  #cartContent,
+  #orderHistory {
+    max-height: 60vh;
+    padding: 0.5rem 0;
+  }
+
+  /* Ensure alert modals are also responsive */
+  .alert-modal {
+    max-width: 90vw;
+    width: 90vw;
+  }
+
+  .alert-content {
+    padding: 1.5rem;
+  }
+
+  /* Optional: Add a subtle scrollbar for better UX on iOS */
+  .modal-container::-webkit-scrollbar {
+    width: 6px;
+  }
+  .modal-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  .modal-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+  }
+  .modal-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
   .footer-content {
     grid-template-columns: 1fr;
     gap: 1.5rem;

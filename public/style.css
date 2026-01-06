@@ -3103,6 +3103,11 @@ section {
     background: #dc3545; /* Red */
     border: 1px solid #c82333;
 }
+.status-badge.processing {
+    background-color: #cce5ff;
+    color: #6c757d;
+    border: 1px solid #c82333;
+}
 
 /* === CHECK PAYMENT BUTTON STYLING === */
 

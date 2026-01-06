@@ -439,9 +439,6 @@ function handleLogout() {
     );
 }
 
-// --- NEW: Custom Modal Functions for Login/Signup ---
-
-// Show the login/signup modal
 // Show the login/signup modal - ALWAYS show Login form first
 function showAuthModal() {
     const modal = document.getElementById("authModal");
@@ -451,31 +448,67 @@ function showAuthModal() {
         document.getElementById("authForm").dataset.mode = "login";
         document.getElementById("authSubmitBtn").textContent = "Login";
         document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
-        document.getElementById("signupExtraFields").style.display = "none"; // Hide name/email fields for signup
+        document.getElementById("signupExtraFields").style.display = "none";
 
         // Clear form inputs and errors
         document.getElementById("authForm").reset();
         document.getElementById("authError").textContent = "";
 
-        // Reattach event listeners (in case they were removed or not initialized)
+        // Reattach event listeners
         const signupSwitch = document.getElementById("signupFormSwitch");
         const loginSwitch = document.getElementById("loginFormSwitch");
 
         if (signupSwitch) {
-            signupSwitch.removeEventListener("click", switchToSignup); // Prevent duplicates
+            signupSwitch.removeEventListener("click", switchToSignup);
             signupSwitch.addEventListener("click", switchToSignup);
         }
         if (loginSwitch) {
-            loginSwitch.removeEventListener("click", switchToLogin); // Prevent duplicates
+            loginSwitch.removeEventListener("click", switchToLogin);
             loginSwitch.addEventListener("click", switchToLogin);
         }
 
-        // Show modal
         modal.classList.add("active");
         document.body.style.overflow = "hidden";
     }
 }
 
+// ======================
+// GLOBAL FUNCTIONS FOR FORM SWITCHING
+// ======================
+
+// Switch to Signup Form
+function switchToSignup(e) {
+    e.preventDefault();
+    document.getElementById("authFormTitle").textContent = "Sign Up";
+    document.getElementById("authForm").dataset.mode = "signup";
+    document.getElementById("authSubmitBtn").textContent = "Sign Up";
+    document.getElementById("authToggleText").innerHTML = "Already have an account? <a href='#' id='loginFormSwitch'>Login</a>";
+    document.getElementById("signupExtraFields").style.display = "block";
+
+    // Reattach event listener for the new login link
+    const loginSwitch = document.getElementById("loginFormSwitch");
+    if (loginSwitch) {
+        loginSwitch.removeEventListener("click", switchToLogin);
+        loginSwitch.addEventListener("click", switchToLogin);
+    }
+}
+
+// Switch to Login Form
+function switchToLogin(e) {
+    e.preventDefault();
+    document.getElementById("authFormTitle").textContent = "Login";
+    document.getElementById("authForm").dataset.mode = "login";
+    document.getElementById("authSubmitBtn").textContent = "Login";
+    document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
+    document.getElementById("signupExtraFields").style.display = "none";
+
+    // Reattach event listener for the new signup link
+    const signupSwitch = document.getElementById("signupFormSwitch");
+    if (signupSwitch) {
+        signupSwitch.removeEventListener("click", switchToSignup);
+        signupSwitch.addEventListener("click", switchToSignup);
+    }
+}
 // Close the login/signup modal
 function closeAuthModal() {
     const modal = document.getElementById("authModal");
@@ -1143,46 +1176,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Switch between Login and Signup forms
-    const loginFormSwitch = document.getElementById("loginFormSwitch");
-    const signupFormSwitch = document.getElementById("signupFormSwitch");
+   
 
-    if (loginFormSwitch) {
-        loginFormSwitch.addEventListener("click", (e) => {
-            e.preventDefault();
-            document.getElementById("authFormTitle").textContent = "Login";
-            document.getElementById("authForm").dataset.mode = "login";
-            document.getElementById("authSubmitBtn").textContent = "Login";
-            document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
-            // Reattach event listener for the new signup link
-            document.getElementById("signupFormSwitch").addEventListener("click", switchToSignup);
-        });
-    }
-
-    // Inside the DOMContentLoaded event listener, find or add these functions
-    function switchToSignup(e) {
-        e.preventDefault();
-        document.getElementById("authFormTitle").textContent = "Sign Up";
-        document.getElementById("authForm").dataset.mode = "signup";
-        document.getElementById("authSubmitBtn").textContent = "Sign Up";
-        document.getElementById("authToggleText").innerHTML = "Already have an account? <a href='#' id='loginFormSwitch'>Login</a>";
-        // Show the extra signup fields
-        document.getElementById("signupExtraFields").style.display = "block";
-        // Reattach event listener for the new login link
-        document.getElementById("loginFormSwitch").addEventListener("click", switchToLogin);
-    }
-
-    function switchToLogin(e) {
-        e.preventDefault();
-        document.getElementById("authFormTitle").textContent = "Login";
-        document.getElementById("authForm").dataset.mode = "login";
-        document.getElementById("authSubmitBtn").textContent = "Login";
-        document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
-        // Hide the extra signup fields for login
-        document.getElementById("signupExtraFields").style.display = "none";
-        // Reattach event listener for the new signup link
-        document.getElementById("signupFormSwitch").addEventListener("click", switchToSignup);
-    }
 
     // Attach initial event listeners for switching
     if (signupFormSwitch) {

@@ -553,9 +553,17 @@ async function handleAuthSubmit(e) {
             if (isLogin) {
                 showCustomAlert(`Welcome back, ${userData.username}!`, "Logged In");
                 await loadCartFromDatabase();
-            } else {
-                showCustomAlert(`Welcome, ${userData.username}! Your account has been created.`, "Account Created");
+           } else {
+            showCustomAlert(
+                `Welcome, ${userData.username}! Your account has been created and you are now logged in.`,
+                "Account Created",
+                "success"
+            );
+
+            // Auto login behavior
+            await loadCartFromDatabase();
             }
+
         } else {
             document.getElementById("authError").textContent = result.error || "Authentication failed.";
         }

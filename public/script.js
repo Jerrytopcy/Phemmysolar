@@ -24,19 +24,25 @@ function hideLoader() {
 // Add item to cart
 async function addToCart(productId) {
     showLoader("Adding item to cart...");
+
     try {
         const token = localStorage.getItem("token");
 
         // Fetch product (for name + validation only)
         const response = await fetch(`/api/products/${productId}`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const product = await response.json();
         if (!product) {
             showCustomAlert("Product not found.", "Error");
             return;
         }
 
-        // LOGGED-IN USER → add directly to DB cart
+        // ===============================
+        // LOGGED IN USER → DATABASE CART
+        // ===============================
         if (token) {
             await fetch("/api/cart/add", {
                 method: "POST",
@@ -49,24 +55,31 @@ async function addToCart(productId) {
                     quantity: 1
                 })
             });
-            await loadCartFromDatabase(); // refresh cart UI
+
+            await loadCartFromDatabase();
+            updateUIBasedOnUser();
+
             showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
             return;
         }
 
-        // GUEST USER → session cart
-        const existingItem = cart.find(item => item.productId === productId);
+        // ===============================
+        // GUEST USER → SESSION CART
+        // ===============================
+        const existingItem = cart.find(item => item.product_id === productId);
+
         if (existingItem) {
             existingItem.quantity += 1;
         } else {
             cart.push({
-                productId: productId,
+                product_id: productId,
                 quantity: 1
             });
         }
 
         sessionStorage.setItem("cart", JSON.stringify(cart));
-        updateUIBasedOnUser(); // updates cart count and cart display
+        updateUIBasedOnUser();
+
         showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
 
     } catch (error) {
@@ -76,7 +89,6 @@ async function addToCart(productId) {
         hideLoader();
     }
 }
-
 
 
 // View Cart
@@ -153,20 +165,6 @@ async function viewCart() {
         hideLoader();
     }
 }
-
-
-function normalizeCartItem(item) {
-    return {
-        productId: item.productId ?? item.product_id ?? item.id,
-        name: item.name,
-        price: typeof item.price === "string"
-            ? parseInt(item.price.replace(/\D/g, ""))
-            : item.price,
-        image: item.image || item.images?.[0],
-        quantity: item.quantity
-    };
-}
-
 
 // Update item quantity in cart
 function updateCartItemQuantity(productId, newQuantity) {
@@ -427,60 +425,26 @@ function updateUIBasedOnUser() {
     const accountLink = document.getElementById('accountLink');
     const cartCountElement = document.getElementById('cartCount');
 
-    const token = localStorage.getItem('token');
-    const isLoggedIn = !!token;
+    const isLoggedIn = !!localStorage.getItem('token');
+    const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-    // Determine the current cart
-    let currentCart = [];
     if (isLoggedIn) {
-        currentCart = window.cartDatabase || []; // your DB-loaded cart
-    } else {
-        currentCart = cart || []; // guest cart
-    }
-
-    const cartCount = currentCart.reduce((sum, item) => sum + item.quantity, 0);
-
-    // Show/hide buttons
-    if (isLoggedIn) {
+        // User is logged in
         if (loginBtn) loginBtn.style.display = 'none';
         if (logoutBtn) {
             logoutBtn.style.display = 'inline-block';
-            logoutBtn.onclick = handleLogout;
+            logoutBtn.onclick = handleLogout; // Ensure event handler is attached
         }
         if (accountLink) accountLink.style.display = 'inline-block';
+        if (cartCountElement) cartCountElement.textContent = cartCount;
     } else {
+        // User is not logged in
         if (loginBtn) loginBtn.style.display = 'inline-block';
         if (logoutBtn) logoutBtn.style.display = 'none';
         if (accountLink) accountLink.style.display = 'none';
+        if (cartCountElement) cartCountElement.textContent = '0';
     }
-
-    // Update cart count
-    if (cartCountElement) cartCountElement.textContent = cartCount;
-
-    // Update cart dropdown/list
-    renderCartItems(currentCart);
 }
-function renderCartItems(cartItems) {
-    const cartList = document.getElementById("cartItemsList");
-    if (!cartList) return;
-
-    if (cartItems.length === 0) {
-        cartList.innerHTML = "<p>Your cart is empty.</p>";
-        return;
-    }
-
-    cartList.innerHTML = cartItems.map(item => `
-        <div class="cart-item">
-            <img src="${item.image || '/placeholder.svg'}" alt="${item.name || 'Product'}" onerror="this.src='/placeholder.svg';">
-            <div class="cart-item-details">
-                <span class="cart-item-name">${item.name || 'Product'}</span>
-                <span class="cart-item-qty">Qty: ${item.quantity}</span>
-                <span class="cart-item-price">${formatNaira(item.price * item.quantity)}</span>
-            </div>
-        </div>
-    `).join("");
-}
-
 
 
 function handleLogout() {
@@ -1596,80 +1560,51 @@ async function syncCartToDatabase() {
 }
 
 async function loadCartFromDatabase() {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem('token');
     if (!token) return;
-
     showLoader("Loading your cart...");
-
     try {
-        const response = await fetch("/api/cart", {
-            headers: { Authorization: `Bearer ${token}` }
+        const response = await fetch('/api/cart', {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
         });
-
-        if (!response.ok) throw new Error("Failed to load cart");
-
-        const dbCart = await response.json(); 
-        // [{ id, product_id, quantity }]
-
-        const hydratedCart = [];
-
-        for (const item of dbCart) {
-            const productRes = await fetch(`/api/products/${item.product_id}`);
-            if (!productRes.ok) continue;
-
-            const product = await productRes.json();
-
-            hydratedCart.push({
-                productId: product.id,
-                name: product.name,
-                price: parseInt(product.price.replace(/\D/g, "")),
-                image: product.images?.[0],
-                quantity: item.quantity
-            });
-        }
-
-        cart = hydratedCart;
-        sessionStorage.setItem("cart", JSON.stringify(cart));
+        if (!response.ok) return;
+        const savedCart = await response.json();
+        cart = savedCart;
+        sessionStorage.setItem('cart', JSON.stringify(cart));
         updateUIBasedOnUser();
-
-    } catch (err) {
-        console.error("Cart load failed:", err);
+    } catch (error) {
+        console.error("Failed to load cart from DB:", error);
     } finally {
         hideLoader();
     }
 }
 
 
-
 async function mergeGuestCartToDatabase() {
+    const guestCart = JSON.parse(sessionStorage.getItem("cart")) || [];
     const token = localStorage.getItem("token");
-    if (!token) return;
 
-    const guestCart = JSON.parse(sessionStorage.getItem("cart") || "[]");
-    if (guestCart.length === 0) return;
+    if (!token || guestCart.length === 0) return;
 
     for (const item of guestCart) {
-        try {
-            await fetch("/api/cart/add", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    product_id: item.productId,
-                    quantity: item.quantity
-                })
-            });
-        } catch (err) {
-            console.error("Failed to merge guest cart item:", item, err);
-        }
+        await fetch("/api/cart/add", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                product_id: item.product_id,
+                quantity: item.quantity
+            })
+        });
     }
 
-    // Clear guest cart
+    // Clear guest cart after merge
     sessionStorage.removeItem("cart");
+    cart = [];
 
-    // Refresh cart UI from database
-    await loadCartFromDatabase();
+    updateUIBasedOnUser();
 }
-

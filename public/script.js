@@ -443,103 +443,59 @@ function handleLogout() {
 // Show the login/signup modal - ALWAYS show Login form first
 function showAuthModal() {
     const modal = document.getElementById("authModal");
-    if (!modal) return;
+    if (modal) {
+        // Reset form to Login state
+        document.getElementById("authFormTitle").textContent = "Login";
+        document.getElementById("authForm").dataset.mode = "login";
+        document.getElementById("authSubmitBtn").textContent = "Login";
+        document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
+        document.getElementById("signupExtraFields").style.display = "none";
 
-    // ======================
-    // RESET TO LOGIN STATE
-    // ======================
-    document.getElementById("authFormTitle").textContent = "Login";
-    document.getElementById("authForm").dataset.mode = "login";
-    document.getElementById("authSubmitBtn").textContent = "Login";
-    document.getElementById("authToggleText").innerHTML =
-        "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
-    document.getElementById("signupExtraFields").style.display = "none";
+        // Clear form inputs and errors
+        document.getElementById("authForm").reset();
+        document.getElementById("authError").textContent = "";
 
-    // ======================
-    // RESET FORM & ERRORS
-    // ======================
-    const form = document.getElementById("authForm");
-    form.reset();
-    document.getElementById("authError").textContent = "";
+        // Reattach event listeners for switching
+        const signupSwitch = document.getElementById("signupFormSwitch");
+        const loginSwitch = document.getElementById("loginFormSwitch");
 
-    // ======================
-    // DISABLE AUTOFILL / AUTO CORRECTION
-    // ======================
-    const usernameInput = document.getElementById("username");
-    const emailInput = document.getElementById("email");
-    const phoneInput = document.getElementById("phone");
+        if (signupSwitch) {
+            signupSwitch.removeEventListener("click", switchToSignup);
+            signupSwitch.addEventListener("click", switchToSignup);
+        }
+        if (loginSwitch) {
+            loginSwitch.removeEventListener("click", switchToLogin);
+            loginSwitch.addEventListener("click", switchToLogin);
+        }
 
-    if (usernameInput) {
-        usernameInput.setAttribute("autocomplete", "off");
-        usernameInput.setAttribute("autocorrect", "off");
-        usernameInput.setAttribute("autocapitalize", "off");
+        // --- REAL-TIME VALIDATION SETUP ---
+        const usernameInput = document.getElementById("username");
+        const emailInput = document.getElementById("email");
+        const phoneInput = document.getElementById("phone");
+
+        // Remove existing listeners (if any)
+        usernameInput?.removeEventListener("input", validateFieldOnInput);
+        emailInput?.removeEventListener("input", validateFieldOnInput);
+        phoneInput?.removeEventListener("input", validateFieldOnInput);
+
+        // Add new listeners
+        if (usernameInput) {
+            usernameInput.addEventListener("input", () => validateFieldOnInput("username"));
+        }
+        if (emailInput) {
+            emailInput.addEventListener("input", () => validateFieldOnInput("email"));
+        }
+        if (phoneInput) {
+            phoneInput.addEventListener("input", () => validateFieldOnInput("phone"));
+        }
+
+        // Hide all validation messages initially
+        hideValidationMessages();
+
+        modal.classList.add("active");
+        document.body.style.overflow = "hidden";
     }
-
-    if (emailInput) {
-        emailInput.setAttribute("autocomplete", "off");
-        emailInput.setAttribute("autocorrect", "off");
-        emailInput.setAttribute("autocapitalize", "off");
-    }
-
-    if (phoneInput) {
-        phoneInput.setAttribute("autocomplete", "off");
-        phoneInput.setAttribute("autocorrect", "off");
-        phoneInput.setAttribute("autocapitalize", "off");
-    }
-
-    // ======================
-    // REATTACH SWITCH EVENTS
-    // ======================
-    const signupSwitch = document.getElementById("signupFormSwitch");
-    const loginSwitch = document.getElementById("loginFormSwitch");
-
-    if (signupSwitch) {
-        signupSwitch.removeEventListener("click", switchToSignup);
-        signupSwitch.addEventListener("click", switchToSignup);
-    }
-
-    if (loginSwitch) {
-        loginSwitch.removeEventListener("click", switchToLogin);
-        loginSwitch.addEventListener("click", switchToLogin);
-    }
-
-    // ======================
-    // REAL TIME VALIDATION
-    // ======================
-    usernameInput?.removeEventListener("input", validateFieldOnInput);
-    emailInput?.removeEventListener("input", validateFieldOnInput);
-    phoneInput?.removeEventListener("input", validateFieldOnInput);
-
-    if (usernameInput) {
-        usernameInput.addEventListener("input", () =>
-            validateFieldOnInput("username")
-        );
-    }
-
-    if (emailInput) {
-        emailInput.addEventListener("input", () =>
-            validateFieldOnInput("email")
-        );
-    }
-
-    if (phoneInput) {
-        phoneInput.addEventListener("input", () =>
-            validateFieldOnInput("phone")
-        );
-    }
-
-    // ======================
-    // HIDE OLD VALIDATION MSGS
-    // ======================
-    hideValidationMessages();
-
-    // ======================
-    // SHOW MODAL
-    // ======================
-    modal.classList.add("active");
-    document.body.style.overflow = "hidden";
 }
-
 
 // ======================
 // GLOBAL FUNCTIONS FOR FORM SWITCHING
@@ -587,7 +543,7 @@ function closeAuthModal() {
     }
 }
 
-
+// Handle login or signup form submission
 // ======================
 // HANDLE LOGIN OR SIGNUP
 // ======================
@@ -596,52 +552,38 @@ async function handleAuthSubmit(e) {
 
     const form = e.target;
     const authError = document.getElementById("authError");
+
     authError.textContent = "";
 
     const username = form.username.value.trim();
     const password = form.password.value;
 
-    const isLogin = form.dataset.mode === "login";
-
     // ======================
-    // FOCUS FIRST INVALID FIELD
+    // LIVE VALIDATION CHECKS
     // ======================
     const usernameMsg = document.getElementById("usernameValidationMsg");
     const emailMsg = document.getElementById("emailValidationMsg");
     const phoneMsg = document.getElementById("phoneValidationMsg");
 
-    const invalidFields = [];
-
     if (usernameMsg?.classList.contains("error")) {
-        invalidFields.push(document.getElementById("username"));
+        authError.textContent = "Please fix the username.";
+        return;
     }
-    if (!isLogin && emailMsg?.classList.contains("error")) {
-        invalidFields.push(document.getElementById("email"));
+    if (emailMsg?.classList.contains("error")) {
+        authError.textContent = "Please fix the email.";
+        return;
     }
-    if (!isLogin && phoneMsg?.classList.contains("error")) {
-        invalidFields.push(document.getElementById("phone"));
-    }
-
-    if (invalidFields.length > 0) {
-        const firstInvalid = invalidFields[0];
-        firstInvalid.focus();
-        firstInvalid.classList.add("input-error");
-
-        setTimeout(() => {
-            firstInvalid.classList.remove("input-error");
-        }, 3000);
-
-        authError.textContent = "Please fix the highlighted fields.";
+    if (phoneMsg?.classList.contains("error")) {
+        authError.textContent = "Please fix the phone number.";
         return;
     }
 
-    // ======================
-    // BASIC REQUIRED FIELDS
-    // ======================
     if (!username || !password) {
         authError.textContent = "Username and password are required.";
         return;
     }
+
+    const isLogin = form.dataset.mode === "login";
 
     // ======================
     // DECLARE SIGNUP FIELDS
@@ -669,20 +611,20 @@ async function handleAuthSubmit(e) {
             return;
         }
 
+        // Email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             authError.textContent = "Please enter a valid email address.";
-            document.getElementById("email").focus();
             return;
         }
 
+        // Nigerian phone number
         const phoneRegex = /^(0\d{10}|234\d{10})$/;
         const cleanPhone = phone.replace(/\D/g, "");
 
         if (!phoneRegex.test(cleanPhone)) {
             authError.textContent =
-                "Please enter a valid Nigerian phone number.";
-            document.getElementById("phone").focus();
+                "Please enter a valid Nigerian phone number (e.g. 08012345678).";
             return;
         }
 
@@ -691,6 +633,20 @@ async function handleAuthSubmit(e) {
         // ======================
         // CHECK AVAILABILITY
         // ======================
+        // Show spinner next to the field being validated
+        const field = document.getElementById(fieldType);
+        let spinner = document.getElementById(`${fieldType}Spinner`);
+
+        if (!spinner) {
+            spinner = document.createElement("span");
+            spinner.id = `${fieldType}Spinner`;
+            spinner.className = "field-spinner";
+            field.parentNode.insertBefore(spinner, field.nextSibling);
+        }
+
+// Hide any existing validation message temporarily
+hideValidationMessage(fieldType);
+
         try {
             const checkResponse = await fetch("/api/auth/check", {
                 method: "POST",
@@ -710,11 +666,13 @@ async function handleAuthSubmit(e) {
                 if (checkResult.emailExists) msg += "Email\n";
                 if (checkResult.phoneExists) msg += "Phone number\n";
                 authError.textContent = msg;
+                hideLoader();
                 return;
             }
         } catch (err) {
             console.error(err);
             authError.textContent = "Network error. Please try again.";
+            hideLoader();
             return;
         }
     }
@@ -760,27 +718,50 @@ async function handleAuthSubmit(e) {
             return;
         }
 
+        // ======================
+        // LOGIN SUCCESS
+        // ======================
         if (isLogin) {
             localStorage.setItem("token", result.token);
             localStorage.setItem("currentUser", JSON.stringify(result.user));
+
             updateUIBasedOnUser();
             closeAuthModal();
+
+            showCustomAlert(
+                `Welcome back, ${result.user.username}!`,
+                "Logged In",
+                "success"
+            );
+
             await loadCartFromDatabase();
             return;
         }
 
-        // AUTO LOGIN AFTER SIGNUP
+        // ======================
+        // SIGNUP SUCCESS → AUTO LOGIN
+        // ======================
+        showCustomAlert(
+            `Welcome, ${result.user.username}! Your account has been created.`,
+            "Account Created",
+            "success"
+        );
+
         const loginResponse = await fetch("/api/auth", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password, action: "login" })
+            body: JSON.stringify({
+                username,
+                password,
+                action: "login"
+            })
         });
 
         const loginResult = await loginResponse.json();
 
         if (!loginResponse.ok || !loginResult.success) {
             authError.textContent =
-                "Account created, but auto login failed.";
+                "Account created, but auto login failed. Please log in.";
             return;
         }
 
@@ -798,10 +779,12 @@ async function handleAuthSubmit(e) {
         console.error("Auth error:", error);
         authError.textContent = "Network error. Please try again.";
     } finally {
-        hideLoader();
+    // Remove spinner
+    const spinner = document.getElementById(`${fieldType}Spinner`);
+    if (spinner) spinner.remove();
+    hideLoader();
     }
 }
-
 
 
 
@@ -1789,7 +1772,7 @@ async function validateFieldOnInput(fieldType) {
                 throw new Error("Server error while checking availability.");
             }
 
-           // Update UI based on results
+               // Update UI based on results
             if (result.usernameExists && fieldType === "username") {
                 showValidationMessage("username", "Username is already taken.", "error");
             } else if (!result.usernameExists && fieldType === "username" && username) {
@@ -1807,8 +1790,6 @@ async function validateFieldOnInput(fieldType) {
             } else if (!result.phoneExists && fieldType === "phone" && phone) {
                 showValidationMessage("phone", "Phone number available!", "success");
             }
-
-
         } catch (error) {
             console.error("Real-time validation error:", error);
             showValidationMessage(fieldType, "Network error. Please try again.", "error");
@@ -1821,11 +1802,6 @@ async function validateFieldOnInput(fieldType) {
 
 // Show validation message under a field
 function showValidationMessage(fieldType, message, type = "error") {
-    // Clear other messages first
-    ["username", "email", "phone"].forEach(f => {
-        if (f !== fieldType) hideValidationMessage(f);
-    });
-
     const field = document.getElementById(fieldType);
     let messageEl = document.getElementById(`${fieldType}ValidationMsg`);
 
@@ -1833,13 +1809,7 @@ function showValidationMessage(fieldType, message, type = "error") {
         messageEl = document.createElement("div");
         messageEl.id = `${fieldType}ValidationMsg`;
         messageEl.className = `validation-message ${type}`;
-        // Insert AFTER the spinner (if exists)
-        const spinner = document.getElementById(`${fieldType}Spinner`);
-        if (spinner) {
-            field.parentNode.insertBefore(messageEl, spinner.nextSibling);
-        } else {
-            field.parentNode.insertBefore(messageEl, field.nextSibling);
-        }
+        field.parentNode.insertBefore(messageEl, field.nextSibling);
     }
 
     messageEl.textContent = message;

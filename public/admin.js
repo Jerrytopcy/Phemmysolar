@@ -1244,7 +1244,7 @@ async function handleUserSubmit(e) {
 
 // Edit user
 function editUser(userId) {
-    fetch(`/api/users/${userId}`) // Use route param, not query param
+    fetch(`/api/users/${userId}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -1256,19 +1256,42 @@ function editUser(userId) {
                 showAdminAlert("User not found.", "Error");
                 return;
             }
-            document.getElementById("userId").value = user.id;
-            document.getElementById("username").value = user.username;
-            document.getElementById("email").value = user.email || "";
-            document.getElementById("phone").value = user.phone || "";
-            document.getElementById("userRole").value = user.role || 'user'; // Load role
-            // Pre-fill address fields
-            const address = user.address || { street: "", city: "", state: "", postalCode: "" };
-            document.getElementById("street").value = address.street || "";
-            document.getElementById("city").value = address.city || "";
-            document.getElementById("state").value = address.state || "";
-            document.getElementById("postalCode").value = address.postalCode || "";
-            currentEditingUserId = userId;
-            showUserForm(true);
+
+            // Use setTimeout to ensure the modal and its elements are ready
+            setTimeout(() => {
+                const userIdEl = document.getElementById("userId");
+                const usernameEl = document.getElementById("username");
+                const emailEl = document.getElementById("email");
+                const phoneEl = document.getElementById("phone");
+                const userRoleEl = document.getElementById("userRole");
+                const streetEl = document.getElementById("street");
+                const cityEl = document.getElementById("city");
+                const stateEl = document.getElementById("state");
+                const postalCodeEl = document.getElementById("postalCode");
+
+                // Defensive coding: Check if elements exist
+                if (!userIdEl || !usernameEl || !emailEl || !phoneEl || !userRoleEl || !streetEl || !cityEl || !stateEl || !postalCodeEl) {
+                    console.error("One or more user form fields are missing.");
+                    showAdminAlert("User form is incomplete. Please check your HTML.", "Error");
+                    return;
+                }
+
+                // Now safely set the values
+                userIdEl.value = user.id;
+                usernameEl.value = user.username;
+                emailEl.value = user.email || "";
+                phoneEl.value = user.phone || "";
+                userRoleEl.value = user.role || 'user';
+                streetEl.value = (user.address && user.address.street) || "";
+                cityEl.value = (user.address && user.address.city) || "";
+                stateEl.value = (user.address && user.address.state) || "";
+                postalCodeEl.value = (user.address && user.address.postalCode) || "";
+
+                currentEditingUserId = userId;
+                showUserForm(true); // This should make the modal visible
+
+            }, 0); // <-- This ensures the DOM is ready
+
         })
         .catch(error => {
             console.error("Error fetching user for edit:", error);

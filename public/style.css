@@ -3083,12 +3083,6 @@ section {
     border: 1px solid #1e7e34;
 }
 
-.status-badge.failed {
-    background: #dc3545;
-    border: 1px solid #c82333;
-}
-
-
 .status-badge.shipped {
     background: #007bff; /* Blue */
     border: 1px solid #0056b3;
@@ -3105,8 +3099,8 @@ section {
 }
 .status-badge.processing {
     background-color: #cce5ff;
-    color: #6c757d;
-    border: 1px solid #c82333;
+    color: #04192b;
+    
 }
 
 /* === CHECK PAYMENT BUTTON STYLING === */

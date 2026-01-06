@@ -1,7 +1,9 @@
 // script.js
+
 // --- NEW: Cart Management Functions ---
 // Initialize cart from sessionStorage (no user object storage)
 let cart = JSON.parse(sessionStorage.getItem('cart')) || [];
+
 // ===== Global Loader Helpers =====
 function showLoader(text = "Loading, please wait...") {
     const loader = document.getElementById("globalLoader");
@@ -11,26 +13,30 @@ function showLoader(text = "Loading, please wait...") {
     loader.classList.add("active");
     document.body.style.overflow = "hidden";
 }
+
 function hideLoader() {
     const loader = document.getElementById("globalLoader");
     if (!loader) return;
     loader.classList.remove("active");
     document.body.style.overflow = "";
 }
+
 // Add item to cart
 async function addToCart(productId) {
+    showLoader("Adding item to cart...");
     try {
-        showLoader("Adding to cart...");
         // Fetch the specific product from the API
         const response = await fetch(`/api/products/${productId}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const product = await response.json();
+
         if (!product) {
             showCustomAlert("Product not found.", "Error");
             return;
         }
+
         // Check if item already exists in cart
         const existingItemIndex = cart.findIndex(item => item.productId === productId);
         if (existingItemIndex > -1) {
@@ -38,8 +44,10 @@ async function addToCart(productId) {
         } else {
             cart.push({ productId: productId, quantity: 1 });
         }
+
         // Update cart in sessionStorage
         sessionStorage.setItem('cart', JSON.stringify(cart));
+
         // Update UI
         updateUIBasedOnUser(); // This function will now check cart state
         showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
@@ -52,6 +60,7 @@ async function addToCart(productId) {
         hideLoader();
     }
 }
+
 // View Cart
 async function viewCart() {
     if (!cart || cart.length === 0) {
@@ -59,9 +68,10 @@ async function viewCart() {
         return;
     }
     showLoader("Loading your cart...");
-    // Create an array to hold all product data fetched from the API
-    const cartItemsWithDetails = [];
     try {
+        // Create an array to hold all product data fetched from the API
+        const cartItemsWithDetails = [];
+
         // Loop through each item in the cart and fetch its details
         for (const cartItem of cart) {
             const response = await fetch(`/api/products/${cartItem.productId}`);
@@ -78,8 +88,10 @@ async function viewCart() {
                 });
             }
         }
+
         let cartHTML = '<h3>Your Cart</h3><ul>';
         let total = 0;
+
         // Iterate through the fetched cart items
         cartItemsWithDetails.forEach(item => {
             const price = parseInt(item.price.replace(/\D/g, '')); // Extract numeric price
@@ -104,6 +116,7 @@ async function viewCart() {
         });
         cartHTML += `</ul><p><strong>Total: ${formatNaira(total)}</strong></p>`;
         cartHTML += `<button class="btn btn-checkout" onclick="proceedToCheckout()">Checkout</button>`;
+
         // Display cart in the modal
         const modal = document.getElementById("cartModal");
         if (modal) {
@@ -122,6 +135,7 @@ async function viewCart() {
         hideLoader();
     }
 }
+
 // Update item quantity in cart
 function updateCartItemQuantity(productId, newQuantity) {
     if (newQuantity < 1) {
@@ -140,6 +154,7 @@ function updateCartItemQuantity(productId, newQuantity) {
     sessionStorage.setItem('cart', JSON.stringify(cart));
     syncCartToDatabase();
 }
+
 // Remove item from cart
 function removeFromCart(productId) {
     // Filter out the item
@@ -161,6 +176,7 @@ function removeFromCart(productId) {
     sessionStorage.setItem('cart', JSON.stringify(cart));
     syncCartToDatabase();
 }
+
 // Proceed to checkout
 async function proceedToCheckout() {
     if (!cart || cart.length === 0) {
@@ -173,10 +189,11 @@ async function proceedToCheckout() {
         showAuthModal();
         return;
     }
-    showLoader("Placing your order...");
-    const orderItems = [];
-    let total = 0;
+    showLoader("Processing your order...");
     try {
+        const orderItems = [];
+        let total = 0;
+
         // Loop through each item in the cart and fetch its details
         for (const cartItem of cart) {
             const response = await fetch(`/api/products/${cartItem.productId}`);
@@ -198,6 +215,7 @@ async function proceedToCheckout() {
                 });
             }
         }
+
         // Get the current address from the user's profile (via API)
         const userResponse = await fetch('/api/user', {
             headers: {
@@ -215,6 +233,7 @@ async function proceedToCheckout() {
             postalCode: "",
             country: "Nigeria"
         };
+
         // Create the order object with the calculated items and address
         const orderData = {
             items: orderItems.map(i => ({
@@ -225,6 +244,7 @@ async function proceedToCheckout() {
             total: total,
             deliveryAddress: currentAddress
         };
+
         // SEND ORDER TO BACKEND
         const response = await fetch('/api/orders', {
             method: 'POST',
@@ -234,16 +254,21 @@ async function proceedToCheckout() {
             },
             body: JSON.stringify(orderData)
         });
+
         if (!response.ok) {
             throw new Error('Failed to place order');
         }
+
         // Clear cart after successful checkout
         cart = [];
         sessionStorage.removeItem('cart');
+
         // Update UI to reflect empty cart
         updateUIBasedOnUser();
+
         // Close the cart modal first
         closeCartModal();
+
         // Show success message
         showCustomAlert("Your order has been successfully placed!", "Order Placed", "success");
         await fetch('/api/cart', {
@@ -259,6 +284,7 @@ async function proceedToCheckout() {
         hideLoader();
     }
 }
+
 // Close Cart Modal
 function closeCartModal() {
     const modal = document.getElementById("cartModal");
@@ -267,6 +293,7 @@ function closeCartModal() {
         document.body.style.overflow = "";
     }
 }
+
 // Load user's order history (for account page)
 async function loadOrderHistory() {
     const token = localStorage.getItem('token');
@@ -274,33 +301,38 @@ async function loadOrderHistory() {
         document.getElementById('orderHistory').innerHTML = '<p>Please log in to view your order history.</p>';
         return;
     }
-    showLoader("Loading your orders...");
+    showLoader("Loading your order history...");
     try {
         const response = await fetch('/api/orders', {
             headers: {
                 Authorization: `Bearer ${token}`
             }
         });
+
         if (!response.ok) {
             throw new Error('Failed to load order history');
         }
+
         const orders = await response.json();
+
         if (orders.length === 0) {
             document.getElementById('orderHistory').innerHTML = '<p>No orders found.</p>';
-            hideLoader();
             return;
         }
+
         // Sort orders by date (newest first)
         orders.sort((a, b) => {
             const dateA = new Date(a.date);
             const dateB = new Date(b.date);
             return dateB - dateA; // Newest first
         });
+
         let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
         for (const order of orders) {
             // Format the delivery address for display
             const address = order.deliveryAddress || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
             const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+
             let itemsHTML = '';
             // Process each item in the order
             for (const item of order.items) {
@@ -341,6 +373,7 @@ async function loadOrderHistory() {
 `;
                 }
             }
+
             historyHTML += `
 <div class="order-item">
 <p><strong>Order ID:</strong> ${order.id}</p>
@@ -366,14 +399,17 @@ ${itemsHTML}
         hideLoader();
     }
 }
+
 // Update UI elements based on user status and cart
 function updateUIBasedOnUser() {
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const accountLink = document.getElementById('accountLink');
     const cartCountElement = document.getElementById('cartCount');
+
     const isLoggedIn = !!localStorage.getItem('token');
     const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
     if (isLoggedIn) {
         // User is logged in
         if (loginBtn) loginBtn.style.display = 'none';
@@ -391,6 +427,7 @@ function updateUIBasedOnUser() {
         if (cartCountElement) cartCountElement.textContent = '0';
     }
 }
+
 // Simulate user logout with confirmation
 function handleLogout() {
     showCustomConfirm(
@@ -401,15 +438,19 @@ function handleLogout() {
             localStorage.removeItem('token');
             sessionStorage.removeItem('currentUser');
             sessionStorage.removeItem('cart');
+
             // Reset cart variable
             cart = [];
+
             // Update UI
             updateUIBasedOnUser();
             showCustomAlert("You have been logged out.", "Logged Out");
         }
     );
 }
+
 // --- NEW: Custom Modal Functions for Login/Signup ---
+
 // Show the login/signup modal
 function showAuthModal() {
     const modal = document.getElementById("authModal");
@@ -420,6 +461,7 @@ function showAuthModal() {
         document.body.style.overflow = "hidden";
     }
 }
+
 // Close the login/signup modal
 function closeAuthModal() {
     const modal = document.getElementById("authModal");
@@ -428,24 +470,29 @@ function closeAuthModal() {
         document.body.style.overflow = "";
     }
 }
+
 // Handle login or signup form submission
 async function handleAuthSubmit(e) {
     e.preventDefault();
     const form = e.target;
     const username = form.username.value.trim();
     const password = form.password.value; // Get the raw password
+
     // Add explicit check for password length
     if (!username || !password || password.length === 0) {
         document.getElementById("authError").textContent = "Username and password are required.";
         return;
     }
+
     const isLogin = form.dataset.mode === "login";
+
     // Prepare data based on whether it's login or signup
     let requestData = {
         username: username,
         password: password,
         action: isLogin ? "login" : "signup"
     };
+
     if (!isLogin) {
         // For signup: collect extra fields
         const email = document.getElementById("email").value.trim();
@@ -454,11 +501,13 @@ async function handleAuthSubmit(e) {
         const city = document.getElementById("city").value.trim();
         const state = document.getElementById("state").value.trim();
         const postalCode = document.getElementById("postalCode").value.trim();
+
         // Validate required fields for signup
         if (!email || !phone || !street || !city || !state) {
             document.getElementById("authError").textContent = "Please fill in all required fields.";
             return;
         }
+
         requestData.email = email;
         requestData.phone = phone;
         requestData.address = {
@@ -469,6 +518,8 @@ async function handleAuthSubmit(e) {
             country: "Nigeria"
         };
     }
+
+    showLoader(isLogin ? "Logging in..." : "Creating your account...");
     try {
         const response = await fetch('/api/auth', {
             method: 'POST',
@@ -477,19 +528,25 @@ async function handleAuthSubmit(e) {
             },
             body: JSON.stringify(requestData)
         });
+
         const result = await response.json();
+
         if (!response.ok) {
             document.getElementById("authError").textContent = result.error || "An unexpected error occurred.";
             return;
         }
+
         if (result.success) {
             const userData = result.user;
+
             // Store token if provided
             if (result.token) {
                 localStorage.setItem('token', result.token);
             }
+
             // Store user data in sessionStorage for UI purposes only
             sessionStorage.setItem('currentUser', JSON.stringify(userData));
+
             // Update UI
             updateUIBasedOnUser();
             closeAuthModal();
@@ -505,13 +562,17 @@ async function handleAuthSubmit(e) {
     } catch (error) {
         console.error("Network error during authentication:", error);
         document.getElementById("authError").textContent = "Network error. Please try again.";
+    } finally {
+        hideLoader();
     }
 }
+
 // Add event listener for Forgot Password Form
 const forgotPasswordForm = document.getElementById("forgotPasswordForm");
 if (forgotPasswordForm) {
     forgotPasswordForm.addEventListener("submit", handleForgotPasswordSubmit);
 }
+
 // Function to handle forgot password
 function showForgotPasswordModal() {
     const modal = document.getElementById("forgotPasswordModal");
@@ -522,6 +583,7 @@ function showForgotPasswordModal() {
         document.body.style.overflow = "hidden";
     }
 }
+
 function closeForgotPasswordModal() {
     const modal = document.getElementById("forgotPasswordModal");
     if (modal) {
@@ -529,14 +591,17 @@ function closeForgotPasswordModal() {
         document.body.style.overflow = "";
     }
 }
+
 async function handleForgotPasswordSubmit(e) {
     e.preventDefault();
     const username = document.getElementById("forgotPasswordUsername").value.trim();
     const email = document.getElementById("forgotPasswordEmail").value.trim();
+
     if (!username || !email) {
         document.getElementById("forgotPasswordError").textContent = "Username and email are required.";
         return;
     }
+    showLoader("Sending password reset link...");
     try {
         const response = await fetch('/api/forgot-password', {
             method: 'POST',
@@ -545,11 +610,14 @@ async function handleForgotPasswordSubmit(e) {
             },
             body: JSON.stringify({ username, email })
         });
+
         const result = await response.json();
+
         if (!response.ok) {
             document.getElementById("forgotPasswordError").textContent = result.error || "An unexpected error occurred.";
             return;
         }
+
         if (result.success) {
             showCustomAlert(
                 `A password reset link has been sent to ${email}.`,
@@ -563,9 +631,13 @@ async function handleForgotPasswordSubmit(e) {
     } catch (error) {
         console.error("Network error during password reset:", error);
         document.getElementById("forgotPasswordError").textContent = "Network error. Please try again.";
+    } finally {
+        hideLoader();
     }
 }
+
 // --- END NEW: Custom Modal Functions for Login/Signup ---
+
 // Format a number as Nigerian Naira with commas
 function formatNaira(price) {
     if (typeof price !== 'number') {
@@ -578,34 +650,42 @@ function formatNaira(price) {
         minimumFractionDigits: 0,
     }).format(price);
 }
+
 // Custom modal functions
 function showCustomAlert(message, title = "Success", type = "success") {
     const modal = document.getElementById("alertModal");
     const alertIcon = document.getElementById("alertIcon");
     const alertTitle = document.getElementById("alertTitle");
     const alertMessage = document.getElementById("alertMessage");
+
     alertTitle.textContent = title;
     alertMessage.textContent = message;
     alertIcon.textContent = type === "success" ? "✓" : "✕";
     alertIcon.className = `alert-icon ${type}`;
+
     modal.classList.add("active");
     document.body.style.overflow = "hidden";
 }
+
 function showCustomConfirm(message, title = "Confirm Action", onConfirm) {
     const modal = document.getElementById("confirmModal");
     const confirmTitle = document.getElementById("confirmTitle");
     const confirmMessage = document.getElementById("confirmMessage");
     const confirmYes = document.getElementById("confirmYes");
     const confirmNo = document.getElementById("confirmNo");
+
     confirmTitle.textContent = title;
     confirmMessage.textContent = message;
+
     modal.classList.add("active");
     document.body.style.overflow = "hidden";
+
     // Remove old listeners
     const newYes = confirmYes.cloneNode(true);
     const newNo = confirmNo.cloneNode(true);
     confirmYes.parentNode.replaceChild(newYes, confirmYes);
     confirmNo.parentNode.replaceChild(newNo, confirmNo);
+
     // Add new listeners
     newYes.addEventListener("click", () => {
         modal.classList.remove("active");
@@ -617,8 +697,10 @@ function showCustomConfirm(message, title = "Confirm Action", onConfirm) {
         document.body.style.overflow = "";
     });
 }
+
 // View product details in modal
 function viewProduct(productId) {
+    showLoader("Loading product details...");
     // Fetch the specific product from the API
     fetch(`/api/products/${productId}`)
         .then(response => {
@@ -632,11 +714,14 @@ function viewProduct(productId) {
                 showCustomAlert("Product not found.", "Error");
                 return;
             }
+
             currentProductInModal = product;
             currentImageIndex = 0;
+
             if (!product.images) {
                 product.images = [product.image];
             }
+
             const modal = document.getElementById("productModal");
             const mainImage = document.getElementById("modalMainImage");
             const productName = document.getElementById("modalProductName");
@@ -644,11 +729,13 @@ function viewProduct(productId) {
             const productDescription = document.getElementById("modalProductDescription");
             const thumbnailContainer = document.getElementById("thumbnailContainer");
             const addToCartButton = document.getElementById("modalAddToCart"); // NEW: Get the button
+
             productName.textContent = product.name;
             productPrice.textContent = formatNaira(product.price);
             productDescription.textContent = product.description;
             mainImage.src = product.images[0];
             mainImage.alt = product.name;
+
             thumbnailContainer.innerHTML = product.images
                 .map(
                     (img, index) => `
@@ -658,19 +745,26 @@ function viewProduct(productId) {
 `,
                 )
                 .join("");
+
             updateGalleryNav();
+
             // NEW: Set the onclick for the Add to Cart button in the modal
             if (addToCartButton) {
                 addToCartButton.onclick = () => addToCart(product.id);
             }
+
             modal.classList.add("active");
             document.body.style.overflow = "hidden";
         })
         .catch(error => {
             console.error("Error fetching product:", error);
             showCustomAlert("Failed to load product details.", "Error");
+        })
+        .finally(() => {
+            hideLoader();
         });
 }
+
 function changeImage(index) {
     if (!currentProductInModal) return;
     if (index < 0 || index >= currentProductInModal.images.length) {
@@ -684,6 +778,7 @@ function changeImage(index) {
     });
     updateGalleryNav();
 }
+
 function updateGalleryNav() {
     if (!currentProductInModal) return;
     const prevBtn = document.getElementById("prevImage");
@@ -691,6 +786,7 @@ function updateGalleryNav() {
     prevBtn.disabled = currentImageIndex === 0;
     nextBtn.disabled = currentImageIndex === currentProductInModal.images.length - 1;
 }
+
 function navigateGallery(direction) {
     if (!currentProductInModal) return;
     const newIndex = currentImageIndex + direction;
@@ -704,6 +800,7 @@ function navigateGallery(direction) {
         updateGalleryNav();
     }
 }
+
 function closeProductModal() {
     const modal = document.getElementById("productModal");
     modal.classList.remove("active");
@@ -711,12 +808,14 @@ function closeProductModal() {
     currentProductInModal = null;
     currentImageIndex = 0;
 }
+
 // Mobile menu initialization
 function initMobileMenu() {
     const mobileMenuBtn = document.getElementById("mobileMenuBtn");
     const nav = document.getElementById("navMenu");
     const navOverlay = document.getElementById("navOverlay");
     let isMenuOpen = false;
+
     function toggleMobileMenu() {
         isMenuOpen = !isMenuOpen;
         mobileMenuBtn.classList.toggle("active", isMenuOpen);
@@ -724,6 +823,7 @@ function initMobileMenu() {
         navOverlay.classList.toggle("active", isMenuOpen);
         document.body.style.overflow = isMenuOpen ? "hidden" : "";
     }
+
     window.closeMobileMenu = () => {
         if (isMenuOpen) {
             isMenuOpen = false;
@@ -733,92 +833,106 @@ function initMobileMenu() {
             document.body.style.overflow = "";
         }
     };
+
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener("click", toggleMobileMenu);
     }
+
     if (navOverlay) {
         navOverlay.addEventListener("click", window.closeMobileMenu);
     }
-}
-// --- NEW: Mobile Dropdown Menu Logic ---
-// Add event listeners for mobile dropdown toggles
-const dropdownToggles = document.querySelectorAll(".nav-dropdown .dropdown-toggle");
-dropdownToggles.forEach((toggle) => {
-    toggle.addEventListener("click", (e) => {
-        e.preventDefault(); // Prevent default button behavior
-        // Only handle dropdowns in mobile view (when nav is active)
+
+    // --- NEW: Mobile Dropdown Menu Logic ---
+    // Add event listeners for mobile dropdown toggles
+    const dropdownToggles = document.querySelectorAll(".nav-dropdown .dropdown-toggle");
+    dropdownToggles.forEach((toggle) => {
+        toggle.addEventListener("click", (e) => {
+            e.preventDefault(); // Prevent default button behavior
+            // Only handle dropdowns in mobile view (when nav is active)
+            if (nav.classList.contains("active")) {
+                // Close all other dropdowns first
+                document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
+                    if (dropdown !== toggle.closest(".nav-dropdown")) {
+                        dropdown.classList.remove("active");
+                    }
+                });
+                // Toggle the clicked dropdown
+                const dropdownContainer = toggle.closest(".nav-dropdown");
+                dropdownContainer.classList.toggle("active");
+            }
+        });
+    });
+
+    // Close dropdowns when clicking outside or resizing
+    document.addEventListener("click", (e) => {
         if (nav.classList.contains("active")) {
-            // Close all other dropdowns first
-            document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
-                if (dropdown !== toggle.closest(".nav-dropdown")) {
+            // Check if click is outside any dropdown container
+            const isClickInsideDropdown = e.target.closest(".nav-dropdown");
+            if (!isClickInsideDropdown) {
+                document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
                     dropdown.classList.remove("active");
-                }
-            });
-            // Toggle the clicked dropdown
-            const dropdownContainer = toggle.closest(".nav-dropdown");
-            dropdownContainer.classList.toggle("active");
+                });
+            }
         }
     });
-});
-// Close dropdowns when clicking outside or resizing
-document.addEventListener("click", (e) => {
-    if (nav.classList.contains("active")) {
-        // Check if click is outside any dropdown container
-        const isClickInsideDropdown = e.target.closest(".nav-dropdown");
-        if (!isClickInsideDropdown) {
+
+    // Handle window resize
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (isMenuOpen && window.innerWidth > 768) {
+                window.closeMobileMenu();
+            }
+            // Also close any open dropdowns when switching to desktop
+            if (window.innerWidth > 768) {
+                document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
+                    dropdown.classList.remove("active");
+                });
+            }
+        }, 250);
+    });
+
+    // Handle Escape key
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            if (isMenuOpen) {
+                window.closeMobileMenu();
+            }
+            // Also close any open dropdowns
             document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
                 dropdown.classList.remove("active");
             });
         }
-    }
-});
-// Handle window resize
-let resizeTimer;
-window.addEventListener("resize", () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-        if (isMenuOpen && window.innerWidth > 768) {
-            window.closeMobileMenu();
-        }
-        // Also close any open dropdowns when switching to desktop
-        if (window.innerWidth > 768) {
-            document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
-                dropdown.classList.remove("active");
-            });
-        }
-    }, 250);
-});
-// Handle Escape key
-document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-        if (isMenuOpen) {
-            window.closeMobileMenu();
-        }
-        // Also close any open dropdowns
-        document.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
-            dropdown.classList.remove("active");
-        });
-    }
-});
+    });
+}
+
 // Initialize everything when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
     // Initialize cart from sessionStorage
     cart = JSON.parse(sessionStorage.getItem('cart')) || [];
+
     // Initialize mobile menu
     initMobileMenu();
+
     // Load featured products
     loadFeaturedProducts();
+
     // Load testimonials
     loadTestimonials();
+
     // Load latest news
     loadLatestNews();
+
     // Initialize UI based on current auth state
     updateUIBasedOnUser();
+
     // Add event listener for Edit Address Form (if it exists)
     const editAddressForm = document.getElementById("editAddressForm");
     if (editAddressForm) {
         editAddressForm.addEventListener("submit", handleUpdateAddress);
     }
+
     // Modal event listeners
     const closeModal = document.getElementById("closeModal");
     if (closeModal) {
@@ -840,6 +954,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
+
     const alertOk = document.getElementById("alertOk");
     if (alertOk) {
         alertOk.addEventListener("click", () => {
@@ -847,6 +962,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.body.style.overflow = "";
         });
     }
+
     // Add event listener for Forgot Password link
     const forgotPasswordLink = document.getElementById("forgotPasswordLink");
     if (forgotPasswordLink) {
@@ -855,11 +971,13 @@ document.addEventListener("DOMContentLoaded", () => {
             showForgotPasswordModal();
         });
     }
+
     // NEW: Add event listeners for Cart View, Login, Logout, Account Link
     const viewCartBtn = document.getElementById('viewCartBtn');
     if (viewCartBtn) {
         viewCartBtn.addEventListener('click', viewCart);
     }
+
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
         loginBtn.addEventListener('click', (e) => {
@@ -867,6 +985,7 @@ document.addEventListener("DOMContentLoaded", () => {
             showAuthModal(); // Show the modal instead of prompt
         });
     }
+
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', (e) => {
@@ -874,19 +993,24 @@ document.addEventListener("DOMContentLoaded", () => {
             handleLogout();
         });
     }
+
     async function loadAccountDetails() {
         const token = localStorage.getItem('token');
         if (!token) return;
+        showLoader("Loading account details...");
         try {
             const response = await fetch('/api/user', {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
             });
+
             if (!response.ok) {
                 throw new Error('Failed to load user profile');
             }
+
             const user = await response.json();
+
             /* =========================
             CONTACT INFORMATION
             ========================== */
@@ -894,6 +1018,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const phoneEl = document.getElementById('userPhone');
             if (emailEl) emailEl.textContent = user.email || '—';
             if (phoneEl) phoneEl.textContent = user.phone || '—';
+
             /* =========================
             ADDRESS (EDIT FORM INPUTS)
             ========================== */
@@ -908,8 +1033,11 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             console.error('Error loading account details:', error);
             showCustomAlert('Failed to load account details.', 'Error');
+        } finally {
+            hideLoader();
         }
     }
+
     const accountLink = document.getElementById('accountLink');
     if (accountLink) {
         accountLink.addEventListener('click', (e) => {
@@ -917,6 +1045,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Load order history
             loadAccountDetails();   // ✅ ADD THIS
             loadOrderHistory();
+
             // Show account modal if it exists
             const accountModal = document.getElementById("accountModal");
             if (accountModal) {
@@ -925,6 +1054,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
     // NEW: Add event listener for Account Modal Close Button
     const accountModalCloseBtn = document.getElementById("accountModal");
     if (accountModalCloseBtn) {
@@ -935,15 +1065,18 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
     // NEW: Add event listeners for Auth Modal
     const authForm = document.getElementById("authForm");
     if (authForm) {
         authForm.addEventListener("submit", handleAuthSubmit);
     }
+
     const authCloseBtn = document.getElementById("authClose");
     if (authCloseBtn) {
         authCloseBtn.addEventListener("click", closeAuthModal);
     }
+
     const authModal = document.getElementById("authModal");
     if (authModal) {
         authModal.addEventListener("click", (e) => {
@@ -952,14 +1085,17 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && authModal?.classList.contains("active")) {
             closeAuthModal();
         }
     });
+
     // Switch between Login and Signup forms
     const loginFormSwitch = document.getElementById("loginFormSwitch");
     const signupFormSwitch = document.getElementById("signupFormSwitch");
+
     if (loginFormSwitch) {
         loginFormSwitch.addEventListener("click", (e) => {
             e.preventDefault();
@@ -971,6 +1107,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("signupFormSwitch").addEventListener("click", switchToSignup);
         });
     }
+
     // Inside the DOMContentLoaded event listener, find or add these functions
     function switchToSignup(e) {
         e.preventDefault();
@@ -983,6 +1120,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Reattach event listener for the new login link
         document.getElementById("loginFormSwitch").addEventListener("click", switchToLogin);
     }
+
     function switchToLogin(e) {
         e.preventDefault();
         document.getElementById("authFormTitle").textContent = "Login";
@@ -994,10 +1132,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // Reattach event listener for the new signup link
         document.getElementById("signupFormSwitch").addEventListener("click", switchToSignup);
     }
+
     // Attach initial event listeners for switching
     if (signupFormSwitch) {
         signupFormSwitch.addEventListener("click", switchToSignup);
     }
+
     document.addEventListener("keydown", (e) => {
         if (document.getElementById("productModal")?.classList.contains("active")) {
             if (e.key === "ArrowLeft") navigateGallery(-1);
@@ -1017,22 +1157,27 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+
 // Load and display featured products
 async function loadFeaturedProducts() {
     const featuredContainer = document.getElementById("featuredProducts");
     if (!featuredContainer) return;
+    showLoader("Loading products...");
     try {
         const response = await fetch('/api/products');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const products = await response.json();
+
         // Get the first 4 products for featured display
         const featuredProducts = products.slice(0, 4);
+
         if (featuredProducts.length === 0) {
             featuredContainer.innerHTML = '<p class="empty-state">No products available</p>';
             return;
         }
+
         featuredContainer.innerHTML = featuredProducts
             .map(
                 (product) => `
@@ -1055,22 +1200,28 @@ async function loadFeaturedProducts() {
     } catch (error) {
         console.error("Error loading featured products:", error);
         featuredContainer.innerHTML = '<p class="error-message">Failed to load featured products.</p>';
+    } finally {
+        hideLoader();
     }
 }
+
 // Load and display testimonials
 async function loadTestimonials() {
     const testimonialContainer = document.getElementById("testimonialsGrid");
     if (!testimonialContainer) return;
+    showLoader("Loading testimonials...");
     try {
         const response = await fetch('/api/testimonials');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const testimonials = await response.json();
+
         if (testimonials.length === 0) {
             testimonialContainer.innerHTML = '<p class="empty-state">No testimonials available</p>';
             return;
         }
+
         testimonialContainer.innerHTML = testimonials
             .map(
                 (testimonial) => `
@@ -1091,24 +1242,31 @@ ${testimonial.image ? `<img src="${testimonial.image}" alt="${testimonial.name}"
     } catch (error) {
         console.error("Error loading testimonials:", error);
         testimonialContainer.innerHTML = '<p class="error-message">Failed to load testimonials.</p>';
+    } finally {
+        hideLoader();
     }
 }
+
 // Load and display latest news
 async function loadLatestNews() {
     const newsContainer = document.getElementById("latestNews");
     if (!newsContainer) return;
+    showLoader("Loading news...");
     try {
         const response = await fetch('/api/news');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const news = await response.json();
+
         // Get the first 4 news articles
         const latestNews = news.slice(0, 4);
+
         if (latestNews.length === 0) {
             newsContainer.innerHTML = '<p class="empty-state">No news available</p>';
             return;
         }
+
         newsContainer.innerHTML = latestNews
             .map(
                 (article) => `
@@ -1127,8 +1285,11 @@ async function loadLatestNews() {
     } catch (error) {
         console.error("Error loading latest news:", error);
         newsContainer.innerHTML = '<p class="error-message">Failed to load news.</p>';
+    } finally {
+        hideLoader();
     }
 }
+
 // Search functionality
 function handleSearch(e) {
     const searchTerm = e.target.value.toLowerCase();
@@ -1141,11 +1302,13 @@ function handleSearch(e) {
     applySorting();
     displayProducts(filteredProducts);
 }
+
 // Sort functionality
 function handleSort(e) {
     applySorting();
     displayProducts(filteredProducts);
 }
+
 // Format a date string
 function formatDate(dateString) {
     try {
@@ -1159,6 +1322,7 @@ function formatDate(dateString) {
         return dateString; // Fallback to original string if parsing fails
     }
 }
+
 function applySorting() {
     const sortValue = document.getElementById("sortSelect").value;
     switch (sortValue) {
@@ -1187,11 +1351,13 @@ function applySorting() {
             filteredProducts.sort((a, b) => a.id - b.id);
     }
 }
+
 // Global variables for search and sort
 let allProducts = []; // Will be populated from API
 let filteredProducts = []; // Will be populated from API
 let currentProductInModal = null;
 let currentImageIndex = 0;
+
 // Function to handle updating user's address
 function handleUpdateAddress(e) {
     e.preventDefault();
@@ -1200,16 +1366,20 @@ function handleUpdateAddress(e) {
         showCustomAlert("Please log in to update your address.", "Login Required");
         return;
     }
+
     // Get the new address values
     const street = document.getElementById("editStreet").value.trim();
     const city = document.getElementById("editCity").value.trim();
     const state = document.getElementById("editState").value.trim();
     const postalCode = document.getElementById("editPostalCode").value.trim();
+
     // Validate required fields
     if (!street || !city || !state) {
         showCustomAlert("Please fill in all required address fields.", "Address Required", "error");
         return;
     }
+
+    showLoader("Updating your address...");
     // Send update to backend
     fetch('/api/user/address', {
         method: 'PUT',
@@ -1240,10 +1410,15 @@ function handleUpdateAddress(e) {
         .catch(error => {
             console.error("Error updating address:", error);
             showCustomAlert("Failed to update address. Please try again.", "Error");
+        })
+        .finally(() => {
+            hideLoader();
         });
 }
+
 // View full article
 function viewFullArticle(articleId) {
+    showLoader("Loading article...");
     // Fetch the specific news article from the API
     fetch(`/api/news/${articleId}`)
         .then(response => {
@@ -1257,20 +1432,27 @@ function viewFullArticle(articleId) {
                 console.error("Article not found.");
                 return;
             }
+
             const modal = document.getElementById("articleModal");
             if (!modal) return;
+
             document.getElementById("articleTitle").textContent = article.title;
             document.getElementById("articleDate").textContent = article.date;
             document.getElementById("articleImage").src = article.image || "/placeholder.svg";
             document.getElementById("articleBody").innerHTML = `<p>${(article.fullContent || article.body || article.description).replace(/ /g, "</p><p>")}</p>`;
+
             modal.classList.add("active");
             document.body.style.overflow = "hidden";
         })
         .catch(error => {
             console.error("Error fetching article:", error);
             // Optionally show an alert or handle the error differently
+        })
+        .finally(() => {
+            hideLoader();
         });
 }
+
 function closeArticleModal() {
     const modal = document.getElementById("articleModal");
     if (modal) {
@@ -1279,16 +1461,21 @@ function closeArticleModal() {
     }
 }
 
+// Add event listeners for payment simulation buttons (removed as per requirements)
+// The payment simulation functions have been completely removed as requested
+
 // Initialize products from API
 function initializeData() {
     // Data is loaded from the database via API calls
     // No need to populate localStorage here
 }
+
 // Display products (assuming this function exists elsewhere in your code)
 function displayProducts(products) {
     // Implementation depends on your existing code structure
     // This function should render products to the DOM
 }
+
 async function syncCartToDatabase() {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -1305,9 +1492,11 @@ async function syncCartToDatabase() {
         console.error("Failed to sync cart:", error);
     }
 }
+
 async function loadCartFromDatabase() {
     const token = localStorage.getItem('token');
     if (!token) return;
+    showLoader("Loading your cart...");
     try {
         const response = await fetch('/api/cart', {
             headers: {
@@ -1321,5 +1510,7 @@ async function loadCartFromDatabase() {
         updateUIBasedOnUser();
     } catch (error) {
         console.error("Failed to load cart from DB:", error);
+    } finally {
+        hideLoader();
     }
 }

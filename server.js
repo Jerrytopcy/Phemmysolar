@@ -31,7 +31,7 @@ app.use(cors({
 // --- END CORS ---
 const checkLimiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
-    max: 5, // 5 requests per IP per minute
+    max: 10, // 10 requests per IP per minute
     message: {
         error: "Too many requests. Please wait a minute and try again."
     },

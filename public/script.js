@@ -324,118 +324,73 @@ function closeCartModal() {
     }
 }
 
-// Load user's order history (for account page)
-// Load user's order history (for account page)
+// Format a neat date/time
+function formatOrderDate(dateString) {
+    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return new Date(dateString).toLocaleString('en-US', options);
+}
+
+// Load user's order history (fixed)
 async function loadOrderHistory() {
     const token = localStorage.getItem('token');
     if (!token) {
         document.getElementById('orderHistory').innerHTML = '<p>Please log in to view your order history.</p>';
         return;
     }
-
     showLoader("Loading your order history...");
 
     try {
         const response = await fetch('/api/orders', {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
+            headers: { Authorization: `Bearer ${token}` }
         });
-
         if (!response.ok) throw new Error('Failed to load order history');
 
         const orders = await response.json();
-
         if (!orders.length) {
             document.getElementById('orderHistory').innerHTML = '<p>No orders found.</p>';
             return;
         }
 
-        // Sort orders by date (newest first)
+        // Sort newest first
         orders.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
-
         for (const order of orders) {
-            // Ensure delivery address exists
-            const address = order.deliveryAddress || {};
+            // Correctly get delivery address
+            const address = order.delivery_address || {};
             const fullAddress = `${address.street || ""}, ${address.city || ""}, ${address.state || ""} ${address.postalCode || ""}, ${address.country || "Nigeria"}`;
 
-            // Format order ID to 8 digits
-            const orderId = String(order.id).padStart(8, "0");
-
-            // Format date nicely
-            const orderDate = new Date(order.date);
-            const formattedDate = orderDate.toLocaleString('en-NG', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            });
-
             let itemsHTML = '';
-
             for (const item of order.items) {
-                try {
-                    const productResponse = await fetch(`/api/products/${item.productId}`);
-                    if (!productResponse.ok) throw new Error(`Failed to fetch product ${item.productId}`);
-                    const product = await productResponse.json();
-
-                    // Use product name and image if available
-                    const productName = product.name || "Unnamed Product";
-                    const imageUrl = product.images?.[0] || '/placeholder.svg';
-
-                    itemsHTML += `
+                // Fallback for product name if missing
+                const name = item.name || "Product Name";
+                const imageUrl = item.image || '/placeholder.svg';
+                itemsHTML += `
 <div class="order-history-item">
     <div class="order-item-image-wrapper">
-        <img src="${imageUrl}" alt="${productName}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+        <img src="${imageUrl}" alt="${name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
     </div>
     <div class="order-item-details">
-        <div class="order-item-name">${productName}</div>
+        <div class="order-item-name">${name}</div>
         <div class="order-item-meta">
             <span class="order-item-qty">Qty: ${item.quantity}</span>
             <span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
         </div>
     </div>
-</div>
-`;
-                } catch (error) {
-                    console.error('Error loading product:', item.productId, error);
-
-                    itemsHTML += `
-<div class="order-history-item">
-    <div class="order-item-image-wrapper">
-        <img src="/placeholder.svg" alt="Image not available">
-    </div>
-    <div class="order-item-details">
-        <div class="order-item-name">Product unavailable</div>
-        <div class="order-item-meta">
-            <span class="order-item-qty">Qty: ${item.quantity}</span>
-            <span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
-        </div>
-    </div>
-</div>
-`;
-                }
+</div>`;
             }
 
             historyHTML += `
 <div class="order-item">
-    <p><strong>Order ID:</strong> ${orderId}</p>
-    <p><strong>Date:</strong> ${formattedDate}</p>
+    <p><strong>Order ID:</strong> ${order.id}</p>
+    <p><strong>Date:</strong> ${formatOrderDate(order.date)}</p>
     <p><strong>Delivery Address:</strong> ${fullAddress}</p>
     <div class="order-status-actions">
         <p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
     </div>
     <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
-    <div class="order-items-list">
-        ${itemsHTML}
-    </div>
-</div>
-`;
+    <div class="order-items-list">${itemsHTML}</div>
+</div>`;
         }
 
         historyHTML += '</div>';
@@ -448,6 +403,8 @@ async function loadOrderHistory() {
         hideLoader();
     }
 }
+
+
 
 
 // Update UI elements based on user status and cart

@@ -477,16 +477,19 @@ app.delete('/api/news/:id', async (req, res) => {
 app.get('/api/users', async (req, res) => {
   try {
     const result = await pool.query(`
-  SELECT 
-    id,
-    username,
-    email,
-    phone,
-    address::json AS address, -- 👈 Force PostgreSQL to return address as JSON object
-    role
-  FROM users 
-  ORDER BY id
-`);
+      SELECT 
+        u.id,
+        u.username,
+        u.email,
+        u.phone,
+        u.address::json AS address,
+        u.role,
+        COUNT(o.id) AS order_count
+      FROM users u
+      LEFT JOIN orders o ON o.user_id = u.id
+      GROUP BY u.id, u.username, u.email, u.phone, u.address, u.role
+      ORDER BY u.id
+    `);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching users:', err);

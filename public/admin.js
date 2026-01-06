@@ -1153,7 +1153,7 @@ async function loadUsers() {
 <td>${user.email || "Not set"}</td>
 <td>${user.phone || "Not set"}</td>
 <td>${fullAddress}</td>
-<td>${user.orders ? user.orders.length : 0}</td>
+<td>${user.order_count || 0}</td>
 <td>
 <div class="product-actions">
 <button class="btn-edit" onclick="editUser(${user.id})">Edit</button>
@@ -1205,7 +1205,10 @@ async function handleUserSubmit(e) {
         },
         role: document.getElementById("userRole").value || 'user' // Add role field
     };
-
+      // Only include password if it's filled in
+      if (passwordInput.value.trim() !== "") {
+          userData.password = passwordInput.value;
+      }
     try {
         showLoader(userId ? "Updating user..." : "Adding user..."); // Show loader during submission
         const method = userId ? 'PUT' : 'POST'; // Use PUT for updates, POST for new
@@ -1258,13 +1261,14 @@ function editUser(userId) {
                 const usernameEl = document.getElementById("username");
                 const emailEl = document.getElementById("email");
                 const phoneEl = document.getElementById("phone");
+                const userRoleEl = document.getElementById("userRole");
                 const streetEl = document.getElementById("street");
                 const cityEl = document.getElementById("city");
                 const stateEl = document.getElementById("state");
                 const postalCodeEl = document.getElementById("postalCode");
 
                 // Defensive check: Ensure all elements exist
-                if (!userIdEl || !usernameEl || !emailEl || !phoneEl || !streetEl || !cityEl || !stateEl || !postalCodeEl) {
+                if (!userIdEl || !usernameEl || !emailEl || !phoneEl || !userRoleEl || !streetEl || !cityEl || !stateEl || !postalCodeEl) {
                     console.error("One or more user form fields are missing in DOM.");
                     showAdminAlert("User form is incomplete. Please contact support.", "Error");
                     return;
@@ -1275,16 +1279,31 @@ function editUser(userId) {
                 usernameEl.value = user.username;
                 emailEl.value = user.email || "";
                 phoneEl.value = user.phone || "";
+                userRoleEl.value = user.role || 'user';
                 streetEl.value = (user.address && user.address.street) ? user.address.street : "";
                 cityEl.value = (user.address && user.address.city) ? user.address.city : "";
                 stateEl.value = (user.address && user.address.state) ? user.address.state : "";
                 postalCodeEl.value = (user.address && user.address.postalCode) ? user.address.postalCode : "";
 
+                // Clear password field when editing (do not show current password)
+                const passwordEl = document.getElementById("password");
+                if (passwordEl) {
+                    passwordEl.value = ""; // Leave empty for security
+                }
+
+                
+
                 currentEditingUserId = userId;
-                showUserForm(true); // This will make the modal visible
+                showUserForm(true);
 
             }, 0); // <-- This ensures the DOM is ready
-
+              // Hide password field when editing 
+                const passwordField = document.getElementById("password");
+                const passwordLabel = document.querySelector('label[for="password"]');
+                if (passwordField && passwordLabel) {
+                    passwordField.style.display = "none";
+                    passwordLabel.style.display = "none";
+                }
         })
         .catch(error => {
             console.error("Error fetching user for edit:", error);

@@ -1,5 +1,4 @@
 // script.js
-
 // --- NEW: Cart Management Functions ---
 // Initialize cart from sessionStorage (no user object storage)
 let cart = JSON.parse(sessionStorage.getItem('cart')) || [];
@@ -26,7 +25,6 @@ async function addToCart(productId) {
     showLoader("Adding item to cart...");
     try {
         const token = localStorage.getItem("token");
-
         // Fetch product (for name + validation only)
         const response = await fetch(`/api/products/${productId}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -36,8 +34,7 @@ async function addToCart(productId) {
             return;
         }
 
-        // LOGGED-IN USER → add directly to DB cart
-        if (token) {
+        if (token) { // LOGGED-IN USER → add directly to DB cart
             await fetch("/api/cart/add", {
                 method: "POST",
                 headers: {
@@ -61,14 +58,13 @@ async function addToCart(productId) {
         } else {
             cart.push({
                 productId: productId,
-                quantity: 1
+                quantity: 1,
+                ...product // Include product details for guest session
             });
         }
-
         sessionStorage.setItem("cart", JSON.stringify(cart));
         updateUIBasedOnUser(); // updates cart count and cart display
         showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
-
     } catch (error) {
         console.error("Error adding product to cart:", error);
         showCustomAlert("Failed to add product to cart. Please try again.", "Error");
@@ -77,62 +73,49 @@ async function addToCart(productId) {
     }
 }
 
-
-
 // View Cart
 async function viewCart() {
     if (!cart || cart.length === 0) {
         showCustomAlert("Your cart is empty.", "Cart Empty");
         return;
     }
+
     showLoader("Loading your cart...");
     try {
-        // Create an array to hold all product data fetched from the API
-        const cartItemsWithDetails = [];
-
-        // Loop through each item in the cart and fetch its details
-        for (const cartItem of cart) {
-            const response = await fetch(`/api/products/${cartItem.productId}`);
-            if (!response.ok) {
-                console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
-                continue; // Skip this item if fetching fails
-            }
-            const product = await response.json();
-            if (product) {
-                // Combine the cart item quantity with the product details
-                cartItemsWithDetails.push({
-                    ...product,
-                    cartQuantity: cartItem.quantity // Add the quantity from the cart
-                });
-            }
-        }
-
-        let cartHTML = '<h3>Your Cart</h3><ul>';
+        // For logged-in users, 'cart' is already hydrated with product details from loadCartFromDatabase.
+        // For guests, 'cart' was hydrated when items were added or loaded from sessionStorage.
+        // No need to fetch details again here.
+        let cartHTML = '<h3>Your Cart</h3><ul class="cart-items-list">';
         let total = 0;
 
-        // Iterate through the fetched cart items
-        cartItemsWithDetails.forEach(item => {
-            const price = parseInt(item.price.replace(/\D/g, '')); // Extract numeric price
-            const itemTotal = price * item.cartQuantity;
+        // Iterate through the hydrated cart items
+        for (const item of cart) {
+            // Calculate price per item
+            const priceNum = typeof item.price === 'string' ? parseInt(item.price.replace(/\D/g, '')) : item.price;
+            const itemTotal = (priceNum || 0) * item.quantity;
             total += itemTotal;
+
             cartHTML += `
-<div class="cart-item-card">
-<div class="cart-item-image-wrapper">
-<img src="${item.images?.[0] || '/placeholder.svg'}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
-</div>
-<div class="cart-item-info">
-<h4 class="cart-item-title">${item.name}</h4>
-<p class="cart-item-price">${formatNaira(itemTotal)}</p>
-<div class="cart-item-quantity-controls">
-<button class="qty-btn" onclick="updateCartItemQuantity(${item.id}, ${item.cartQuantity - 1})" ${item.cartQuantity <= 1 ? 'disabled' : ''}>−</button>
-<span class="qty-display">${item.cartQuantity}</span>
-<button class="qty-btn" onclick="updateCartItemQuantity(${item.id}, ${item.cartQuantity + 1})">+</button>
-</div>
-</div>
-<button class="remove-btn" onclick="removeFromCart(${item.id})">×</button>
-</div>`;
-        });
-        cartHTML += `</ul><p><strong>Total: ${formatNaira(total)}</strong></p>`;
+                <div class="cart-item-card">
+                    <div class="cart-item-image-wrapper">
+                        <img src="${item.images?.[0] || '/placeholder.svg'}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+                    </div>
+                    <div class="cart-item-info">
+                        <h4 class="cart-item-title">${item.name}</h4>
+                        <p class="cart-item-price">${formatNaira(itemTotal)}</p>
+                        <div class="cart-item-quantity-controls">
+                            <!-- Use item.productId, not item.id -->
+                            <button class="qty-btn" onclick="updateCartItemQuantity(${item.productId}, ${item.quantity - 1})" ${item.quantity <= 1 ? 'disabled' : ''}>−</button>
+                            <span class="qty-display">${item.quantity}</span>
+                            <button class="qty-btn" onclick="updateCartItemQuantity(${item.productId}, ${item.quantity + 1})">+</button>
+                        </div>
+                    </div>
+                    <!-- Use item.productId, not item.id -->
+                    <button class="remove-btn" onclick="removeFromCart(${item.productId})">×</button>
+                </div>`;
+        }
+
+        cartHTML += `</ul><p class="cart-total"><strong>Total: ${formatNaira(total)}</strong></p>`;
         cartHTML += `<button class="btn btn-checkout" onclick="proceedToCheckout()">Checkout</button>`;
 
         // Display cart in the modal
@@ -154,12 +137,14 @@ async function viewCart() {
     }
 }
 
+
 // Update item quantity in cart
 function updateCartItemQuantity(productId, newQuantity) {
     if (newQuantity < 1) {
         removeFromCart(productId);
         return;
     }
+
     const itemIndex = cart.findIndex(item => item.productId === productId);
     if (itemIndex > -1) {
         cart[itemIndex].quantity = newQuantity;
@@ -169,9 +154,14 @@ function updateCartItemQuantity(productId, newQuantity) {
         updateUIBasedOnUser();
         viewCart(); // Refresh cart view
     }
-    sessionStorage.setItem('cart', JSON.stringify(cart));
-    syncCartToDatabase();
+
+    // Sync to DB if logged in
+    const token = localStorage.getItem('token');
+    if (token) {
+        syncCartToDatabase();
+    }
 }
+
 
 // Remove item from cart
 function removeFromCart(productId) {
@@ -181,6 +171,7 @@ function removeFromCart(productId) {
     sessionStorage.setItem('cart', JSON.stringify(cart));
     // Update UI
     updateUIBasedOnUser();
+
     // Check if cart is now empty
     if (cart.length === 0) {
         // Close the cart modal
@@ -191,9 +182,14 @@ function removeFromCart(productId) {
         // Refresh cart view if items still remain
         viewCart();
     }
-    sessionStorage.setItem('cart', JSON.stringify(cart));
-    syncCartToDatabase();
+
+    // Sync to DB if logged in
+    const token = localStorage.getItem('token');
+    if (token) {
+        syncCartToDatabase();
+    }
 }
+
 
 // Proceed to checkout
 async function proceedToCheckout() {
@@ -201,38 +197,29 @@ async function proceedToCheckout() {
         showCustomAlert("Your cart is empty.", "Cart Empty");
         return;
     }
+
     const token = localStorage.getItem('token');
     if (!token) {
         showCustomAlert("Please log in to proceed to checkout.", "Login Required");
         showAuthModal();
         return;
     }
+
     showLoader("Processing your order...");
     try {
-        const orderItems = [];
-        let total = 0;
+        // Prepare items for the order using the hydrated cart data
+        // Use item.productId (frontend key) and map it to product_id (DB key)
+        const orderItems = cart.map(item => {
+            const priceNum = typeof item.price === 'string' ? parseInt(item.price.replace(/\D/g, '')) : item.price;
+            return {
+                product_id: item.productId, // Use product_id for the backend
+                quantity: item.quantity,
+                price: priceNum // Ensure numeric price
+            };
+        });
 
-        // Loop through each item in the cart and fetch its details
-        for (const cartItem of cart) {
-            const response = await fetch(`/api/products/${cartItem.productId}`);
-            if (!response.ok) {
-                console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
-                continue; // Skip this item if fetching fails
-            }
-            const product = await response.json();
-            if (product) {
-                const price = parseInt(product.price.replace(/\D/g, ''));
-                const itemTotal = price * cartItem.quantity;
-                total += itemTotal;
-                orderItems.push({
-                    productId: product.id,
-                    name: product.name,
-                    price: product.price,
-                    quantity: cartItem.quantity,
-                    itemTotal: itemTotal
-                });
-            }
-        }
+        // Calculate total
+        let total = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
         // Get the current address from the user's profile (via API)
         const userResponse = await fetch('/api/user', {
@@ -254,11 +241,7 @@ async function proceedToCheckout() {
 
         // Create the order object with the calculated items and address
         const orderData = {
-            items: orderItems.map(i => ({
-                productId: i.productId,
-                quantity: i.quantity,
-                price: parseInt(i.price.replace(/\D/g, ''))
-            })),
+            items: orderItems, // Send items with product_id, quantity, price
             total: total,
             deliveryAddress: currentAddress
         };
@@ -280,15 +263,14 @@ async function proceedToCheckout() {
         // Clear cart after successful checkout
         cart = [];
         sessionStorage.removeItem('cart');
-
         // Update UI to reflect empty cart
         updateUIBasedOnUser();
-
         // Close the cart modal first
         closeCartModal();
-
         // Show success message
         showCustomAlert("Your order has been successfully placed!", "Order Placed", "success");
+
+        // Optionally clear the server cart as well after successful order
         await fetch('/api/cart', {
             method: 'DELETE',
             headers: {
@@ -302,6 +284,7 @@ async function proceedToCheckout() {
         hideLoader();
     }
 }
+
 
 // Close Cart Modal
 function closeCartModal() {
@@ -324,15 +307,15 @@ async function loadOrderHistory() {
         document.getElementById('orderHistory').innerHTML = '<p>Please log in to view your order history.</p>';
         return;
     }
-    showLoader("Loading your order history...");
 
+    showLoader("Loading your order history...");
     try {
         const response = await fetch('/api/orders', {
             headers: { Authorization: `Bearer ${token}` }
         });
         if (!response.ok) throw new Error('Failed to load order history');
-
         const orders = await response.json();
+
         if (!orders.length) {
             document.getElementById('orderHistory').innerHTML = '<p>No orders found.</p>';
             return;
@@ -349,7 +332,6 @@ async function loadOrderHistory() {
             for (const item of order.items) {
                 const name = item.name || "Product Name";
                 let imageUrl = '/placeholder.svg';
-
                 // Try fetching product to get image
                 try {
                     const productResponse = await fetch(`/api/products/${item.productId}`);
@@ -364,36 +346,35 @@ async function loadOrderHistory() {
                 }
 
                 itemsHTML += `
-<div class="order-history-item">
-    <div class="order-item-image-wrapper">
-        <img src="${imageUrl}" alt="${name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
-    </div>
-    <div class="order-item-details">
-        <div class="order-item-name">${name}</div>
-        <div class="order-item-meta">
-            <span class="order-item-qty">Qty: ${item.quantity}</span>
-            <span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
-        </div>
-    </div>
-</div>`;
+                    <div class="order-history-item">
+                        <div class="order-item-image-wrapper">
+                            <img src="${imageUrl}" alt="${name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+                        </div>
+                        <div class="order-item-details">
+                            <div class="order-item-name">${name}</div>
+                            <div class="order-item-meta">
+                                <span class="order-item-qty">Qty: ${item.quantity}</span>
+                                <span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
+                            </div>
+                        </div>
+                    </div>`;
             }
 
             historyHTML += `
-<div class="order-item">
-    <p><strong>Order ID:</strong> ${order.id}</p>
-    <p><strong>Date:</strong> ${formatOrderDate(order.date)}</p>
-    <p><strong>Delivery Address:</strong> ${fullAddress}</p>
-    <div class="order-status-actions">
-        <p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
-    </div>
-    <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
-    <div class="order-items-list">${itemsHTML}</div>
-</div>`;
+                <div class="order-item">
+                    <p><strong>Order ID:</strong> ${order.id}</p>
+                    <p><strong>Date:</strong> ${formatOrderDate(order.date)}</p>
+                    <p><strong>Delivery Address:</strong> ${fullAddress}</p>
+                    <div class="order-status-actions">
+                        <p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
+                    </div>
+                    <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
+                    <div class="order-items-list">${itemsHTML}</div>
+                </div>`;
         }
-
         historyHTML += '</div>';
-        document.getElementById('orderHistory').innerHTML = historyHTML;
 
+        document.getElementById('orderHistory').innerHTML = historyHTML;
     } catch (error) {
         console.error("Error loading order history:", error);
         document.getElementById('orderHistory').innerHTML = '<p>Error loading order history. Please try again.</p>';
@@ -403,28 +384,17 @@ async function loadOrderHistory() {
 }
 
 
-
-
-
 // Update UI elements based on user status and cart
 function updateUIBasedOnUser() {
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const accountLink = document.getElementById('accountLink');
     const cartCountElement = document.getElementById('cartCount');
-
     const token = localStorage.getItem('token');
     const isLoggedIn = !!token;
 
-    // Determine the current cart
-    let currentCart = [];
-    if (isLoggedIn) {
-        currentCart = window.cartDatabase || []; // your DB-loaded cart
-    } else {
-        currentCart = cart || []; // guest cart
-    }
-
-    const cartCount = currentCart.reduce((sum, item) => sum + item.quantity, 0);
+    // Determine the current cart count (sum of quantities)
+    const cartCount = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
 
     // Show/hide buttons
     if (isLoggedIn) {
@@ -444,8 +414,10 @@ function updateUIBasedOnUser() {
     if (cartCountElement) cartCountElement.textContent = cartCount;
 
     // Update cart dropdown/list
-    renderCartItems(currentCart);
+    renderCartItems(cart); // Pass the current 'cart' array
 }
+
+
 function renderCartItems(cartItems) {
     const cartList = document.getElementById("cartItemsList");
     if (!cartList) return;
@@ -455,18 +427,18 @@ function renderCartItems(cartItems) {
         return;
     }
 
+    // Use the hydrated cart items which contain product details
     cartList.innerHTML = cartItems.map(item => `
         <div class="cart-item">
-            <img src="${item.image || '/placeholder.svg'}" alt="${item.name || 'Product'}" onerror="this.src='/placeholder.svg';">
+            <img src="${item.images?.[0] || '/placeholder.svg'}" alt="${item.name || 'Product'}" onerror="this.src='/placeholder.svg';">
             <div class="cart-item-details">
                 <span class="cart-item-name">${item.name || 'Product'}</span>
                 <span class="cart-item-qty">Qty: ${item.quantity}</span>
-                <span class="cart-item-price">${formatNaira(item.price * item.quantity)}</span>
+                <span class="cart-item-price">${formatNaira((typeof item.price === 'string' ? parseInt(item.price.replace(/\D/g, '')) : item.price) * item.quantity)}</span>
             </div>
         </div>
     `).join("");
 }
-
 
 
 function handleLogout() {
@@ -478,10 +450,8 @@ function handleLogout() {
             localStorage.removeItem('token');
             sessionStorage.removeItem('currentUser');
             sessionStorage.removeItem('cart');
-
             // Reset cart variable
             cart = [];
-
             // Update UI
             updateUIBasedOnUser();
             showCustomAlert("You have been logged out.", "Logged Out");
@@ -490,7 +460,6 @@ function handleLogout() {
 }
 
 // --- NEW: Custom Modal Functions for Login/Signup ---
-
 // Show the login/signup modal
 function showAuthModal() {
     const modal = document.getElementById("authModal");
@@ -514,7 +483,6 @@ function closeAuthModal() {
 // Handle login or signup form submission
 async function handleAuthSubmit(e) {
     e.preventDefault();
-
     const form = e.target;
     const username = form.username.value.trim();
     const password = form.password.value;
@@ -526,7 +494,6 @@ async function handleAuthSubmit(e) {
     }
 
     const isLogin = form.dataset.mode === "login";
-
     let requestData = {
         username,
         password,
@@ -560,7 +527,6 @@ async function handleAuthSubmit(e) {
     }
 
     showLoader(isLogin ? "Logging in..." : "Creating your account...");
-
     try {
         // ======================
         // MAIN AUTH REQUEST
@@ -588,19 +554,15 @@ async function handleAuthSubmit(e) {
 
             // Merge guest cart → DB
             await mergeGuestCartToDatabase();
-
             // Load final cart from DB
             await loadCartFromDatabase();
-
             updateUIBasedOnUser();
             closeAuthModal();
-
             showCustomAlert(
                 `Welcome back, ${result.user.username}!`,
                 "Logged In",
                 "success"
             );
-
             return;
         }
 
@@ -637,13 +599,10 @@ async function handleAuthSubmit(e) {
 
         // Merge guest cart → DB
         await mergeGuestCartToDatabase();
-
         // Load final cart from DB
         await loadCartFromDatabase();
-
         updateUIBasedOnUser();
         closeAuthModal();
-
     } catch (error) {
         console.error("Auth error:", error);
         document.getElementById("authError").textContent =
@@ -652,8 +611,6 @@ async function handleAuthSubmit(e) {
         hideLoader();
     }
 }
-
-
 
 // Add event listener for Forgot Password Form
 const forgotPasswordForm = document.getElementById("forgotPasswordForm");
@@ -689,6 +646,7 @@ async function handleForgotPasswordSubmit(e) {
         document.getElementById("forgotPasswordError").textContent = "Username and email are required.";
         return;
     }
+
     showLoader("Sending password reset link...");
     try {
         const response = await fetch('/api/forgot-password', {
@@ -750,7 +708,6 @@ function showCustomAlert(message, title = "Success", type = "success") {
     alertMessage.textContent = message;
     alertIcon.textContent = type === "success" ? "✓" : "✕";
     alertIcon.className = `alert-icon ${type}`;
-
     modal.classList.add("active");
     document.body.style.overflow = "hidden";
 }
@@ -764,7 +721,6 @@ function showCustomConfirm(message, title = "Confirm Action", onConfirm) {
 
     confirmTitle.textContent = title;
     confirmMessage.textContent = message;
-
     modal.classList.add("active");
     document.body.style.overflow = "hidden";
 
@@ -780,6 +736,7 @@ function showCustomConfirm(message, title = "Confirm Action", onConfirm) {
         document.body.style.overflow = "";
         if (onConfirm) onConfirm();
     });
+
     newNo.addEventListener("click", () => {
         modal.classList.remove("active");
         document.body.style.overflow = "";
@@ -827,10 +784,10 @@ function viewProduct(productId) {
             thumbnailContainer.innerHTML = product.images
                 .map(
                     (img, index) => `
-<div class="thumbnail ${index === 0 ? "active" : ""}" onclick="changeImage(${index})">
-<img src="${img}" alt="${product.name} ${index + 1}">
-</div>
-`,
+                    <div class="thumbnail ${index === 0 ? "active" : ""}" onclick="changeImage(${index})">
+                        <img src="${img}" alt="${product.name} ${index + 1}">
+                    </div>
+                    `,
                 )
                 .join("");
 
@@ -858,6 +815,7 @@ function changeImage(index) {
     if (index < 0 || index >= currentProductInModal.images.length) {
         return;
     }
+
     currentImageIndex = index;
     const mainImage = document.getElementById("modalMainImage");
     mainImage.src = currentProductInModal.images[index];
@@ -871,6 +829,7 @@ function updateGalleryNav() {
     if (!currentProductInModal) return;
     const prevBtn = document.getElementById("prevImage");
     const nextBtn = document.getElementById("nextImage");
+
     prevBtn.disabled = currentImageIndex === 0;
     nextBtn.disabled = currentImageIndex === currentProductInModal.images.length - 1;
 }
@@ -1026,14 +985,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (closeModal) {
         closeModal.addEventListener("click", closeProductModal);
     }
+
     const prevImage = document.getElementById("prevImage");
     if (prevImage) {
         prevImage.addEventListener("click", () => navigateGallery(-1));
     }
+
     const nextImage = document.getElementById("nextImage");
     if (nextImage) {
         nextImage.addEventListener("click", () => navigateGallery(1));
     }
+
     document.querySelectorAll(".modal-overlay").forEach((overlay) => {
         overlay.addEventListener("click", (e) => {
             if (e.target === overlay) {
@@ -1085,6 +1047,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadAccountDetails() {
         const token = localStorage.getItem('token');
         if (!token) return;
+
         showLoader("Loading account details...");
         try {
             const response = await fetch('/api/user', {
@@ -1092,11 +1055,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     Authorization: `Bearer ${token}`
                 }
             });
-
             if (!response.ok) {
                 throw new Error('Failed to load user profile');
             }
-
             const user = await response.json();
 
             /* =========================
@@ -1114,10 +1075,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const cityInput = document.getElementById('editCity');
             const stateInput = document.getElementById('editState');
             const postalInput = document.getElementById('editPostalCode');
+
             if (streetInput) streetInput.value = user.address?.street || '';
             if (cityInput) cityInput.value = user.address?.city || '';
             if (stateInput) stateInput.value = user.address?.state || '';
             if (postalInput) postalInput.value = user.address?.postalCode || '';
+
         } catch (error) {
             console.error('Error loading account details:', error);
             showCustomAlert('Failed to load account details.', 'Error');
@@ -1133,7 +1096,6 @@ document.addEventListener("DOMContentLoaded", () => {
             // Load order history
             loadAccountDetails();   // ✅ ADD THIS
             loadOrderHistory();
-
             // Show account modal if it exists
             const accountModal = document.getElementById("accountModal");
             if (accountModal) {
@@ -1250,6 +1212,7 @@ document.addEventListener("DOMContentLoaded", () => {
 async function loadFeaturedProducts() {
     const featuredContainer = document.getElementById("featuredProducts");
     if (!featuredContainer) return;
+
     showLoader("Loading products...");
     try {
         const response = await fetch('/api/products');
@@ -1269,20 +1232,20 @@ async function loadFeaturedProducts() {
         featuredContainer.innerHTML = featuredProducts
             .map(
                 (product) => `
-<div class="product-card">
-<img src="${product.images?.[0] || product.image}" alt="${product.name}" class="product-image">
-<div class="product-info">
-<h3 class="product-name">${product.name}</h3>
-<p class="product-price">${formatNaira(product.price)}</p>
-<p class="product-description">${product.description.substring(0, 80)}...</p>
-<div class="view-details">
-<button class="btn product-btn" onclick="viewProduct(${product.id})">View Details</button>
-<!-- NEW: Add to Cart Button in Product Card -->
-<button class="btn btn-contact" onclick="addToCart(${product.id})">Add to Cart</button>
-</div>
-</div>
-</div>
-`,
+                <div class="product-card">
+                    <img src="${product.images?.[0] || product.image}" alt="${product.name}" class="product-image">
+                    <div class="product-info">
+                        <h3 class="product-name">${product.name}</h3>
+                        <p class="product-price">${formatNaira(product.price)}</p>
+                        <p class="product-description">${product.description.substring(0, 80)}...</p>
+                        <div class="view-details">
+                            <button class="btn product-btn" onclick="viewProduct(${product.id})">View Details</button>
+                            <!-- NEW: Add to Cart Button in Product Card -->
+                            <button class="btn btn-contact" onclick="addToCart(${product.id})">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                `,
             )
             .join("");
     } catch (error) {
@@ -1297,6 +1260,7 @@ async function loadFeaturedProducts() {
 async function loadTestimonials() {
     const testimonialContainer = document.getElementById("testimonialsGrid");
     if (!testimonialContainer) return;
+
     showLoader("Loading testimonials...");
     try {
         const response = await fetch('/api/testimonials');
@@ -1313,18 +1277,18 @@ async function loadTestimonials() {
         testimonialContainer.innerHTML = testimonials
             .map(
                 (testimonial) => `
-<div class="testimonial-card">
-<div class="testimonial-header">
-${testimonial.image ? `<img src="${testimonial.image}" alt="${testimonial.name}" class="testimonial-avatar">` : '<div class="testimonial-avatar-placeholder">👤</div>'}
-<div class="testimonial-author-info">
-<p class="testimonial-author">${testimonial.name}</p>
-<p class="testimonial-role">${testimonial.role}</p>
-</div>
-</div>
-<div class="testimonial-stars">${"⭐".repeat(testimonial.rating)}</div>
-<p class="testimonial-text">"${testimonial.text}"</p>
-</div>
-`,
+                <div class="testimonial-card">
+                    <div class="testimonial-header">
+                        ${testimonial.image ? `<img src="${testimonial.image}" alt="${testimonial.name}" class="testimonial-avatar">` : '<div class="testimonial-avatar-placeholder">👤</div>'}
+                        <div class="testimonial-author-info">
+                            <p class="testimonial-author">${testimonial.name}</p>
+                            <p class="testimonial-role">${testimonial.role}</p>
+                        </div>
+                    </div>
+                    <div class="testimonial-stars">${"⭐".repeat(testimonial.rating)}</div>
+                    <p class="testimonial-text">"${testimonial.text}"</p>
+                </div>
+                `,
             )
             .join("");
     } catch (error) {
@@ -1339,6 +1303,7 @@ ${testimonial.image ? `<img src="${testimonial.image}" alt="${testimonial.name}"
 async function loadLatestNews() {
     const newsContainer = document.getElementById("latestNews");
     if (!newsContainer) return;
+
     showLoader("Loading news...");
     try {
         const response = await fetch('/api/news');
@@ -1358,16 +1323,16 @@ async function loadLatestNews() {
         newsContainer.innerHTML = latestNews
             .map(
                 (article) => `
-<div class="news-card">
-<img src="${article.image}" alt="${article.title}" class="news-image">
-<div class="news-content">
-<p class="news-date">${formatDate(article.date)}</p>
-<h3 class="news-title">${article.title}</h3>
-<p class="news-description">${article.description}</p>
-<a href="news.html" class="news-link" onclick="viewFullArticle(${article.id});">Read More →</a>
-</div>
-</div>
-`,
+                <div class="news-card">
+                    <img src="${article.image}" alt="${article.title}" class="news-image">
+                    <div class="news-content">
+                        <p class="news-date">${formatDate(article.date)}</p>
+                        <h3 class="news-title">${article.title}</h3>
+                        <p class="news-description">${article.description}</p>
+                        <a href="news.html" class="news-link" onclick="viewFullArticle(${article.id});">Read More →</a>
+                    </div>
+                </div>
+                `,
             )
             .join("");
     } catch (error) {
@@ -1520,7 +1485,6 @@ function viewFullArticle(articleId) {
                 console.error("Article not found.");
                 return;
             }
-
             const modal = document.getElementById("articleModal");
             if (!modal) return;
 
@@ -1564,26 +1528,44 @@ function displayProducts(products) {
     // This function should render products to the DOM
 }
 
+// CRITICAL: Sync Cart to Database
+// Sends the cart array to the DB in the correct format {product_id, quantity}.
 async function syncCartToDatabase() {
     const token = localStorage.getItem('token');
     if (!token) return;
+
     try {
-        await fetch('/api/cart', {
-            method: 'POST',
+        // Prepare data to send: map frontend cart items to DB format
+        const dbCartFormat = cart.map(item => ({
+            product_id: item.productId, // Use product_id for DB
+            quantity: item.quantity
+        }));
+
+        const response = await fetch('/api/cart', {
+            method: 'POST', // Or PUT, depending on your API
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify({ cart })
+            body: JSON.stringify({ items: dbCartFormat }) // Send items array, not whole cart object
         });
+
+        if (!response.ok) {
+            throw new Error(`Failed to sync cart to server: ${response.statusText}`);
+        }
+        console.log("Cart synced to database successfully.");
     } catch (error) {
         console.error("Failed to sync cart:", error);
+        // Optionally, you could implement a retry mechanism or inform the user
     }
 }
 
+// CRITICAL: Load Cart From Database
+// Reads DB cart (product_id, quantity), fetches product details, and populates the frontend 'cart' array.
 async function loadCartFromDatabase() {
     const token = localStorage.getItem('token');
     if (!token) return;
+
     showLoader("Loading your cart...");
     try {
         const response = await fetch('/api/cart', {
@@ -1591,11 +1573,49 @@ async function loadCartFromDatabase() {
                 Authorization: `Bearer ${token}`
             }
         });
-        if (!response.ok) return;
-        const savedCart = await response.json();
-        cart = savedCart;
-        sessionStorage.setItem('cart', JSON.stringify(cart));
-        updateUIBasedOnUser();
+        if (!response.ok) {
+            console.error("Failed to load cart from DB:", response.statusText);
+            return; // Do not clear the cart if the request fails
+        }
+        const dbCart = await response.json(); // e.g., [{product_id: 123, quantity: 2}, ...]
+
+        // Hydrate the cart with product details
+        const hydratedCart = [];
+        for (const item of dbCart) {
+            try {
+                const productResponse = await fetch(`/api/products/${item.product_id}`);
+                if (productResponse.ok) {
+                    const product = await productResponse.json();
+                    hydratedCart.push({
+                        productId: item.product_id, // Use productId internally
+                        quantity: item.quantity,
+                        ...product // Spread product details (name, price, images, etc.)
+                    });
+                } else {
+                    console.error(`Failed to fetch product ${item.product_id} for cart hydration.`);
+                    // Optionally add a placeholder item or skip
+                    hydratedCart.push({
+                        productId: item.product_id,
+                        quantity: item.quantity,
+                        name: "Product Not Found",
+                        price: "0",
+                        images: ['/placeholder.svg']
+                    });
+                }
+            } catch (err) {
+                console.error("Error fetching product for cart hydration:", err);
+                hydratedCart.push({
+                    productId: item.product_id,
+                    quantity: item.quantity,
+                    name: "Product Not Found",
+                    price: "0",
+                    images: ['/placeholder.svg']
+                });
+            }
+        }
+        cart = hydratedCart; // Update the global cart array
+        sessionStorage.setItem('cart', JSON.stringify(cart)); // Keep sessionStorage in sync for consistency
+        updateUIBasedOnUser(); // Update UI counts and lists
     } catch (error) {
         console.error("Failed to load cart from DB:", error);
     } finally {
@@ -1603,7 +1623,8 @@ async function loadCartFromDatabase() {
     }
 }
 
-
+// CRITICAL: Merge Guest Cart To Database
+// Merges items from sessionStorage cart to the DB cart for the logged-in user.
 async function mergeGuestCartToDatabase() {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -1613,6 +1634,8 @@ async function mergeGuestCartToDatabase() {
 
     for (const item of guestCart) {
         try {
+            // Use the existing addToCart logic for DB, which expects productId
+            // Or directly call the API endpoint
             await fetch("/api/cart/add", {
                 method: "POST",
                 headers: {
@@ -1620,7 +1643,7 @@ async function mergeGuestCartToDatabase() {
                     Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    product_id: item.productId,
+                    product_id: item.productId, // Map frontend productId to DB product_id
                     quantity: item.quantity
                 })
             });
@@ -1629,10 +1652,9 @@ async function mergeGuestCartToDatabase() {
         }
     }
 
-    // Clear guest cart
+    // Clear guest cart from sessionStorage after merging
     sessionStorage.removeItem("cart");
 
-    // Refresh cart UI from database
+    // Refresh the frontend cart UI from the database
     await loadCartFromDatabase();
 }
-

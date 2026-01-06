@@ -560,7 +560,7 @@ async function handleAuthSubmit(e) {
         // SIGNUP FLOW → AUTO LOGIN
         // ======================
           showCustomAlert(
-                `Welcome, ${userData.username}! Your account has been created and you are now logged in.`,
+                `Welcome, ${result.user.username}! Your account has been created and you are now logged in.`,
                 "Account Created",
                 "success"
             );

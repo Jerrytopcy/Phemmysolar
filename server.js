@@ -625,6 +625,41 @@ app.post('/api/auth', async (req, res) => {
   }
 });
 
+// --- ADD THIS NEW ENDPOINT FOR VALIDATION BEFORE SIGNUP ---
+app.post('/api/auth/check', async (req, res) => {
+    const { username, email, phone } = req.body;
+
+    if (!username || !email || !phone) {
+        return res.status(400).json({ error: 'Username, email, and phone are required.' });
+    }
+
+    try {
+        // Check if any of these fields already exist in the database
+        const result = await pool.query(`
+            SELECT 
+                EXISTS(SELECT 1 FROM users WHERE username = $1) AS usernameExists,
+                EXISTS(SELECT 1 FROM users WHERE email = $2) AS emailExists,
+                EXISTS(SELECT 1 FROM users WHERE phone = $3) AS phoneExists
+        `, [username, email, phone]);
+
+        const { usernameExists, emailExists, phoneExists } = result.rows[0];
+
+        const exists = usernameExists || emailExists || phoneExists;
+
+        res.json({
+            exists,
+            usernameExists,
+            emailExists,
+            phoneExists
+        });
+
+    } catch (err) {
+        console.error('Error checking availability:', err);
+        res.status(500).json({ error: 'Server error while checking availability' });
+    }
+});
+
+
 // --- ORDERS ROUTES (PROTECTED) ---
 app.post('/api/orders', authMiddleware, async (req, res) => {
   try {

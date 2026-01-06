@@ -521,7 +521,6 @@ function closeAuthModal() {
 // Handle login or signup form submission
 async function handleAuthSubmit(e) {
     e.preventDefault();
-
     const form = e.target;
     const username = form.username.value.trim();
     const password = form.password.value;
@@ -534,12 +533,9 @@ async function handleAuthSubmit(e) {
 
     const isLogin = form.dataset.mode === "login";
 
-    let requestData = {
-        username,
-        password,
-        action: isLogin ? "login" : "signup"
-    };
-
+    // ======================
+    // SIGNUP VALIDATION FIRST
+    // ======================
     if (!isLogin) {
         const email = document.getElementById("email").value.trim();
         const phone = document.getElementById("phone").value.trim();
@@ -554,6 +550,71 @@ async function handleAuthSubmit(e) {
             return;
         }
 
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            document.getElementById("authError").textContent =
+                "Please enter a valid email address.";
+            return;
+        }
+
+        // Validate phone number (Nigerian format: 10-11 digits starting with 0 or +234)
+        const phoneRegex = /^(0\d{9}|234\d{9})$/;
+        if (!phoneRegex.test(phone.replace(/\D/g, ''))) {
+            document.getElementById("authError").textContent =
+                "Please enter a valid Nigerian phone number (e.g., 08012345678).";
+            return;
+        }
+
+        // ===== CHECK IF USERNAME, EMAIL, OR PHONE ALREADY EXISTS =====
+        showLoader("Checking availability...");
+
+        try {
+            const checkResponse = await fetch("/api/auth/check", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username,
+                    email,
+                    phone
+                })
+            });
+
+            const checkResult = await checkResponse.json();
+
+            if (!checkResponse.ok) {
+                throw new Error("Server error while checking availability.");
+            }
+
+            if (checkResult.exists) {
+                let errorMessage = "The following already exist:\n";
+                if (checkResult.usernameExists) errorMessage += "- Username\n";
+                if (checkResult.emailExists) errorMessage += "- Email\n";
+                if (checkResult.phoneExists) errorMessage += "- Phone Number\n";
+                document.getElementById("authError").textContent = errorMessage;
+                hideLoader();
+                return;
+            }
+
+        } catch (error) {
+            console.error("Error checking availability:", error);
+            document.getElementById("authError").textContent =
+                "Network error. Please try again.";
+            hideLoader();
+            return;
+        }
+    }
+
+    // ======================
+    // PROCEED WITH LOGIN OR SIGNUP
+    // ======================
+    let requestData = {
+        username,
+        password,
+        action: isLogin ? "login" : "signup"
+    };
+
+    if (!isLogin) {
         requestData.email = email;
         requestData.phone = phone;
         requestData.address = {
@@ -566,15 +627,12 @@ async function handleAuthSubmit(e) {
     }
 
     showLoader(isLogin ? "Logging in..." : "Creating your account...");
-
     try {
-        // MAIN AUTH REQUEST (login OR signup)
         const response = await fetch("/api/auth", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestData)
         });
-
         const result = await response.json();
 
         if (!response.ok || !result.success) {
@@ -589,16 +647,13 @@ async function handleAuthSubmit(e) {
         if (isLogin) {
             localStorage.setItem("token", result.token);
             localStorage.setItem("currentUser", JSON.stringify(result.user));
-
             updateUIBasedOnUser();
             closeAuthModal();
-
             showCustomAlert(
                 `Welcome back, ${result.user.username}!`,
                 "Logged In",
                 "success"
             );
-
             await loadCartFromDatabase();
             return;
         }
@@ -606,11 +661,11 @@ async function handleAuthSubmit(e) {
         // ======================
         // SIGNUP FLOW → AUTO LOGIN
         // ======================
-          showCustomAlert(
-                `Welcome, ${result.user.username}! Your account has been created and you are now logged in.`,
-                "Account Created",
-                "success"
-            );
+        showCustomAlert(
+            `Welcome, ${result.user.username}! Your account has been created and you are now logged in.`,
+            "Account Created",
+            "success"
+        );
 
         // AUTO LOGIN AFTER SIGNUP
         const loginResponse = await fetch("/api/auth", {
@@ -622,7 +677,6 @@ async function handleAuthSubmit(e) {
                 action: "login"
             })
         });
-
         const loginResult = await loginResponse.json();
 
         if (!loginResponse.ok || !loginResult.success || !loginResult.token) {
@@ -636,7 +690,6 @@ async function handleAuthSubmit(e) {
             "currentUser",
             JSON.stringify(loginResult.user)
         );
-
         updateUIBasedOnUser();
         closeAuthModal();
         await loadCartFromDatabase();

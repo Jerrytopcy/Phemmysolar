@@ -3260,3 +3260,22 @@ section {
         transform: rotate(360deg);
     }
 }
+.validation-message {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    display: block;
+}
+
+.validation-message.error {
+    color: #dc3545;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+}
+
+.validation-message.success {
+    color: #155724;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+}

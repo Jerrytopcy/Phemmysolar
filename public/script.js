@@ -440,6 +440,7 @@ function handleLogout() {
 }
 
 // Show the login/signup modal - ALWAYS show Login form first
+// Show the login/signup modal - ALWAYS show Login form first
 function showAuthModal() {
     const modal = document.getElementById("authModal");
     if (modal) {
@@ -454,7 +455,7 @@ function showAuthModal() {
         document.getElementById("authForm").reset();
         document.getElementById("authError").textContent = "";
 
-        // Reattach event listeners
+        // Reattach event listeners for switching
         const signupSwitch = document.getElementById("signupFormSwitch");
         const loginSwitch = document.getElementById("loginFormSwitch");
 
@@ -466,6 +467,30 @@ function showAuthModal() {
             loginSwitch.removeEventListener("click", switchToLogin);
             loginSwitch.addEventListener("click", switchToLogin);
         }
+
+        // --- REAL-TIME VALIDATION SETUP ---
+        const usernameInput = document.getElementById("username");
+        const emailInput = document.getElementById("email");
+        const phoneInput = document.getElementById("phone");
+
+        // Remove existing listeners (if any)
+        usernameInput?.removeEventListener("input", validateFieldOnInput);
+        emailInput?.removeEventListener("input", validateFieldOnInput);
+        phoneInput?.removeEventListener("input", validateFieldOnInput);
+
+        // Add new listeners
+        if (usernameInput) {
+            usernameInput.addEventListener("input", () => validateFieldOnInput("username"));
+        }
+        if (emailInput) {
+            emailInput.addEventListener("input", () => validateFieldOnInput("email"));
+        }
+        if (phoneInput) {
+            phoneInput.addEventListener("input", () => validateFieldOnInput("phone"));
+        }
+
+        // Hide all validation messages initially
+        hideValidationMessages();
 
         modal.classList.add("active");
         document.body.style.overflow = "hidden";
@@ -519,94 +544,129 @@ function closeAuthModal() {
 }
 
 // Handle login or signup form submission
+// ======================
+// HANDLE LOGIN OR SIGNUP
+// ======================
 async function handleAuthSubmit(e) {
     e.preventDefault();
+
     const form = e.target;
+    const authError = document.getElementById("authError");
+
+    authError.textContent = "";
+
     const username = form.username.value.trim();
     const password = form.password.value;
 
+    // ======================
+    // LIVE VALIDATION CHECKS
+    // ======================
+    const usernameMsg = document.getElementById("usernameValidationMsg");
+    const emailMsg = document.getElementById("emailValidationMsg");
+    const phoneMsg = document.getElementById("phoneValidationMsg");
+
+    if (usernameMsg?.classList.contains("error")) {
+        authError.textContent = "Please fix the username.";
+        return;
+    }
+    if (emailMsg?.classList.contains("error")) {
+        authError.textContent = "Please fix the email.";
+        return;
+    }
+    if (phoneMsg?.classList.contains("error")) {
+        authError.textContent = "Please fix the phone number.";
+        return;
+    }
+
     if (!username || !password) {
-        document.getElementById("authError").textContent =
-            "Username and password are required.";
+        authError.textContent = "Username and password are required.";
         return;
     }
 
     const isLogin = form.dataset.mode === "login";
 
     // ======================
-    // SIGNUP VALIDATION FIRST
+    // DECLARE SIGNUP FIELDS
+    // ======================
+    let email = "";
+    let phone = "";
+    let street = "";
+    let city = "";
+    let state = "";
+    let postalCode = "";
+
+    // ======================
+    // SIGNUP VALIDATION
     // ======================
     if (!isLogin) {
-        const email = document.getElementById("email").value.trim();
-        const phone = document.getElementById("phone").value.trim();
-        const street = document.getElementById("street").value.trim();
-        const city = document.getElementById("city").value.trim();
-        const state = document.getElementById("state").value.trim();
-        const postalCode = document.getElementById("postalCode").value.trim();
+        email = document.getElementById("email").value.trim();
+        phone = document.getElementById("phone").value.trim();
+        street = document.getElementById("street").value.trim();
+        city = document.getElementById("city").value.trim();
+        state = document.getElementById("state").value.trim();
+        postalCode = document.getElementById("postalCode").value.trim();
 
         if (!email || !phone || !street || !city || !state) {
-            document.getElementById("authError").textContent =
-                "Please fill in all required fields.";
+            authError.textContent = "Please fill in all required fields.";
             return;
         }
 
-        // Validate email format
+        // Email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            document.getElementById("authError").textContent =
-                "Please enter a valid email address.";
+            authError.textContent = "Please enter a valid email address.";
             return;
         }
 
-        // Validate phone number (Nigerian format: 10-11 digits starting with 0 or +234)
-        const phoneRegex = /^(0\d{9}|234\d{9})$/;
-        if (!phoneRegex.test(phone.replace(/\D/g, ''))) {
-            document.getElementById("authError").textContent =
-                "Please enter a valid Nigerian phone number (e.g., 08012345678).";
+        // Nigerian phone number
+        const phoneRegex = /^(0\d{10}|234\d{10})$/;
+        const cleanPhone = phone.replace(/\D/g, "");
+
+        if (!phoneRegex.test(cleanPhone)) {
+            authError.textContent =
+                "Please enter a valid Nigerian phone number (e.g. 08012345678).";
             return;
         }
 
-        // ===== CHECK IF USERNAME, EMAIL, OR PHONE ALREADY EXISTS =====
+        phone = cleanPhone;
+
+        // ======================
+        // CHECK AVAILABILITY
+        // ======================
         showLoader("Checking availability...");
 
         try {
             const checkResponse = await fetch("/api/auth/check", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    username,
-                    email,
-                    phone
-                })
+                body: JSON.stringify({ username, email, phone })
             });
 
             const checkResult = await checkResponse.json();
 
             if (!checkResponse.ok) {
-                throw new Error("Server error while checking availability.");
+                throw new Error("Availability check failed");
             }
 
             if (checkResult.exists) {
-                let errorMessage = "The following already exist:\n";
-                if (checkResult.usernameExists) errorMessage += "- Username\n";
-                if (checkResult.emailExists) errorMessage += "- Email\n";
-                if (checkResult.phoneExists) errorMessage += "- Phone Number\n";
-                document.getElementById("authError").textContent = errorMessage;
+                let msg = "The following already exist:\n";
+                if (checkResult.usernameExists) msg += "Username\n";
+                if (checkResult.emailExists) msg += "Email\n";
+                if (checkResult.phoneExists) msg += "Phone number\n";
+                authError.textContent = msg;
                 hideLoader();
                 return;
             }
-
-        } catch (error) {
-            console.error("Error checking availability:", error);
-            document.getElementById("authError").textContent =
-                "Network error. Please try again.";
+        } catch (err) {
+            console.error(err);
+            authError.textContent = "Network error. Please try again.";
             hideLoader();
             return;
         }
     }
 
     // ======================
-    // PROCEED WITH LOGIN OR SIGNUP
+    // REQUEST PAYLOAD
     // ======================
     let requestData = {
         username,
@@ -626,48 +686,55 @@ async function handleAuthSubmit(e) {
         };
     }
 
+    // ======================
+    // AUTH REQUEST
+    // ======================
     showLoader(isLogin ? "Logging in..." : "Creating your account...");
+
     try {
         const response = await fetch("/api/auth", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestData)
         });
+
         const result = await response.json();
 
         if (!response.ok || !result.success) {
-            document.getElementById("authError").textContent =
+            authError.textContent =
                 result.error || "Authentication failed.";
             return;
         }
 
         // ======================
-        // LOGIN FLOW
+        // LOGIN SUCCESS
         // ======================
         if (isLogin) {
             localStorage.setItem("token", result.token);
             localStorage.setItem("currentUser", JSON.stringify(result.user));
+
             updateUIBasedOnUser();
             closeAuthModal();
+
             showCustomAlert(
                 `Welcome back, ${result.user.username}!`,
                 "Logged In",
                 "success"
             );
+
             await loadCartFromDatabase();
             return;
         }
 
         // ======================
-        // SIGNUP FLOW → AUTO LOGIN
+        // SIGNUP SUCCESS → AUTO LOGIN
         // ======================
         showCustomAlert(
-            `Welcome, ${result.user.username}! Your account has been created and you are now logged in.`,
+            `Welcome, ${result.user.username}! Your account has been created.`,
             "Account Created",
             "success"
         );
 
-        // AUTO LOGIN AFTER SIGNUP
         const loginResponse = await fetch("/api/auth", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -677,10 +744,11 @@ async function handleAuthSubmit(e) {
                 action: "login"
             })
         });
+
         const loginResult = await loginResponse.json();
 
-        if (!loginResponse.ok || !loginResult.success || !loginResult.token) {
-            document.getElementById("authError").textContent =
+        if (!loginResponse.ok || !loginResult.success) {
+            authError.textContent =
                 "Account created, but auto login failed. Please log in.";
             return;
         }
@@ -690,18 +758,19 @@ async function handleAuthSubmit(e) {
             "currentUser",
             JSON.stringify(loginResult.user)
         );
+
         updateUIBasedOnUser();
         closeAuthModal();
         await loadCartFromDatabase();
 
     } catch (error) {
         console.error("Auth error:", error);
-        document.getElementById("authError").textContent =
-            "Network error. Please try again.";
+        authError.textContent = "Network error. Please try again.";
     } finally {
         hideLoader();
     }
 }
+
 
 
 // Add event listener for Forgot Password Form
@@ -1640,4 +1709,110 @@ async function mergeGuestCartToDatabase() {
     cart = [];
 
     updateUIBasedOnUser();
+}
+
+
+// Global variable to store debounced timeout
+let validationTimeout;
+
+// Validate field on input (debounced)
+async function validateFieldOnInput(fieldType) {
+    const form = document.getElementById("authForm");
+    const mode = form.dataset.mode;
+
+    // Only validate during signup
+    if (mode !== "signup") return;
+
+    const usernameInput = document.getElementById("username");
+    const emailInput = document.getElementById("email");
+    const phoneInput = document.getElementById("phone");
+
+    const username = usernameInput?.value.trim() || "";
+    const email = emailInput?.value.trim() || "";
+    const phone = phoneInput?.value.trim() || "";
+
+    // Don't validate empty fields
+    if ((fieldType === "username" && !username) ||
+        (fieldType === "email" && !email) ||
+        (fieldType === "phone" && !phone)) {
+        hideValidationMessage(fieldType);
+        return;
+    }
+
+    // Debounce: Wait 500ms before sending request
+    clearTimeout(validationTimeout);
+    validationTimeout = setTimeout(async () => {
+        showLoader("Checking availability...");
+
+        try {
+            const response = await fetch("/api/auth/check", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, email, phone })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result) {
+                throw new Error("Server error while checking availability.");
+            }
+
+            // Update UI based on results
+            if (result.usernameExists && fieldType === "username") {
+                showValidationMessage("username", "Username is already taken.", "error");
+            } else if (!result.usernameExists && fieldType === "username") {
+                showValidationMessage("username", "Username available!", "success");
+            }
+
+            if (result.emailExists && fieldType === "email") {
+                showValidationMessage("email", "Email is already registered.", "error");
+            } else if (!result.emailExists && fieldType === "email") {
+                showValidationMessage("email", "Email available!", "success");
+            }
+
+            if (result.phoneExists && fieldType === "phone") {
+                showValidationMessage("phone", "Phone number is already in use.", "error");
+            } else if (!result.phoneExists && fieldType === "phone") {
+                showValidationMessage("phone", "Phone number available!", "success");
+            }
+
+        } catch (error) {
+            console.error("Real-time validation error:", error);
+            showValidationMessage(fieldType, "Network error. Please try again.", "error");
+        } finally {
+            hideLoader();
+        }
+
+    }, 500); // 500ms debounce
+}
+
+// Show validation message under a field
+function showValidationMessage(fieldType, message, type = "error") {
+    const field = document.getElementById(fieldType);
+    let messageEl = document.getElementById(`${fieldType}ValidationMsg`);
+
+    if (!messageEl) {
+        messageEl = document.createElement("div");
+        messageEl.id = `${fieldType}ValidationMsg`;
+        messageEl.className = `validation-message ${type}`;
+        field.parentNode.insertBefore(messageEl, field.nextSibling);
+    }
+
+    messageEl.textContent = message;
+    messageEl.className = `validation-message ${type}`;
+}
+
+// Hide validation message for a specific field
+function hideValidationMessage(fieldType) {
+    const messageEl = document.getElementById(`${fieldType}ValidationMsg`);
+    if (messageEl) {
+        messageEl.remove();
+    }
+}
+
+// Hide all validation messages
+function hideValidationMessages() {
+    ["username", "email", "phone"].forEach(fieldType => {
+        hideValidationMessage(fieldType);
+    });
 }

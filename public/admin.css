@@ -1100,6 +1100,22 @@ body {
     background-color: #f8d7da;
     color: #721c24;
 }
+.status-paid {
+    background-color: #cce5ff;
+    color: #0056b3;
+    border: 1px solid #99ccff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.85em;
+}
+
+.status-shipped {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
 
 /* Section Styles */
 .order-section {

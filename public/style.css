@@ -2929,6 +2929,22 @@ section {
     border: 1px solid #c82333;
 }
 
+
+.status-badge.shipped {
+    background: #007bff; /* Blue */
+    border: 1px solid #0056b3;
+}
+
+.status-badge.delivered {
+    background: #17a2b8; /* Teal */
+    border: 1px solid #117a8b;
+}
+
+.status-badge.cancelled {
+    background: #dc3545; /* Red */
+    border: 1px solid #c82333;
+}
+
 /* === CHECK PAYMENT BUTTON STYLING === */
 
 .btn-check-payment {

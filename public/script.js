@@ -324,19 +324,14 @@ function closeCartModal() {
     }
 }
 
-// Format a neat date/time
-function formatOrderDate(dateString) {
-    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return new Date(dateString).toLocaleString('en-US', options);
-}
-
-// Load user's order history (fixed)
+// Load user's order history (for account page)
 async function loadOrderHistory() {
     const token = localStorage.getItem('token');
     if (!token) {
         document.getElementById('orderHistory').innerHTML = '<p>Please log in to view your order history.</p>';
         return;
     }
+
     showLoader("Loading your order history...");
 
     try {
@@ -351,27 +346,51 @@ async function loadOrderHistory() {
             return;
         }
 
-        // Sort newest first
+        // Sort orders newest first
         orders.sort((a, b) => new Date(b.date) - new Date(a.date));
 
+        // Collect all unique product IDs from all orders
+        const allProductIds = [...new Set(orders.flatMap(order => order.items.map(item => item.productId)))];
+
+        // Fetch all products in a single request (if supported)
+        const productsResponse = await fetch(`/api/products?ids=${allProductIds.join(',')}`);
+        if (!productsResponse.ok) throw new Error('Failed to load products');
+        const productsData = await productsResponse.json();
+
+        // Map products by ID for fast lookup
+        const productsMap = {};
+        for (const product of productsData) {
+            productsMap[product.id] = product;
+        }
+
         let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
+
         for (const order of orders) {
-            // Correctly get delivery address
-            const address = order.delivery_address || {};
+            const address = order.deliveryAddress || {};
             const fullAddress = `${address.street || ""}, ${address.city || ""}, ${address.state || ""} ${address.postalCode || ""}, ${address.country || "Nigeria"}`;
+            
+            // Keep order ID exactly as returned by DB
+            const orderId = order.id;
+
+            const orderDate = new Date(order.date);
+            const formattedDate = orderDate.toLocaleString('en-NG', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+            });
 
             let itemsHTML = '';
             for (const item of order.items) {
-                // Fallback for product name if missing
-                const name = item.name || "Product Name";
-                const imageUrl = item.image || '/placeholder.svg';
+                const product = productsMap[item.productId];
+                const productName = product?.name || "Product unavailable";
+                const imageUrl = product?.images?.[0] || '/placeholder.svg';
+
                 itemsHTML += `
 <div class="order-history-item">
     <div class="order-item-image-wrapper">
-        <img src="${imageUrl}" alt="${name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+        <img src="${imageUrl}" alt="${productName}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
     </div>
     <div class="order-item-details">
-        <div class="order-item-name">${name}</div>
+        <div class="order-item-name">${productName}</div>
         <div class="order-item-meta">
             <span class="order-item-qty">Qty: ${item.quantity}</span>
             <span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
@@ -382,14 +401,16 @@ async function loadOrderHistory() {
 
             historyHTML += `
 <div class="order-item">
-    <p><strong>Order ID:</strong> ${order.id}</p>
-    <p><strong>Date:</strong> ${formatOrderDate(order.date)}</p>
+    <p><strong>Order ID:</strong> ${orderId}</p>
+    <p><strong>Date:</strong> ${formattedDate}</p>
     <p><strong>Delivery Address:</strong> ${fullAddress}</p>
     <div class="order-status-actions">
         <p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
     </div>
     <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
-    <div class="order-items-list">${itemsHTML}</div>
+    <div class="order-items-list">
+        ${itemsHTML}
+    </div>
 </div>`;
         }
 
@@ -403,7 +424,6 @@ async function loadOrderHistory() {
         hideLoader();
     }
 }
-
 
 
 

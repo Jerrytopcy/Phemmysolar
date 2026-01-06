@@ -1714,13 +1714,13 @@ async function mergeGuestCartToDatabase() {
 
 // Global variable to store debounced timeout
 let validationTimeout;
-
+ if (!result.usernameexists && !result.emailexists && !result.phoneexists) {
+    console.warn("All fields are available or empty — check if backend is returning expected structure.");
+}
 // Validate field on input (debounced)
 // Validate field on input (debounced)
 async function validateFieldOnInput(fieldType) {
-    if (!result.usernameexists && !result.emailexists && !result.phoneexists) {
-    console.warn("All fields are available or empty — check if backend is returning expected structure.");
-}
+   
     const form = document.getElementById("authForm");
     const mode = form.dataset.mode;
 

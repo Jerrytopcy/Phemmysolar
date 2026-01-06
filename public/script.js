@@ -1798,7 +1798,7 @@ async function validateFieldOnInput(fieldType) {
             hideLoader();
         }
 
-    }, 500); // 500ms debounce
+    }, 10000); // 500ms debounce(10 second)
 }
 
 // Show validation message under a field

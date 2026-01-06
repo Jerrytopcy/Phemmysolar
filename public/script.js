@@ -413,26 +413,60 @@ function updateUIBasedOnUser() {
     const accountLink = document.getElementById('accountLink');
     const cartCountElement = document.getElementById('cartCount');
 
-    const isLoggedIn = !!localStorage.getItem('token');
-    const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const token = localStorage.getItem('token');
+    const isLoggedIn = !!token;
 
+    // Determine the current cart
+    let currentCart = [];
     if (isLoggedIn) {
-        // User is logged in
+        currentCart = window.cartDatabase || []; // your DB-loaded cart
+    } else {
+        currentCart = cart || []; // guest cart
+    }
+
+    const cartCount = currentCart.reduce((sum, item) => sum + item.quantity, 0);
+
+    // Show/hide buttons
+    if (isLoggedIn) {
         if (loginBtn) loginBtn.style.display = 'none';
         if (logoutBtn) {
             logoutBtn.style.display = 'inline-block';
-            logoutBtn.onclick = handleLogout; // Ensure event handler is attached
+            logoutBtn.onclick = handleLogout;
         }
         if (accountLink) accountLink.style.display = 'inline-block';
-        if (cartCountElement) cartCountElement.textContent = cartCount;
     } else {
-        // User is not logged in
         if (loginBtn) loginBtn.style.display = 'inline-block';
         if (logoutBtn) logoutBtn.style.display = 'none';
         if (accountLink) accountLink.style.display = 'none';
-        if (cartCountElement) cartCountElement.textContent = '0';
     }
+
+    // Update cart count
+    if (cartCountElement) cartCountElement.textContent = cartCount;
+
+    // Update cart dropdown/list
+    renderCartItems(currentCart);
 }
+function renderCartItems(cartItems) {
+    const cartList = document.getElementById("cartItemsList");
+    if (!cartList) return;
+
+    if (cartItems.length === 0) {
+        cartList.innerHTML = "<p>Your cart is empty.</p>";
+        return;
+    }
+
+    cartList.innerHTML = cartItems.map(item => `
+        <div class="cart-item">
+            <img src="${item.image || '/placeholder.svg'}" alt="${item.name || 'Product'}" onerror="this.src='/placeholder.svg';">
+            <div class="cart-item-details">
+                <span class="cart-item-name">${item.name || 'Product'}</span>
+                <span class="cart-item-qty">Qty: ${item.quantity}</span>
+                <span class="cart-item-price">${formatNaira(item.price * item.quantity)}</span>
+            </div>
+        </div>
+    `).join("");
+}
+
 
 
 function handleLogout() {
@@ -1571,28 +1605,34 @@ async function loadCartFromDatabase() {
 
 
 async function mergeGuestCartToDatabase() {
-    const guestCart = JSON.parse(sessionStorage.getItem("cart")) || [];
     const token = localStorage.getItem("token");
+    if (!token) return;
 
-    if (!token || guestCart.length === 0) return;
+    const guestCart = JSON.parse(sessionStorage.getItem("cart") || "[]");
+    if (guestCart.length === 0) return;
 
     for (const item of guestCart) {
-        await fetch("/api/cart/add", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                product_id: item.product_id,
-                quantity: item.quantity
-            })
-        });
+        try {
+            await fetch("/api/cart/add", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    product_id: item.productId,
+                    quantity: item.quantity
+                })
+            });
+        } catch (err) {
+            console.error("Failed to merge guest cart item:", item, err);
+        }
     }
 
-    // Clear guest cart after merge
+    // Clear guest cart
     sessionStorage.removeItem("cart");
-    cart = [];
 
-    updateUIBasedOnUser();
+    // Refresh cart UI from database
+    await loadCartFromDatabase();
 }
+

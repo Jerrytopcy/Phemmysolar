@@ -1716,6 +1716,7 @@ async function mergeGuestCartToDatabase() {
 let validationTimeout;
 
 // Validate field on input (debounced)
+// Validate field on input (debounced)
 async function validateFieldOnInput(fieldType) {
     const form = document.getElementById("authForm");
     const mode = form.dataset.mode;
@@ -1760,19 +1761,19 @@ async function validateFieldOnInput(fieldType) {
             // Update UI based on results
             if (result.usernameExists && fieldType === "username") {
                 showValidationMessage("username", "Username is already taken.", "error");
-            } else if (!result.usernameExists && fieldType === "username") {
+            } else if (!result.usernameExists && fieldType === "username" && username) {
                 showValidationMessage("username", "Username available!", "success");
             }
 
             if (result.emailExists && fieldType === "email") {
                 showValidationMessage("email", "Email is already registered.", "error");
-            } else if (!result.emailExists && fieldType === "email") {
+            } else if (!result.emailExists && fieldType === "email" && email) {
                 showValidationMessage("email", "Email available!", "success");
             }
 
             if (result.phoneExists && fieldType === "phone") {
                 showValidationMessage("phone", "Phone number is already in use.", "error");
-            } else if (!result.phoneExists && fieldType === "phone") {
+            } else if (!result.phoneExists && fieldType === "phone" && phone) {
                 showValidationMessage("phone", "Phone number available!", "success");
             }
 

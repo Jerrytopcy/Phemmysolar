@@ -626,32 +626,59 @@ app.post('/api/auth', async (req, res) => {
 });
 
 // --- ADD THIS NEW ENDPOINT FOR VALIDATION BEFORE SIGNUP ---
+// --- REAL-TIME VALIDATION ENDPOINT ---
 app.post('/api/auth/check', async (req, res) => {
-    const { username, email, phone } = req.body;
+    const { username = "", email = "", phone = "" } = req.body;
 
-    if (!username || !email || !phone) {
-        return res.status(400).json({ error: 'Username, email, and phone are required.' });
-    }
+    // Trim and normalize
+    const cleanUsername = username.trim();
+    const cleanEmail = email.trim();
+    const cleanPhone = phone.trim();
 
     try {
-        // Check if any of these fields already exist in the database
-        const result = await pool.query(`
+        // Build dynamic WHERE clauses only for non-empty fields
+        let conditions = [];
+        let params = [];
+
+        if (cleanUsername) {
+            conditions.push(`username = $${params.length + 1}`);
+            params.push(cleanUsername);
+        }
+        if (cleanEmail) {
+            conditions.push(`email = $${params.length + 1}`);
+            params.push(cleanEmail);
+        }
+        if (cleanPhone) {
+            conditions.push(`phone = $${params.length + 1}`);
+            params.push(cleanPhone);
+        }
+
+        // If no fields provided, return no conflicts
+        if (conditions.length === 0) {
+            return res.json({
+                exists: false,
+                usernameExists: false,
+                emailExists: false,
+                phoneExists: false
+            });
+        }
+
+        const query = `
             SELECT 
+                EXISTS(SELECT 1 FROM users WHERE ${conditions.join(' OR ')}) AS exists,
                 EXISTS(SELECT 1 FROM users WHERE username = $1) AS usernameExists,
                 EXISTS(SELECT 1 FROM users WHERE email = $2) AS emailExists,
                 EXISTS(SELECT 1 FROM users WHERE phone = $3) AS phoneExists
-        `, [username, email, phone]);
+        `;
 
-        const { usernameExists, emailExists, phoneExists } = result.rows[0];
+        // Add placeholders for username, email, phone (even if empty, we pass them)
+        const result = await pool.query(query, [
+            cleanUsername || null,
+            cleanEmail || null,
+            cleanPhone || null
+        ]);
 
-        const exists = usernameExists || emailExists || phoneExists;
-
-        res.json({
-            exists,
-            usernameExists,
-            emailExists,
-            phoneExists
-        });
+        res.json(result.rows[0]);
 
     } catch (err) {
         console.error('Error checking availability:', err);

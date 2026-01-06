@@ -1173,16 +1173,11 @@ async function loadUsers() {
 }
 
 // Show user form
-function showUserForm(isEdit = false) {
+function showUserForm() {
     const formContainer = document.getElementById("userFormContainer");
     const formTitle = document.getElementById("userFormTitle");
-    formTitle.textContent = isEdit ? "Edit User" : "Add New User";
+    formTitle.textContent = "Edit User";
     formContainer.style.display = "flex";
-    if (!isEdit) {
-        document.getElementById("userForm").reset();
-        document.getElementById("userId").value = "";
-        currentEditingUserId = null;
-    }
 }
 
 // Hide user form
@@ -1288,7 +1283,7 @@ function editUser(userId) {
                 postalCodeEl.value = (user.address && user.address.postalCode) || "";
 
                 currentEditingUserId = userId;
-                showUserForm(true); // This should make the modal visible
+                showUserForm();// This should make the modal visible
 
             }, 0); // <-- This ensures the DOM is ready
 
@@ -1446,10 +1441,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadNews();
     // Add these event listeners inside the DOMContentLoaded block
     // Add user button
-    const addUserBtn = document.getElementById("addUserBtn");
-    if (addUserBtn) {
-        addUserBtn.addEventListener("click", () => showUserForm(false));
-    }
+   
     // Close user form button
     const closeUserFormBtn = document.getElementById("closeUserFormBtn");
     if (closeUserFormBtn) {

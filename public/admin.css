@@ -576,7 +576,10 @@ body {
 .admin-modal-icon-warning {
   filter: grayscale(0);
 }
-
+.warning{
+  background-color: rgb(209, 9, 9);
+  color: #ffffff;
+}
 .admin-modal-content {
   text-align: center;
 }

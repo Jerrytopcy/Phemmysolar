@@ -1718,6 +1718,9 @@ let validationTimeout;
 // Validate field on input (debounced)
 // Validate field on input (debounced)
 async function validateFieldOnInput(fieldType) {
+    if (!result.usernameexists && !result.emailexists && !result.phoneexists) {
+    console.warn("All fields are available or empty — check if backend is returning expected structure.");
+}
     const form = document.getElementById("authForm");
     const mode = form.dataset.mode;
 
@@ -1759,21 +1762,21 @@ async function validateFieldOnInput(fieldType) {
             }
 
             // Update UI based on results
-            if (result.usernameExists && fieldType === "username") {
-                showValidationMessage("username", "Username is already taken.", "error");
-            } else if (!result.usernameExists && fieldType === "username" && username) {
+            if (result.usernameexists && fieldType === "username") {
+            showValidationMessage("username", "Username is already taken.", "error");
+            } else if (!result.usernameexists && fieldType === "username" && username) {
                 showValidationMessage("username", "Username available!", "success");
             }
 
-            if (result.emailExists && fieldType === "email") {
+            if (result.emailexists && fieldType === "email") {
                 showValidationMessage("email", "Email is already registered.", "error");
-            } else if (!result.emailExists && fieldType === "email" && email) {
+            } else if (!result.emailexists && fieldType === "email" && email) {
                 showValidationMessage("email", "Email available!", "success");
             }
 
-            if (result.phoneExists && fieldType === "phone") {
+            if (result.phoneexists && fieldType === "phone") {
                 showValidationMessage("phone", "Phone number is already in use.", "error");
-            } else if (!result.phoneExists && fieldType === "phone" && phone) {
+            } else if (!result.phoneexists && fieldType === "phone" && phone) {
                 showValidationMessage("phone", "Phone number available!", "success");
             }
 

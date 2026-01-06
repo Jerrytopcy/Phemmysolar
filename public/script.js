@@ -1,17 +1,8 @@
 // script.js
+
 // --- NEW: Cart Management Functions ---
-// Initialize cart from sessionStorage (standardized property name: productId)
-// Check if existing cart items use the old 'product_id' name and convert them
-let storedCart = JSON.parse(sessionStorage.getItem('cart')) || [];
-let cart = storedCart.map(item => {
-    // If an item has 'product_id', convert it to 'productId'
-    if (item.hasOwnProperty('product_id') && !item.hasOwnProperty('productId')) {
-        return { productId: item.product_id, quantity: item.quantity };
-    }
-    // Otherwise, return the item as is (assumes it uses 'productId')
-    return item;
-});
-console.log("Cart initialized from sessionStorage:", cart); // Debug log
+// Initialize cart from sessionStorage (no user object storage)
+let cart = JSON.parse(sessionStorage.getItem('cart')) || [];
 
 // ===== Global Loader Helpers =====
 function showLoader(text = "Loading, please wait...") {
@@ -30,72 +21,47 @@ function hideLoader() {
     document.body.style.overflow = "";
 }
 
-// Add item to cart - FIXED: Uses 'productId' consistently
+// Add item to cart
 async function addToCart(productId) {
     showLoader("Adding item to cart...");
     try {
-        const token = localStorage.getItem("token");
-        // Fetch product (for name + validation only)
+        // Fetch the specific product from the API
         const response = await fetch(`/api/products/${productId}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const product = await response.json();
+
         if (!product) {
             showCustomAlert("Product not found.", "Error");
             return;
         }
 
-        // ===============================
-        // LOGGED IN USER → DATABASE CART
-        // ===============================
-        if (token) {
-            // Send request to backend using 'product_id' (as expected by backend)
-            await fetch("/api/cart/add", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    product_id: productId, // Backend expects this name
-                    quantity: 1
-                })
-            });
-            // Reload cart from database after adding
-            await loadCartFromDatabase();
-            updateUIBasedOnUser();
-            showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
-            return;
+        // Check if item already exists in cart
+        const existingItemIndex = cart.findIndex(item => item.productId === productId);
+        if (existingItemIndex > -1) {
+            cart[existingItemIndex].quantity += 1;
+        } else {
+            cart.push({ productId: productId, quantity: 1 });
         }
 
-        // ===============================
-        // GUEST USER → SESSION CART
-        // ===============================
-        // Use 'productId' to find existing item
-        const existingItem = cart.find(item => item.productId === productId);
-        if (existingItem) {
-            existingItem.quantity += 1;
-        } else {
-            // Push new item using 'productId'
-            cart.push({
-                productId: productId, // Use consistent 'productId'
-                quantity: 1
-            });
-        }
-        // Save updated cart to sessionStorage
-        sessionStorage.setItem("cart", JSON.stringify(cart));
-        updateUIBasedOnUser();
+        // Update cart in sessionStorage
+        sessionStorage.setItem('cart', JSON.stringify(cart));
+
+        // Update UI
+        updateUIBasedOnUser(); // This function will now check cart state
         showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
+        sessionStorage.setItem('cart', JSON.stringify(cart));
+        syncCartToDatabase();
     } catch (error) {
-        console.error("Error adding product to cart:", error);
+        console.error("Error fetching product for cart:", error);
         showCustomAlert("Failed to add product to cart. Please try again.", "Error");
     } finally {
         hideLoader();
     }
 }
 
-// View Cart - FIXED: Uses 'productId' consistently
+// View Cart
 async function viewCart() {
     if (!cart || cart.length === 0) {
         showCustomAlert("Your cart is empty.", "Cart Empty");
@@ -108,7 +74,6 @@ async function viewCart() {
 
         // Loop through each item in the cart and fetch its details
         for (const cartItem of cart) {
-            // Use 'productId' to access the ID
             const response = await fetch(`/api/products/${cartItem.productId}`);
             if (!response.ok) {
                 console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
@@ -124,7 +89,7 @@ async function viewCart() {
             }
         }
 
-        let cartHTML = '<div class="cart-modal-header"><h3>Your Cart</h3></div><div class="cart-items-container">';
+        let cartHTML = '<h3>Your Cart</h3><ul>';
         let total = 0;
 
         // Iterate through the fetched cart items
@@ -133,25 +98,24 @@ async function viewCart() {
             const itemTotal = price * item.cartQuantity;
             total += itemTotal;
             cartHTML += `
-                <div class="cart-item-card">
-                    <div class="cart-item-image-wrapper">
-                        <img src="${item.images?.[0] || '/placeholder.svg'}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
-                    </div>
-                    <div class="cart-item-info">
-                        <h4 class="cart-item-title">${item.name}</h4>
-                        <p class="cart-item-price">${formatNaira(itemTotal)}</p>
-                        <div class="cart-item-quantity-controls">
-                            <button class="qty-btn" onclick="updateCartItemQuantity(${item.id}, ${item.cartQuantity - 1})" ${item.cartQuantity <= 1 ? 'disabled' : ''}>−</button>
-                            <span class="qty-display">${item.cartQuantity}</span>
-                            <button class="qty-btn" onclick="updateCartItemQuantity(${item.id}, ${item.cartQuantity + 1})">+</button>
-                        </div>
-                    </div>
-                    <button class="remove-btn" onclick="removeFromCart(${item.id})">×</button>
-                </div>`;
+<div class="cart-item-card">
+<div class="cart-item-image-wrapper">
+<img src="${item.images?.[0] || '/placeholder.svg'}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+</div>
+<div class="cart-item-info">
+<h4 class="cart-item-title">${item.name}</h4>
+<p class="cart-item-price">${formatNaira(itemTotal)}</p>
+<div class="cart-item-quantity-controls">
+<button class="qty-btn" onclick="updateCartItemQuantity(${item.id}, ${item.cartQuantity - 1})" ${item.cartQuantity <= 1 ? 'disabled' : ''}>−</button>
+<span class="qty-display">${item.cartQuantity}</span>
+<button class="qty-btn" onclick="updateCartItemQuantity(${item.id}, ${item.cartQuantity + 1})">+</button>
+</div>
+</div>
+<button class="remove-btn" onclick="removeFromCart(${item.id})">×</button>
+</div>`;
         });
-        cartHTML += `</div>`; // Close cart-items-container
-        cartHTML += `<div class="cart-modal-footer"><p><strong>Total: ${formatNaira(total)}</strong></p>`;
-        cartHTML += `<button class="btn btn-checkout" onclick="proceedToCheckout()">Checkout</button></div>`; // Close cart-modal-footer
+        cartHTML += `</ul><p><strong>Total: ${formatNaira(total)}</strong></p>`;
+        cartHTML += `<button class="btn btn-checkout" onclick="proceedToCheckout()">Checkout</button>`;
 
         // Display cart in the modal
         const modal = document.getElementById("cartModal");
@@ -172,13 +136,12 @@ async function viewCart() {
     }
 }
 
-// Update item quantity in cart - FIXED: Uses 'productId' consistently
+// Update item quantity in cart
 function updateCartItemQuantity(productId, newQuantity) {
     if (newQuantity < 1) {
         removeFromCart(productId);
         return;
     }
-    // Use 'productId' to find the item index
     const itemIndex = cart.findIndex(item => item.productId === productId);
     if (itemIndex > -1) {
         cart[itemIndex].quantity = newQuantity;
@@ -186,18 +149,15 @@ function updateCartItemQuantity(productId, newQuantity) {
         sessionStorage.setItem('cart', JSON.stringify(cart));
         // Update UI
         updateUIBasedOnUser();
-        // Refresh cart view
-        viewCart();
+        viewCart(); // Refresh cart view
     }
-    // Ensure cart is saved after update
     sessionStorage.setItem('cart', JSON.stringify(cart));
-    // Sync to database if logged in
     syncCartToDatabase();
 }
 
-// Remove item from cart - FIXED: Uses 'productId' consistently
+// Remove item from cart
 function removeFromCart(productId) {
-    // Use 'productId' to filter out the item
+    // Filter out the item
     cart = cart.filter(item => item.productId !== productId);
     // Update cart in sessionStorage
     sessionStorage.setItem('cart', JSON.stringify(cart));
@@ -213,13 +173,11 @@ function removeFromCart(productId) {
         // Refresh cart view if items still remain
         viewCart();
     }
-    // Ensure cart is saved after removal
     sessionStorage.setItem('cart', JSON.stringify(cart));
-    // Sync to database if logged in
     syncCartToDatabase();
 }
 
-// Proceed to checkout - FIXED: Uses 'productId' consistently
+// Proceed to checkout
 async function proceedToCheckout() {
     if (!cart || cart.length === 0) {
         showCustomAlert("Your cart is empty.", "Cart Empty");
@@ -235,9 +193,9 @@ async function proceedToCheckout() {
     try {
         const orderItems = [];
         let total = 0;
+
         // Loop through each item in the cart and fetch its details
-        for (const cartItem of cart) { // cartItem should have 'productId'
-            // Use 'productId' to fetch details
+        for (const cartItem of cart) {
             const response = await fetch(`/api/products/${cartItem.productId}`);
             if (!response.ok) {
                 console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
@@ -257,6 +215,7 @@ async function proceedToCheckout() {
                 });
             }
         }
+
         // Get the current address from the user's profile (via API)
         const userResponse = await fetch('/api/user', {
             headers: {
@@ -274,6 +233,7 @@ async function proceedToCheckout() {
             postalCode: "",
             country: "Nigeria"
         };
+
         // Create the order object with the calculated items and address
         const orderData = {
             items: orderItems.map(i => ({
@@ -284,6 +244,7 @@ async function proceedToCheckout() {
             total: total,
             deliveryAddress: currentAddress
         };
+
         // SEND ORDER TO BACKEND
         const response = await fetch('/api/orders', {
             method: 'POST',
@@ -293,19 +254,23 @@ async function proceedToCheckout() {
             },
             body: JSON.stringify(orderData)
         });
+
         if (!response.ok) {
             throw new Error('Failed to place order');
         }
+
         // Clear cart after successful checkout
         cart = [];
         sessionStorage.removeItem('cart');
+
         // Update UI to reflect empty cart
         updateUIBasedOnUser();
+
         // Close the cart modal first
         closeCartModal();
+
         // Show success message
         showCustomAlert("Your order has been successfully placed!", "Order Placed", "success");
-        // Clear the database cart as well
         await fetch('/api/cart', {
             method: 'DELETE',
             headers: {
@@ -415,14 +380,15 @@ async function loadOrderHistory() {
     }
 }
 
+
 // Update UI elements based on user status and cart
 function updateUIBasedOnUser() {
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const accountLink = document.getElementById('accountLink');
     const cartCountElement = document.getElementById('cartCount');
+
     const isLoggedIn = !!localStorage.getItem('token');
-    // Calculate total quantity in cart
     const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
     if (isLoggedIn) {
@@ -443,6 +409,7 @@ function updateUIBasedOnUser() {
     }
 }
 
+
 function handleLogout() {
     showCustomConfirm(
         "Are you sure you want to log out? You will need to log in again to access your account and cart.",
@@ -452,8 +419,10 @@ function handleLogout() {
             localStorage.removeItem('token');
             sessionStorage.removeItem('currentUser');
             sessionStorage.removeItem('cart');
+
             // Reset cart variable
             cart = [];
+
             // Update UI
             updateUIBasedOnUser();
             showCustomAlert("You have been logged out.", "Logged Out");
@@ -462,6 +431,7 @@ function handleLogout() {
 }
 
 // --- NEW: Custom Modal Functions for Login/Signup ---
+
 // Show the login/signup modal
 function showAuthModal() {
     const modal = document.getElementById("authModal");
@@ -485,6 +455,7 @@ function closeAuthModal() {
 // Handle login or signup form submission
 async function handleAuthSubmit(e) {
     e.preventDefault();
+
     const form = e.target;
     const username = form.username.value.trim();
     const password = form.password.value;
@@ -496,13 +467,13 @@ async function handleAuthSubmit(e) {
     }
 
     const isLogin = form.dataset.mode === "login";
+
     let requestData = {
         username,
         password,
         action: isLogin ? "login" : "signup"
     };
 
-    // SIGNUP EXTRA FIELDS
     if (!isLogin) {
         const email = document.getElementById("email").value.trim();
         const phone = document.getElementById("phone").value.trim();
@@ -529,10 +500,9 @@ async function handleAuthSubmit(e) {
     }
 
     showLoader(isLogin ? "Logging in..." : "Creating your account...");
+
     try {
-        // ======================
-        // MAIN AUTH REQUEST
-        // ======================
+        // MAIN AUTH REQUEST (login OR signup)
         const response = await fetch("/api/auth", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -554,28 +524,27 @@ async function handleAuthSubmit(e) {
             localStorage.setItem("token", result.token);
             localStorage.setItem("currentUser", JSON.stringify(result.user));
 
-            // Merge guest cart → DB
-            await mergeGuestCartToDatabase();
-            // Load final cart from DB
-            await loadCartFromDatabase();
             updateUIBasedOnUser();
             closeAuthModal();
+
             showCustomAlert(
                 `Welcome back, ${result.user.username}!`,
                 "Logged In",
                 "success"
             );
+
+            await loadCartFromDatabase();
             return;
         }
 
         // ======================
         // SIGNUP FLOW → AUTO LOGIN
         // ======================
-        showCustomAlert(
-            `Welcome, ${result.user.username}! Your account has been created and you are now logged in.`,
-            "Account Created",
-            "success"
-        );
+          showCustomAlert(
+                `Welcome, ${result.user.username}! Your account has been created and you are now logged in.`,
+                "Account Created",
+                "success"
+            );
 
         // AUTO LOGIN AFTER SIGNUP
         const loginResponse = await fetch("/api/auth", {
@@ -597,14 +566,15 @@ async function handleAuthSubmit(e) {
         }
 
         localStorage.setItem("token", loginResult.token);
-        localStorage.setItem("currentUser", JSON.stringify(loginResult.user));
+        localStorage.setItem(
+            "currentUser",
+            JSON.stringify(loginResult.user)
+        );
 
-        // Merge guest cart → DB
-        await mergeGuestCartToDatabase();
-        // Load final cart from DB
-        await loadCartFromDatabase();
         updateUIBasedOnUser();
         closeAuthModal();
+        await loadCartFromDatabase();
+
     } catch (error) {
         console.error("Auth error:", error);
         document.getElementById("authError").textContent =
@@ -613,6 +583,7 @@ async function handleAuthSubmit(e) {
         hideLoader();
     }
 }
+
 
 // Add event listener for Forgot Password Form
 const forgotPasswordForm = document.getElementById("forgotPasswordForm");
@@ -648,7 +619,6 @@ async function handleForgotPasswordSubmit(e) {
         document.getElementById("forgotPasswordError").textContent = "Username and email are required.";
         return;
     }
-
     showLoader("Sending password reset link...");
     try {
         const response = await fetch('/api/forgot-password', {
@@ -765,6 +735,7 @@ function viewProduct(productId) {
 
             currentProductInModal = product;
             currentImageIndex = 0;
+
             if (!product.images) {
                 product.images = [product.image];
             }
@@ -786,10 +757,10 @@ function viewProduct(productId) {
             thumbnailContainer.innerHTML = product.images
                 .map(
                     (img, index) => `
-                        <div class="thumbnail ${index === 0 ? "active" : ""}" onclick="changeImage(${index})">
-                            <img src="${img}" alt="${product.name} ${index + 1}">
-                        </div>
-                    `,
+<div class="thumbnail ${index === 0 ? "active" : ""}" onclick="changeImage(${index})">
+<img src="${img}" alt="${product.name} ${index + 1}">
+</div>
+`,
                 )
                 .join("");
 
@@ -817,7 +788,6 @@ function changeImage(index) {
     if (index < 0 || index >= currentProductInModal.images.length) {
         return;
     }
-
     currentImageIndex = index;
     const mainImage = document.getElementById("modalMainImage");
     mainImage.src = currentProductInModal.images[index];
@@ -831,7 +801,6 @@ function updateGalleryNav() {
     if (!currentProductInModal) return;
     const prevBtn = document.getElementById("prevImage");
     const nextBtn = document.getElementById("nextImage");
-
     prevBtn.disabled = currentImageIndex === 0;
     nextBtn.disabled = currentImageIndex === currentProductInModal.images.length - 1;
 }
@@ -886,6 +855,7 @@ function initMobileMenu() {
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener("click", toggleMobileMenu);
     }
+
     if (navOverlay) {
         navOverlay.addEventListener("click", window.closeMobileMenu);
     }
@@ -957,8 +927,8 @@ function initMobileMenu() {
 
 // Initialize everything when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
-    // Initialize cart from sessionStorage (already done at top)
-    console.log("DOM Loaded, Cart:", cart); // Debug log
+    // Initialize cart from sessionStorage
+    cart = JSON.parse(sessionStorage.getItem('cart')) || [];
 
     // Initialize mobile menu
     initMobileMenu();
@@ -1002,6 +972,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
+
     const alertOk = document.getElementById("alertOk");
     if (alertOk) {
         alertOk.addEventListener("click", () => {
@@ -1024,6 +995,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (viewCartBtn) {
         viewCartBtn.addEventListener('click', viewCart);
     }
+
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
         loginBtn.addEventListener('click', (e) => {
@@ -1031,6 +1003,7 @@ document.addEventListener("DOMContentLoaded", () => {
             showAuthModal(); // Show the modal instead of prompt
         });
     }
+
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', (e) => {
@@ -1042,7 +1015,6 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadAccountDetails() {
         const token = localStorage.getItem('token');
         if (!token) return;
-
         showLoader("Loading account details...");
         try {
             const response = await fetch('/api/user', {
@@ -1050,9 +1022,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     Authorization: `Bearer ${token}`
                 }
             });
+
             if (!response.ok) {
                 throw new Error('Failed to load user profile');
             }
+
             const user = await response.json();
 
             /* =========================
@@ -1070,7 +1044,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const cityInput = document.getElementById('editCity');
             const stateInput = document.getElementById('editState');
             const postalInput = document.getElementById('editPostalCode');
-
             if (streetInput) streetInput.value = user.address?.street || '';
             if (cityInput) cityInput.value = user.address?.city || '';
             if (stateInput) stateInput.value = user.address?.state || '';
@@ -1090,6 +1063,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Load order history
             loadAccountDetails();   // ✅ ADD THIS
             loadOrderHistory();
+
             // Show account modal if it exists
             const accountModal = document.getElementById("accountModal");
             if (accountModal) {
@@ -1115,10 +1089,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (authForm) {
         authForm.addEventListener("submit", handleAuthSubmit);
     }
+
     const authCloseBtn = document.getElementById("authClose");
     if (authCloseBtn) {
         authCloseBtn.addEventListener("click", closeAuthModal);
     }
+
     const authModal = document.getElementById("authModal");
     if (authModal) {
         authModal.addEventListener("click", (e) => {
@@ -1127,6 +1103,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && authModal?.classList.contains("active")) {
             closeAuthModal();
@@ -1144,7 +1121,6 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("authForm").dataset.mode = "login";
             document.getElementById("authSubmitBtn").textContent = "Login";
             document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
-
             // Reattach event listener for the new signup link
             document.getElementById("signupFormSwitch").addEventListener("click", switchToSignup);
         });
@@ -1157,10 +1133,8 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("authForm").dataset.mode = "signup";
         document.getElementById("authSubmitBtn").textContent = "Sign Up";
         document.getElementById("authToggleText").innerHTML = "Already have an account? <a href='#' id='loginFormSwitch'>Login</a>";
-
         // Show the extra signup fields
         document.getElementById("signupExtraFields").style.display = "block";
-
         // Reattach event listener for the new login link
         document.getElementById("loginFormSwitch").addEventListener("click", switchToLogin);
     }
@@ -1171,10 +1145,8 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("authForm").dataset.mode = "login";
         document.getElementById("authSubmitBtn").textContent = "Login";
         document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
-
         // Hide the extra signup fields for login
         document.getElementById("signupExtraFields").style.display = "none";
-
         // Reattach event listener for the new signup link
         document.getElementById("signupFormSwitch").addEventListener("click", switchToSignup);
     }
@@ -1208,7 +1180,6 @@ document.addEventListener("DOMContentLoaded", () => {
 async function loadFeaturedProducts() {
     const featuredContainer = document.getElementById("featuredProducts");
     if (!featuredContainer) return;
-
     showLoader("Loading products...");
     try {
         const response = await fetch('/api/products');
@@ -1228,20 +1199,20 @@ async function loadFeaturedProducts() {
         featuredContainer.innerHTML = featuredProducts
             .map(
                 (product) => `
-                    <div class="product-card">
-                        <img src="${product.images?.[0] || product.image}" alt="${product.name}" class="product-image">
-                        <div class="product-info">
-                            <h3 class="product-name">${product.name}</h3>
-                            <p class="product-price">${formatNaira(product.price)}</p>
-                            <p class="product-description">${product.description.substring(0, 80)}...</p>
-                            <div class="view-details">
-                                <button class="btn product-btn" onclick="viewProduct(${product.id})">View Details</button>
-                                <!-- NEW: Add to Cart Button in Product Card -->
-                                <button class="btn btn-contact" onclick="addToCart(${product.id})">Add to Cart</button>
-                            </div>
-                        </div>
-                    </div>
-                `,
+<div class="product-card">
+<img src="${product.images?.[0] || product.image}" alt="${product.name}" class="product-image">
+<div class="product-info">
+<h3 class="product-name">${product.name}</h3>
+<p class="product-price">${formatNaira(product.price)}</p>
+<p class="product-description">${product.description.substring(0, 80)}...</p>
+<div class="view-details">
+<button class="btn product-btn" onclick="viewProduct(${product.id})">View Details</button>
+<!-- NEW: Add to Cart Button in Product Card -->
+<button class="btn btn-contact" onclick="addToCart(${product.id})">Add to Cart</button>
+</div>
+</div>
+</div>
+`,
             )
             .join("");
     } catch (error) {
@@ -1256,7 +1227,6 @@ async function loadFeaturedProducts() {
 async function loadTestimonials() {
     const testimonialContainer = document.getElementById("testimonialsGrid");
     if (!testimonialContainer) return;
-
     showLoader("Loading testimonials...");
     try {
         const response = await fetch('/api/testimonials');
@@ -1273,18 +1243,18 @@ async function loadTestimonials() {
         testimonialContainer.innerHTML = testimonials
             .map(
                 (testimonial) => `
-                    <div class="testimonial-card">
-                        <div class="testimonial-header">
-                            ${testimonial.image ? `<img src="${testimonial.image}" alt="${testimonial.name}" class="testimonial-avatar">` : '<div class="testimonial-avatar-placeholder">👤</div>'}
-                            <div class="testimonial-author-info">
-                                <p class="testimonial-author">${testimonial.name}</p>
-                                <p class="testimonial-role">${testimonial.role}</p>
-                            </div>
-                        </div>
-                        <div class="testimonial-stars">${"⭐".repeat(testimonial.rating)}</div>
-                        <p class="testimonial-text">"${testimonial.text}"</p>
-                    </div>
-                `,
+<div class="testimonial-card">
+<div class="testimonial-header">
+${testimonial.image ? `<img src="${testimonial.image}" alt="${testimonial.name}" class="testimonial-avatar">` : '<div class="testimonial-avatar-placeholder">👤</div>'}
+<div class="testimonial-author-info">
+<p class="testimonial-author">${testimonial.name}</p>
+<p class="testimonial-role">${testimonial.role}</p>
+</div>
+</div>
+<div class="testimonial-stars">${"⭐".repeat(testimonial.rating)}</div>
+<p class="testimonial-text">"${testimonial.text}"</p>
+</div>
+`,
             )
             .join("");
     } catch (error) {
@@ -1299,7 +1269,6 @@ async function loadTestimonials() {
 async function loadLatestNews() {
     const newsContainer = document.getElementById("latestNews");
     if (!newsContainer) return;
-
     showLoader("Loading news...");
     try {
         const response = await fetch('/api/news');
@@ -1319,16 +1288,16 @@ async function loadLatestNews() {
         newsContainer.innerHTML = latestNews
             .map(
                 (article) => `
-                    <div class="news-card">
-                        <img src="${article.image}" alt="${article.title}" class="news-image">
-                        <div class="news-content">
-                            <p class="news-date">${formatDate(article.date)}</p>
-                            <h3 class="news-title">${article.title}</h3>
-                            <p class="news-description">${article.description}</p>
-                            <a href="news.html" class="news-link" onclick="viewFullArticle(${article.id});">Read More →</a>
-                        </div>
-                    </div>
-                `,
+<div class="news-card">
+<img src="${article.image}" alt="${article.title}" class="news-image">
+<div class="news-content">
+<p class="news-date">${formatDate(article.date)}</p>
+<h3 class="news-title">${article.title}</h3>
+<p class="news-description">${article.description}</p>
+<a href="news.html" class="news-link" onclick="viewFullArticle(${article.id});">Read More →</a>
+</div>
+</div>
+`,
             )
             .join("");
     } catch (error) {
@@ -1429,7 +1398,6 @@ function handleUpdateAddress(e) {
     }
 
     showLoader("Updating your address...");
-
     // Send update to backend
     fetch('/api/user/address', {
         method: 'PUT',
@@ -1482,6 +1450,7 @@ function viewFullArticle(articleId) {
                 console.error("Article not found.");
                 return;
             }
+
             const modal = document.getElementById("articleModal");
             if (!modal) return;
 
@@ -1525,34 +1494,23 @@ function displayProducts(products) {
     // This function should render products to the DOM
 }
 
-// NEW: Synchronize guest cart to database when user logs in
-async function mergeGuestCartToDatabase() {
-    const guestCart = JSON.parse(sessionStorage.getItem("cart")) || [];
-    const token = localStorage.getItem("token");
-    if (!token || guestCart.length === 0) return;
-    console.log("Merging guest cart:", guestCart); // Debug log
-
-    for (const item of guestCart) {
-        // Send request to backend using 'product_id' (as expected by backend)
-        await fetch("/api/cart/add", {
-            method: "POST",
+async function syncCartToDatabase() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+        await fetch('/api/cart', {
+            method: 'POST',
             headers: {
-                "Content-Type": "application/json",
+                'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify({
-                product_id: item.productId, // Use the consistent 'productId' from the guest cart
-                quantity: item.quantity
-            })
+            body: JSON.stringify({ cart })
         });
+    } catch (error) {
+        console.error("Failed to sync cart:", error);
     }
-    // Clear guest cart after merge
-    sessionStorage.removeItem("cart");
-    cart = []; // Reset the local guest cart variable
-    updateUIBasedOnUser();
 }
 
-// NEW: Load cart from database into local session storage when user logs in
 async function loadCartFromDatabase() {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -1563,61 +1521,42 @@ async function loadCartFromDatabase() {
                 Authorization: `Bearer ${token}`
             }
         });
-        if (!response.ok) {
-            // If the cart doesn't exist (e.g., 404), just return
-            if(response.status === 404) {
-                 console.log("No cart found on server for this user.");
-                 cart = [];
-                 sessionStorage.setItem('cart', JSON.stringify(cart));
-                 updateUIBasedOnUser();
-                 return;
-            }
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        if (!response.ok) return;
         const savedCart = await response.json();
-        console.log("Cart loaded from database:", savedCart); // Debug log
-
-        // Convert the saved cart (from DB) to our internal format (using 'productId')
-        // The DB likely returns 'product_id', so we map it
-        cart = savedCart.map(item => ({
-            productId: item.product_id, // Map DB 'product_id' to internal 'productId'
-            quantity: item.quantity
-        }));
-
-        // Save the loaded cart to sessionStorage for consistency
+        cart = savedCart;
         sessionStorage.setItem('cart', JSON.stringify(cart));
         updateUIBasedOnUser();
     } catch (error) {
         console.error("Failed to load cart from DB:", error);
-        // If loading fails, ensure the cart variable is at least empty
-        cart = [];
-        sessionStorage.setItem('cart', JSON.stringify(cart));
-        updateUIBasedOnUser();
     } finally {
         hideLoader();
     }
 }
 
-// NEW: Synchronize local session cart to database if user is logged in
-async function syncCartToDatabase() {
-    const token = localStorage.getItem('token');
-    if (!token) return; // Don't sync if not logged in
-    try {
-        // Format the local cart for the backend (using 'product_id')
-        const formattedCartForBackend = cart.map(item => ({
-            product_id: item.productId, // Convert internal 'productId' to DB 'product_id'
-            quantity: item.quantity
-        }));
-        await fetch('/api/cart', {
-            method: 'POST',
+
+async function mergeGuestCartToDatabase() {
+    const guestCart = JSON.parse(sessionStorage.getItem("cart")) || [];
+    const token = localStorage.getItem("token");
+
+    if (!token || guestCart.length === 0) return;
+
+    for (const item of guestCart) {
+        await fetch("/api/cart/add", {
+            method: "POST",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify({ cart: formattedCartForBackend }) // Send as an object with a 'cart' key
+            body: JSON.stringify({
+                product_id: item.product_id,
+                quantity: item.quantity
+            })
         });
-        console.log("Cart synced to database:", formattedCartForBackend); // Debug log
-    } catch (error) {
-        console.error("Failed to sync cart to DB:", error);
     }
+
+    // Clear guest cart after merge
+    sessionStorage.removeItem("cart");
+    cart = [];
+
+    updateUIBasedOnUser();
 }

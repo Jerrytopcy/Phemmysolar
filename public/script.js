@@ -1789,24 +1789,25 @@ async function validateFieldOnInput(fieldType) {
                 throw new Error("Server error while checking availability.");
             }
 
-            // Update UI based on results
-            if (result.usernameexists && fieldType === "username") {
-            showValidationMessage("username", "Username is already taken.", "error");
-            } else if (!result.usernameexists && fieldType === "username" && username) {
+           // Update UI based on results
+            if (result.usernameExists && fieldType === "username") {
+                showValidationMessage("username", "Username is already taken.", "error");
+            } else if (!result.usernameExists && fieldType === "username" && username) {
                 showValidationMessage("username", "Username available!", "success");
             }
 
-            if (result.emailexists && fieldType === "email") {
+            if (result.emailExists && fieldType === "email") {
                 showValidationMessage("email", "Email is already registered.", "error");
-            } else if (!result.emailexists && fieldType === "email" && email) {
+            } else if (!result.emailExists && fieldType === "email" && email) {
                 showValidationMessage("email", "Email available!", "success");
             }
 
-            if (result.phoneexists && fieldType === "phone") {
+            if (result.phoneExists && fieldType === "phone") {
                 showValidationMessage("phone", "Phone number is already in use.", "error");
-            } else if (!result.phoneexists && fieldType === "phone" && phone) {
+            } else if (!result.phoneExists && fieldType === "phone" && phone) {
                 showValidationMessage("phone", "Phone number available!", "success");
             }
+
 
         } catch (error) {
             console.error("Real-time validation error:", error);

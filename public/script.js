@@ -442,16 +442,52 @@ function handleLogout() {
 // --- NEW: Custom Modal Functions for Login/Signup ---
 
 // Show the login/signup modal
+// Show the login/signup modal - ALWAYS show Login form first
 function showAuthModal() {
     const modal = document.getElementById("authModal");
     if (modal) {
-        document.getElementById("authForm").reset(); // Clear previous entries
+        // Reset the form to Login state
+        document.getElementById("authFormTitle").textContent = "Login";
+        document.getElementById("authForm").dataset.mode = "login";
+        document.getElementById("authSubmitBtn").textContent = "Login";
+        document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
+        document.getElementById("signupExtraFields").style.display = "none"; // Hide signup fields
+
+        // Clear form inputs
+        document.getElementById("authForm").reset();
         document.getElementById("authError").textContent = ""; // Clear previous errors
+
+        // Reattach event listeners for switching (in case they were detached)
+        const signupSwitch = document.getElementById("signupFormSwitch");
+        const loginSwitch = document.getElementById("loginFormSwitch");
+        if (signupSwitch) {
+            signupSwitch.removeEventListener("click", switchToSignup); // Clean up old listener
+            signupSwitch.addEventListener("click", switchToSignup);
+        }
+        if (loginSwitch) {
+            loginSwitch.removeEventListener("click", switchToLogin); // Clean up old listener
+            loginSwitch.addEventListener("click", switchToLogin);
+        }
+
         modal.classList.add("active");
         document.body.style.overflow = "hidden";
     }
 }
 
+// Inside DOMContentLoaded, after initializing other things
+document.addEventListener("DOMContentLoaded", () => {
+    // ... other initialization code ...
+
+    // Ensure auth modal starts in Login state
+    const authForm = document.getElementById("authForm");
+    if (authForm) {
+        authForm.dataset.mode = "login";
+        document.getElementById("authFormTitle").textContent = "Login";
+        document.getElementById("authSubmitBtn").textContent = "Login";
+        document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
+        document.getElementById("signupExtraFields").style.display = "none";
+    }
+});
 // Close the login/signup modal
 function closeAuthModal() {
     const modal = document.getElementById("authModal");

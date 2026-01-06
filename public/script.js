@@ -24,42 +24,72 @@ function hideLoader() {
 // Add item to cart
 async function addToCart(productId) {
     showLoader("Adding item to cart...");
+
     try {
-        // Fetch the specific product from the API
+        const token = localStorage.getItem("token");
+
+        // Fetch product (for name + validation only)
         const response = await fetch(`/api/products/${productId}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const product = await response.json();
 
+        const product = await response.json();
         if (!product) {
             showCustomAlert("Product not found.", "Error");
             return;
         }
 
-        // Check if item already exists in cart
-        const existingItemIndex = cart.findIndex(item => item.productId === productId);
-        if (existingItemIndex > -1) {
-            cart[existingItemIndex].quantity += 1;
-        } else {
-            cart.push({ productId: productId, quantity: 1 });
+        // ===============================
+        // LOGGED IN USER → DATABASE CART
+        // ===============================
+        if (token) {
+            await fetch("/api/cart/add", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    quantity: 1
+                })
+            });
+
+            await loadCartFromDatabase();
+            updateUIBasedOnUser();
+
+            showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
+            return;
         }
 
-        // Update cart in sessionStorage
-        sessionStorage.setItem('cart', JSON.stringify(cart));
+        // ===============================
+        // GUEST USER → SESSION CART
+        // ===============================
+        const existingItem = cart.find(item => item.product_id === productId);
 
-        // Update UI
-        updateUIBasedOnUser(); // This function will now check cart state
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cart.push({
+                product_id: productId,
+                quantity: 1
+            });
+        }
+
+        sessionStorage.setItem("cart", JSON.stringify(cart));
+        updateUIBasedOnUser();
+
         showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
-        sessionStorage.setItem('cart', JSON.stringify(cart));
-        syncCartToDatabase();
+
     } catch (error) {
-        console.error("Error fetching product for cart:", error);
+        console.error("Error adding product to cart:", error);
         showCustomAlert("Failed to add product to cart. Please try again.", "Error");
     } finally {
         hideLoader();
     }
 }
+
 
 // View Cart
 async function viewCart() {
@@ -295,13 +325,16 @@ function closeCartModal() {
 }
 
 // Load user's order history (for account page)
+// Load user's order history (for account page)
 async function loadOrderHistory() {
     const token = localStorage.getItem('token');
     if (!token) {
         document.getElementById('orderHistory').innerHTML = '<p>Please log in to view your order history.</p>';
         return;
     }
+
     showLoader("Loading your order history...");
+
     try {
         const response = await fetch('/api/orders', {
             headers: {
@@ -309,66 +342,81 @@ async function loadOrderHistory() {
             }
         });
 
-        if (!response.ok) {
-            throw new Error('Failed to load order history');
-        }
+        if (!response.ok) throw new Error('Failed to load order history');
 
         const orders = await response.json();
 
-        if (orders.length === 0) {
+        if (!orders.length) {
             document.getElementById('orderHistory').innerHTML = '<p>No orders found.</p>';
             return;
         }
 
         // Sort orders by date (newest first)
-        orders.sort((a, b) => {
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
-            return dateB - dateA; // Newest first
-        });
+        orders.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
+
         for (const order of orders) {
-            // Format the delivery address for display
-            const address = order.deliveryAddress || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
-            const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+            // Ensure delivery address exists
+            const address = order.deliveryAddress || {};
+            const fullAddress = `${address.street || ""}, ${address.city || ""}, ${address.state || ""} ${address.postalCode || ""}, ${address.country || "Nigeria"}`;
+
+            // Format order ID to 8 digits
+            const orderId = String(order.id).padStart(8, "0");
+
+            // Format date nicely
+            const orderDate = new Date(order.date);
+            const formattedDate = orderDate.toLocaleString('en-NG', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
 
             let itemsHTML = '';
-            // Process each item in the order
+
             for (const item of order.items) {
                 try {
                     const productResponse = await fetch(`/api/products/${item.productId}`);
                     if (!productResponse.ok) throw new Error(`Failed to fetch product ${item.productId}`);
                     const product = await productResponse.json();
+
+                    // Use product name and image if available
+                    const productName = product.name || "Unnamed Product";
                     const imageUrl = product.images?.[0] || '/placeholder.svg';
+
                     itemsHTML += `
 <div class="order-history-item">
-<div class="order-item-image-wrapper">
-<img src="${imageUrl}" alt="${item.name}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
-</div>
-<div class="order-item-details">
-<div class="order-item-name">${item.name}</div>
-<div class="order-item-meta">
-<span class="order-item-qty">Qty: ${item.quantity}</span>
-<span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
-</div>
-</div>
+    <div class="order-item-image-wrapper">
+        <img src="${imageUrl}" alt="${productName}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+    </div>
+    <div class="order-item-details">
+        <div class="order-item-name">${productName}</div>
+        <div class="order-item-meta">
+            <span class="order-item-qty">Qty: ${item.quantity}</span>
+            <span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
+        </div>
+    </div>
 </div>
 `;
                 } catch (error) {
-                    console.error('Error loading product image for item:', item.productId, error);
+                    console.error('Error loading product:', item.productId, error);
+
                     itemsHTML += `
 <div class="order-history-item">
-<div class="order-item-image-wrapper">
-<img src="/placeholder.svg" alt="Image not available" onerror="this.src='/placeholder.svg';">
-</div>
-<div class="order-item-details">
-<div class="order-item-name">${item.name}</div>
-<div class="order-item-meta">
-<span class="order-item-qty">Qty: ${item.quantity}</span>
-<span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
-</div>
-</div>
+    <div class="order-item-image-wrapper">
+        <img src="/placeholder.svg" alt="Image not available">
+    </div>
+    <div class="order-item-details">
+        <div class="order-item-name">Product unavailable</div>
+        <div class="order-item-meta">
+            <span class="order-item-qty">Qty: ${item.quantity}</span>
+            <span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
+        </div>
+    </div>
 </div>
 `;
                 }
@@ -376,22 +424,23 @@ async function loadOrderHistory() {
 
             historyHTML += `
 <div class="order-item">
-<p><strong>Order ID:</strong> ${order.id}</p>
-<p><strong>Date:</strong> ${order.date}</p>
-<p><strong>Delivery Address:</strong> ${fullAddress}</p>
-<div class="order-status-actions">
-<p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
-<!-- Removed payment status check button as per requirements -->
-</div>
-<p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
-<div class="order-items-list">
-${itemsHTML}
-</div>
+    <p><strong>Order ID:</strong> ${orderId}</p>
+    <p><strong>Date:</strong> ${formattedDate}</p>
+    <p><strong>Delivery Address:</strong> ${fullAddress}</p>
+    <div class="order-status-actions">
+        <p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
+    </div>
+    <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
+    <div class="order-items-list">
+        ${itemsHTML}
+    </div>
 </div>
 `;
         }
+
         historyHTML += '</div>';
         document.getElementById('orderHistory').innerHTML = historyHTML;
+
     } catch (error) {
         console.error("Error loading order history:", error);
         document.getElementById('orderHistory').innerHTML = '<p>Error loading order history. Please try again.</p>';
@@ -399,6 +448,7 @@ ${itemsHTML}
         hideLoader();
     }
 }
+
 
 // Update UI elements based on user status and cart
 function updateUIBasedOnUser() {
@@ -493,6 +543,7 @@ async function handleAuthSubmit(e) {
         action: isLogin ? "login" : "signup"
     };
 
+    // SIGNUP EXTRA FIELDS
     if (!isLogin) {
         const email = document.getElementById("email").value.trim();
         const phone = document.getElementById("phone").value.trim();
@@ -521,7 +572,9 @@ async function handleAuthSubmit(e) {
     showLoader(isLogin ? "Logging in..." : "Creating your account...");
 
     try {
-        // MAIN AUTH REQUEST (login OR signup)
+        // ======================
+        // MAIN AUTH REQUEST
+        // ======================
         const response = await fetch("/api/auth", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -543,6 +596,12 @@ async function handleAuthSubmit(e) {
             localStorage.setItem("token", result.token);
             localStorage.setItem("currentUser", JSON.stringify(result.user));
 
+            // Merge guest cart → DB
+            await mergeGuestCartToDatabase();
+
+            // Load final cart from DB
+            await loadCartFromDatabase();
+
             updateUIBasedOnUser();
             closeAuthModal();
 
@@ -552,18 +611,17 @@ async function handleAuthSubmit(e) {
                 "success"
             );
 
-            await loadCartFromDatabase();
             return;
         }
 
         // ======================
         // SIGNUP FLOW → AUTO LOGIN
         // ======================
-          showCustomAlert(
-                `Welcome, ${result.user.username}! Your account has been created and you are now logged in.`,
-                "Account Created",
-                "success"
-            );
+        showCustomAlert(
+            `Welcome, ${result.user.username}! Your account has been created and you are now logged in.`,
+            "Account Created",
+            "success"
+        );
 
         // AUTO LOGIN AFTER SIGNUP
         const loginResponse = await fetch("/api/auth", {
@@ -585,14 +643,16 @@ async function handleAuthSubmit(e) {
         }
 
         localStorage.setItem("token", loginResult.token);
-        localStorage.setItem(
-            "currentUser",
-            JSON.stringify(loginResult.user)
-        );
+        localStorage.setItem("currentUser", JSON.stringify(loginResult.user));
+
+        // Merge guest cart → DB
+        await mergeGuestCartToDatabase();
+
+        // Load final cart from DB
+        await loadCartFromDatabase();
 
         updateUIBasedOnUser();
         closeAuthModal();
-        await loadCartFromDatabase();
 
     } catch (error) {
         console.error("Auth error:", error);
@@ -602,6 +662,7 @@ async function handleAuthSubmit(e) {
         hideLoader();
     }
 }
+
 
 
 // Add event listener for Forgot Password Form
@@ -1550,4 +1611,32 @@ async function loadCartFromDatabase() {
     } finally {
         hideLoader();
     }
+}
+
+
+async function mergeGuestCartToDatabase() {
+    const guestCart = JSON.parse(sessionStorage.getItem("cart")) || [];
+    const token = localStorage.getItem("token");
+
+    if (!token || guestCart.length === 0) return;
+
+    for (const item of guestCart) {
+        await fetch("/api/cart/add", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                product_id: item.product_id,
+                quantity: item.quantity
+            })
+        });
+    }
+
+    // Clear guest cart after merge
+    sessionStorage.removeItem("cart");
+    cart = [];
+
+    updateUIBasedOnUser();
 }

@@ -22,7 +22,16 @@ function hideLoader() {
 }
 
 // Add item to cart
+// Add item to cart - ONLY if user is logged in
 async function addToCart(productId) {
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showCustomAlert("Please log in to add items to your cart.", "Login Required");
+        showAuthModal(); // Show login modal
+        return; // Stop execution if not logged in
+    }
+
     showLoader("Adding item to cart...");
     try {
         // Fetch the specific product from the API
@@ -31,7 +40,6 @@ async function addToCart(productId) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const product = await response.json();
-
         if (!product) {
             showCustomAlert("Product not found.", "Error");
             return;
@@ -47,12 +55,13 @@ async function addToCart(productId) {
 
         // Update cart in sessionStorage
         sessionStorage.setItem('cart', JSON.stringify(cart));
-
         // Update UI
         updateUIBasedOnUser(); // This function will now check cart state
         showCustomAlert(`${product.name} added to cart!`, "Added to Cart");
-        sessionStorage.setItem('cart', JSON.stringify(cart));
+
+        // Sync cart to database
         syncCartToDatabase();
+
     } catch (error) {
         console.error("Error fetching product for cart:", error);
         showCustomAlert("Failed to add product to cart. Please try again.", "Error");

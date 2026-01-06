@@ -364,9 +364,10 @@ async function loadOrderHistory() {
         }
 
         let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
-
+        
         for (const order of orders) {
-            const address = order.deliveryAddress || {};
+            // Correctly get delivery address
+            const address = order.delivery_address || {};
             const fullAddress = `${address.street || ""}, ${address.city || ""}, ${address.state || ""} ${address.postalCode || ""}, ${address.country || "Nigeria"}`;
             
             // Keep order ID exactly as returned by DB

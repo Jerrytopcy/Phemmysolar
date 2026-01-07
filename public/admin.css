@@ -1481,164 +1481,198 @@ body {
 }
 
 
-/* ===== View User Modal Styling ===== */
-#viewUserModal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-    animation: adminFadeIn 0.2s ease-out;
+/* ===============================
+   USER DETAILS MODAL STYLING
+   =============================== */
+
+.user-modal-content {
+  background: linear-gradient(135deg, #f8f9ff, #ffffff);
+  border-radius: 14px;
+  padding: 1.5rem;
+  max-width: 700px;
+  margin: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  animation: modalFade 0.3s ease;
 }
 
-#viewUserModal.active {
-    display: flex;
+/* ---------- Header ---------- */
+.user-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.2rem;
+  border-bottom: 1px solid #eaeaea;
+  padding-bottom: 0.8rem;
 }
 
-#viewUserModal .modal-card {
-    background-color: #fff;
-    border-radius: 16px;
-    padding: 2rem;
-    max-width: 600px;
-    width: 90%;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    animation: adminSlideUp 0.3s ease-out;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    max-height: 85vh;
-    overflow-y: auto;
+.user-header h3 {
+  font-size: 1.3rem;
+  color: #2d3436;
 }
 
-#viewUserModal .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid #eee;
+/* ---------- Role Badge ---------- */
+.user-role {
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
-#viewUserModal .modal-header h3 {
-    color: var(--dark-color);
-    font-size: 1.5rem;
+.user-role.admin {
+  background: #2d3436;
+  color: #ffffff;
 }
 
-#viewUserModal .btn-close {
-    background: none;
-    border: none;
-    font-size: 2rem;
-    color: var(--text-color);
-    cursor: pointer;
-    line-height: 1;
+.user-role.user {
+  background: #6c5ce7;
+  color: #ffffff;
 }
 
-#viewUserModal .btn-close:hover {
-    color: var(--danger-color);
+/* ---------- Info Grid ---------- */
+.user-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
 }
 
-#viewUserModal .modal-content {
-    width: 100%;
+/* ---------- Info Cards ---------- */
+.info-item {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
-#viewUserModal .user-modal-content {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+.info-item strong {
+  display: block;
+  font-size: 0.75rem;
+  color: #636e72;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
 }
 
-#viewUserModal .user-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
+.info-item span {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2d3436;
+  word-break: break-word;
 }
 
-#viewUserModal .user-header h3 {
-    color: var(--dark-color);
-    font-size: 1.25rem;
+/* ---------- Recent Orders ---------- */
+.recent-orders {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
 }
 
-#viewUserModal .user-role {
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-transform: uppercase;
+.order-item {
+  background: #f9fafc;
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.6rem;
+  border-left: 5px solid #ccc;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
-#viewUserModal .user-role.user {
-    background-color: #d4edda;
-    color: #155724;
+.order-top,
+.order-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-#viewUserModal .user-role.admin {
-    background-color: #cce5ff;
-    color: #0056b3;
+.order-id {
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
-#viewUserModal .user-info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1rem;
+.order-date {
+  font-size: 0.75rem;
+  color: #777;
 }
 
-#viewUserModal .info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+.order-amount {
+  font-weight: 700;
 }
 
-#viewUserModal .info-item strong {
-    font-weight: 600;
-    color: var(--dark-color);
+.order-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  text-transform: uppercase;
 }
 
-#viewUserModal .info-item span {
-    color: var(--text-color);
-    font-size: 0.9375rem;
+/* ---------- Order Status Colors ---------- */
+.status-pending {
+  border-left-color: #f1c40f;
+}
+.status-pending .order-status {
+  background: #fff9db;
+  color: #d4a000;
 }
 
-#viewUserModal .modal-actions {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 2px solid #eee;
+.status-paid {
+  border-left-color: #00b894;
+}
+.status-paid .order-status {
+  background: #dff9f0;
+  color: #00b894;
 }
 
-#viewUserModal .btn {
-    padding: 0.875rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    transition: all 0.3s;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
+.status-processing {
+  border-left-color: #0984e3;
+}
+.status-processing .order-status {
+  background: #eaf4ff;
+  color: #0984e3;
 }
 
-#viewUserModal .btn-primary {
-    background-color: var(--primary-color);
-    color: #fff;
+.status-shipped {
+  border-left-color: #6c5ce7;
+}
+.status-shipped .order-status {
+  background: #efeaff;
+  color: #6c5ce7;
 }
 
-#viewUserModal .btn-primary:hover {
-    background-color: #d97706;
+.status-delivered {
+  border-left-color: #2ecc71;
+}
+.status-delivered .order-status {
+  background: #e9fbe9;
+  color: #27ae60;
 }
 
-#viewUserModal .btn-secondary {
-    background-color: var(--border-color);
-    color: var(--text-color);
+.status-cancelled {
+  border-left-color: #d63031;
+}
+.status-cancelled .order-status {
+  background: #ffe5e5;
+  color: #d63031;
 }
 
-#viewUserModal .btn-secondary:hover {
-    background-color: #cbd5e1;
+/* ---------- Empty Orders ---------- */
+.order-empty {
+  text-align: center;
+  font-style: italic;
+  color: #999;
+  padding: 0.6rem;
 }
+
+/* ---------- Animation ---------- */
+@keyframes modalFade {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 
 /* Responsive Design for Mobile */
 @media (max-width: 768px) {

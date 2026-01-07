@@ -840,15 +840,7 @@ function closeForgotPasswordModal() {
     }
 }
 
-// Clean up expired entries
-Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('lastPasswordReset_')) {
-        const storedTime = parseInt(localStorage.getItem(key));
-        if (now - storedTime > thirtyDaysMs) {
-            localStorage.removeItem(key);
-        }
-    }
-});
+
 
 async function handleForgotPasswordSubmit(e) {
     e.preventDefault();

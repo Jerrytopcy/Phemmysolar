@@ -1347,7 +1347,7 @@ function viewUser(userId) {
 // Initialize admin panel
 document.addEventListener("DOMContentLoaded", () => {
     checkAuth();
-    document.getElementById("exportCsvBtn")?.addEventListener("click", exportToCSV);
+    // document.getElementById("exportCsvBtn")?.addEventListener("click", exportToCSV);
     // Login form
     const loginForm = document.getElementById("loginForm");
     if (loginForm) {

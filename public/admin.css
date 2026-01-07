@@ -1983,478 +1983,299 @@ body {
     color: #0f5132;
     border: 1px solid #badbcc;
 }
-/* === GLOBAL RESET / BASE === */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #faf9f7;
-  color: #2d2d2d;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* === MODAL OVERLAY === */
-#messageDetailsModal {
-  position: fixed;
-  inset: 0;
-  background: rgba(235, 233, 228, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  backdrop-filter: blur(2px);
-  padding: 20px;
-}
-
-/* === MODAL CARD === */
-#messageDetailsModal .modal-card {
-  width: 100%;
-  max-width: 540px;
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-  animation: slideIn 0.3s ease-out;
-}
-
-/* === HEADER === */
-#messageDetailsModal .modal-header {
-  padding: 16px 20px;
-  background: #f5f4f2;
-  border-bottom: 1px solid #eae8e5;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-#messageDetailsModal .modal-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #2d2d2d;
-  letter-spacing: 0.1px;
-}
-
-/* === CLOSE BUTTON === */
-#messageDetailsModal .btn-close {
-  background: none;
-  border: none;
-  color: #777;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 4px;
-  transition: color 0.2s ease;
-}
-
-#messageDetailsModal .btn-close:hover {
-  color: #2d2d2d;
-}
-
-/* === CONTENT === */
-#messageDetailsModal .modal-content {
-  padding: 20px;
-  font-size: 14px;
-  color: #444;
-}
-
-/* === MESSAGE BLOCKS === */
-#messageDetailsModal .modal-content p {
-  background: #fbfbfa;
-  padding: 12px 16px;
-  border-radius: 10px;
-  margin: 0 0 12px;
-  border: 1px solid #eee;
-}
-
-#messageDetailsModal .modal-content strong {
-  color: #3a3a6a;
-  font-weight: 600;
-}
-
-/* === DETAIL ROWS === */
-#messageDetailsModal .detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  background: #fbfbfa;
-  padding: 12px 16px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  border: 1px solid #eee;
-  font-size: 14px;
-}
-
-#messageDetailsModal .detail-row strong {
-  color: #3a3a6a;
-  font-weight: 600;
-  min-width: 100px;
-}
-
-#messageDetailsModal .detail-row span,
-#messageDetailsModal .detail-row a {
-  color: #2d2d2d;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-#messageDetailsModal .detail-row a:hover {
-  color: #3a3a6a;
-  text-decoration: underline;
-}
-
-/* === STATUS BADGES === */
-#messageDetailsModal .status-badge {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-#messageDetailsModal .status-read {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-#messageDetailsModal .status-unread {
-  background: #ffebee;
-  color: #c62828;
-}
-
-/* === MESSAGE BOX === */
-#messageDetailsModal .message-box {
-  margin-top: 16px;
-  background: #fff;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-}
-
-#messageDetailsModal .message-box strong {
-  display: block;
-  margin-bottom: 8px;
-  color: #3a3a6a;
-  font-size: 14px;
-}
-
-#messageDetailsModal .message-box p {
-  margin: 0;
-  color: #444;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-/* === ACTIONS === */
-#messageDetailsModal .modal-actions {
-  padding: 16px 20px;
-  background: #f5f4f2;
-  border-top: 1px solid #eae8e5;
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* === BUTTONS === */
-#messageDetailsModal .btn-secondary {
-  background: #3a3a6a;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-#messageDetailsModal .btn-secondary:hover {
-  opacity: 0.9;
-}
-
-/* === ANIMATION === */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* === MOBILE === */
-@media (max-width: 600px) {
-  #messageDetailsModal .modal-card {
-    margin: 12px;
-    max-width: 95%;
-  }
-
-  #messageDetailsModal .modal-content {
-    padding: 16px;
-  }
-
-  #messageDetailsModal .detail-row pre {
-    font-size: 13px;
-    padding: 12px;
-  }
-}
-
-/* ===============================
-   MESSAGES SECTION
-================================ */
+/* ===== MESSAGES SECTION — ISOLATED STYLING ===== */
 
 #messagesSection {
-  animation: fadeInUp 0.4s ease;
-  padding: 20px 0;
-}
-
-#messagesSection .section-header {
-  margin-bottom: 20px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 20px 0;
 }
 
 #messagesSection .section-header h2 {
-  font-size: 22px;
-  font-weight: 700;
-  color: #2d2d2d;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 4px;
 }
 
 #messagesSection .section-header p {
-  font-size: 14px;
-  color: #777;
-  margin-top: 4px;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
 }
 
-/* === FILTERS === */
+/* ===== FILTERS — MOBILE-FIRST ===== */
 #messagesSection .order-filters {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: center;
 }
 
 #messagesSection .order-filters input,
 #messagesSection .order-filters select {
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  font-size: 14px;
-  background: #fff;
-  outline: none;
-  width: 100%;
-  max-width: 420px;
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    width: 100%;
+    max-width: 300px;
+    transition: border-color 0.2s ease;
+    background: #fafafa;
+    color: #333;
 }
 
 #messagesSection .order-filters input:focus,
 #messagesSection .order-filters select:focus {
-  border-color: #3a3a6a;
-  box-shadow: 0 0 0 3px rgba(58, 58, 106, 0.1);
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
 }
 
-/* === TABLE CONTAINER === */
+/* ===== TABLE STYLING — CLEAN & MOBILE OPTIMIZED ===== */
 #messagesSection .products-table-container {
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+    overflow-x: auto;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    margin-bottom: 16px;
 }
 
-/* === TABLE ROWS === */
-.message-row {
-  transition: background 0.2s ease;
+#messagesSection .products-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
 }
 
-.message-row:hover {
-  background: #f9f9f9;
+#messagesSection .products-table th,
+#messagesSection .products-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
 }
 
-/* === CELLS === */
-.message-row td {
-  padding: 12px 16px;
-  font-size: 14px;
-  color: #444;
-  vertical-align: middle;
+#messagesSection .products-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #555;
+    font-size: 0.95rem;
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
-.cell-name {
-  font-weight: 600;
-  color: #2d2d2d;
+#messagesSection .products-table tr:hover {
+    background: #f1f8ff;
 }
 
-.cell-email a {
-  color: #3a3a6a;
-  text-decoration: none;
-  font-weight: 500;
+/* Status badge styling */
+#messagesSection .status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: capitalize;
 }
 
-.cell-email a:hover {
-  text-decoration: underline;
+#messagesSection .status-badge.unread {
+    background: #ffe0e0;
+    color: #d32f2f;
 }
 
-.cell-subject {
-  max-width: 220px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+#messagesSection .status-badge.read {
+    background: #e8f5e8;
+    color: #388e3c;
 }
 
-.cell-date {
-  font-size: 13px;
-  color: #888;
-}
-
-/* === STATUS BADGE IN TABLE === */
-.msg-status {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.msg-status.read {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.msg-status.unread {
-  background: #ffebee;
-  color: #c62828;
-}
-
-/* === ACTIONS === */
-.cell-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-btn {
-  border: none;
-  padding: 6px 12px;
-  font-size: 13px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.action-btn.view {
-  background: #3a3a6a;
-  color: white;
-}
-
-.action-btn.view:hover {
-  opacity: 0.9;
-}
-
-.action-btn.mark {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.action-btn.mark:hover {
-  background: #dcedc8;
-}
-
-/* === PAGINATION === */
+/* ===== PAGINATION CONTROLS ===== */
 #messagesSection .pagination-controls {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #eee;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
 }
 
 #messagesSection .pagination-controls button {
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: none;
-  font-size: 13px;
-  color: white;
-  background: #3a3a6a;
-  cursor: pointer;
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
 }
 
 #messagesSection .pagination-controls button:hover {
-  opacity: 0.9;
+    background: #f1f1f1;
+    border-color: #bbb;
 }
 
-/* ===============================
-   MESSAGE DETAILS MODAL (LARGE)
-================================ */
+#messagesSection .pagination-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#messagesSection .pagination-controls #pageInfo {
+    font-size: 0.9rem;
+    color: #666;
+    min-width: 100px;
+    text-align: center;
+}
+
+/* ===== MESSAGE DETAILS MODAL — CLEAN & MOBILE-FRIENDLY ===== */
+
+#messageDetailsModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+}
 
 #messageDetailsModal .modal-card {
-  max-width: 720px;
-  max-height: 88vh;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
-#messageDetailsModal #messageDetailsContent {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-  background: #fbfbfa;
+#messageDetailsModal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+    background: #f8f9fa;
+}
+
+#messageDetailsModal .modal-header h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+#messageDetailsModal .btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #999;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+#messageDetailsModal .btn-close:hover {
+    color: #333;
+}
+
+#messageDetailsModal .modal-content {
+    padding: 20px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+#messageDetailsModal .modal-content .detail-row {
+    margin-bottom: 16px;
+}
+
+#messageDetailsModal .modal-content .detail-label {
+    font-weight: 600;
+    color: #555;
+    display: block;
+    margin-bottom: 4px;
+}
+
+#messageDetailsModal .modal-content .detail-value {
+    word-break: break-word;
+    padding: 10px;
+    background: #fafafa;
+    border-radius: 6px;
+    border-left: 4px solid #3498db;
 }
 
 #messageDetailsModal .modal-actions {
-  padding: 12px 20px;
-  background: #fff;
-  border-top: 1px solid #eee;
+    padding: 16px 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
 }
 
-/* === DETAILS LAYOUT === */
-#messageDetailsModal .detail-row {
-  margin-bottom: 16px;
+#messageDetailsModal .modal-actions .btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
 }
 
-#messageDetailsModal .detail-row strong {
-  display: block;
-  font-size: 13px;
-  color: #3a3a6a;
-  margin-bottom: 4px;
+#messageDetailsModal .modal-actions .btn-secondary {
+    background: #f1f1f1;
+    color: #333;
 }
 
-#messageDetailsModal .detail-row span,
-#messageDetailsModal .detail-row a {
-  font-size: 15px;
-  color: #2d2d2d;
-  line-height: 1.6;
-  word-break: break-word;
+#messageDetailsModal .modal-actions .btn-secondary:hover {
+    background: #e0e0e0;
 }
 
-#messageDetailsModal .detail-row pre {
-  background: #fff;
-  padding: 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #444;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  border: 1px solid #eee;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+/* ===== MOBILE ADJUSTMENTS ===== */
+@media (max-width: 768px) {
+    #messagesSection {
+        padding: 12px;
+    }
+
+    #messagesSection .section-header h2 {
+        font-size: 1.2rem;
+    }
+
+    #messagesSection .order-filters input,
+    #messagesSection .order-filters select {
+        max-width: 100%;
+        font-size: 0.9rem;
+    }
+
+    #messagesSection .products-table th,
+    #messagesSection .products-table td {
+        padding: 10px 8px;
+        font-size: 0.85rem;
+    }
+
+    #messageDetailsModal .modal-card {
+        max-width: 95%;
+        margin: 0;
+    }
+
+    #messageDetailsModal .modal-header {
+        padding: 12px 16px;
+    }
+
+    #messageDetailsModal .modal-content {
+        padding: 16px;
+    }
 }
 
-/* === MOBILE OPTIMIZATION === */
-@media (max-width: 600px) {
-  #messageDetailsModal .modal-card {
-    min-width: 95%;
-  }
-
-  #messageDetailsModal #messageDetailsContent {
-    padding: 16px;
-  }
-
-  #messageDetailsModal .detail-row pre {
-    font-size: 13px;
-    padding: 12px;
-  }
-}
+/* ===== OPTIONAL: ADD THIS TO YOUR JS TO DYNAMICALLY ADD STATUS BADGES ===== */
+/* You can inject this in JS when rendering table rows:
+   <td><span class="status-badge unread">Unread</span></td>
+*/

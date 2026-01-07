@@ -1194,6 +1194,9 @@ function applyUserFilters() {
 }
 
 function viewUser(userId) {
+    // Show loader before fetching
+    showLoader("Loading user details...");
+
     fetch(`/api/users/${userId}`)
         .then(response => {
             if (!response.ok) {
@@ -1240,12 +1243,17 @@ function viewUser(userId) {
                 </div>
             `;
 
+            // Hide loader after loading
+            hideLoader();
+
             // Show modal
             document.getElementById("viewUserModal").style.display = "flex";
         })
         .catch(error => {
             console.error("Error fetching user for view:", error);
             showAdminAlert(`Error loading user: ${error.message}`, "Error");
+            // Always hide loader on error
+            hideLoader();
         });
 }
 

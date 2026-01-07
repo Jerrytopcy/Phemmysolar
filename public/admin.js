@@ -1419,7 +1419,7 @@ async function viewMessage(messageId) {
 }
 // Initialize event listeners for the messages section
 document.addEventListener('DOMContentLoaded', () => {
-    // ... existing code ...
+
 
     // Add this block for message section
     const messageSearchInput = document.getElementById('messageSearchInput');
@@ -1450,6 +1450,41 @@ document.addEventListener('DOMContentLoaded', () => {
             loadMessages();
         });
     }
+
+    // 👇  handle closing the message details modal
+    const closeMessageDetailsBtn = document.getElementById('closeMessageDetailsBtn');
+    const closeMessageDetailsBtn2 = document.getElementById('closeMessageDetailsBtn2');
+    const messageDetailsModal = document.getElementById('messageDetailsModal');
+
+    if (closeMessageDetailsBtn && messageDetailsModal) {
+        closeMessageDetailsBtn.addEventListener('click', () => {
+            messageDetailsModal.style.display = 'none';
+        });
+    }
+
+    if (closeMessageDetailsBtn2 && messageDetailsModal) {
+        closeMessageDetailsBtn2.addEventListener('click', () => {
+            messageDetailsModal.style.display = 'none';
+        });
+    }
+
+    // Also allow clicking outside the modal to close it
+    if (messageDetailsModal) {
+        messageDetailsModal.addEventListener('click', (e) => {
+            if (e.target === messageDetailsModal) {
+                messageDetailsModal.style.display = 'none';
+            }
+        });
+    }
+
+    // Allow Escape key to close the modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && messageDetailsModal && messageDetailsModal.style.display === 'flex') {
+            messageDetailsModal.style.display = 'none';
+        }
+    });
+
+    
 });
 // Close View Modal
 document.getElementById('closeViewUserBtn')?.addEventListener('click', () => {

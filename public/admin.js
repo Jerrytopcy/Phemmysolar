@@ -1328,7 +1328,7 @@ async function viewMessage(messageId) {
 
     try {
         // Show loader before fetching
-        showLoader(); // Reuse your existing showLoader() function
+        showLoader();
 
         const response = await fetch(`/api/admin/messages/${messageId}`, {
             headers: {
@@ -1345,55 +1345,19 @@ async function viewMessage(messageId) {
         // Hide loader after successful fetch
         hideLoader();
 
-        // Get the modal
-        let messageModal = document.getElementById('messageDetailsModal');
-        if (!messageModal) {
-            // Create modal dynamically if it doesn't exist
-            messageModal = document.createElement('div');
-            messageModal.id = 'messageDetailsModal';
-            messageModal.className = 'modal-overlay'; // Match your CSS class
-            messageModal.style.display = 'none';
+        // Get the existing modal from HTML (no need to create it!)
+        const messageModal = document.getElementById('messageDetailsModal');
+        const content = document.getElementById('messageDetailsContent');
 
-            // Add close button
-            const closeButton = document.createElement('button');
-            closeButton.id = 'closeMessageDetailsBtn';
-            closeButton.className = 'btn-close';
-            closeButton.textContent = '×';
-
-            // Add content container
-            const contentContainer = document.createElement('div');
-            contentContainer.id = 'messageDetailsContent';
-            contentContainer.className = 'modal-card';
-
-            // Assemble modal
-            messageModal.appendChild(closeButton);
-            messageModal.appendChild(contentContainer);
-            document.body.appendChild(messageModal);
-
-            // Add event listeners
-            closeButton.addEventListener('click', () => {
-                messageModal.style.display = 'none';
-            });
-
-            messageModal.addEventListener('click', (e) => {
-                if (e.target === messageModal) {
-                    messageModal.style.display = 'none';
-                }
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && messageModal.style.display === 'flex') {
-                    messageModal.style.display = 'none';
-                }
-            });
+        if (!messageModal || !content) {
+            throw new Error('Message modal not found in DOM.');
         }
 
         // Populate modal content
-        const content = document.getElementById('messageDetailsContent');
         content.innerHTML = `
             <div class="modal-header">
                 <h3>${message.subject}</h3>
-                <button id="closeMessageDetailsBtn" class="btn-close">&times;</button>
+                <button id="closeMessageDetailsBtn" class="btn-close" onclick="closeModal('messageDetailsModal')">&times;</button>
             </div>
             <div class="modal-content">
                 <div class="detail-row">

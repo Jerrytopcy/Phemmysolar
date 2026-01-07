@@ -1204,7 +1204,7 @@ let currentMessagePage = 1;
 const MESSAGE_PER_PAGE = 10;
 
 async function loadMessages() {
-    showGlobalLoader(true);
+    showLoader();
     try {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -1247,7 +1247,7 @@ async function loadMessages() {
     } catch (error) {
         showErrorModal('Error', error.message || 'Failed to load messages');
     } finally {
-        showGlobalLoader(false);
+        hideLoader()
     }
 }
 

@@ -47,8 +47,12 @@ app.get('/about', (req, res) => {
 app.get('/reset-password', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
 });
-app.get('/index', (req, res) => {
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/index', (req, res) => {
+    res.redirect('/');
 });
 
 

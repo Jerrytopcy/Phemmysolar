@@ -11,40 +11,40 @@
     <header class="header">
         <div class="container">
             <div class="nav-wrapper">
-                <a href="index.html" class="logo">
+                <a href="/" class="logo"> <!-- ✅ Changed from index.html to / -->
                     <img src="images/logo.jpg" alt="PhemmySolar Logo">
                     <span>PhemmySolar</span>
                 </a>
                 <nav class="nav" id="navMenu">
-                    <a href="index.html" class="nav-link">Home</a>
+                    <a href="/" class="nav-link">Home</a> <!-- ✅ -->
                     <div class="nav-dropdown">
                         <button class="nav-link dropdown-toggle">Products ▼</button>
                         <div class="dropdown-menu">
-                            <a href="products.html" class="dropdown-item">All Products</a>
-                            <a href="products.html?category=batteries" class="dropdown-item">Batteries</a>
-                            <a href="products.html?category=inverters" class="dropdown-item">Inverters</a>
-                            <a href="products.html?category=panels" class="dropdown-item">Solar Panels</a>
-                            <a href="products.html?category=controllers" class="dropdown-item">Charge Controllers</a>
+                            <a href="/products" class="dropdown-item">All Products</a> <!-- ✅ -->
+                            <a href="/products?category=batteries" class="dropdown-item">Batteries</a> <!-- ✅ -->
+                            <a href="/products?category=inverters" class="dropdown-item">Inverters</a> <!-- ✅ -->
+                            <a href="/products?category=panels" class="dropdown-item">Solar Panels</a> <!-- ✅ -->
+                            <a href="/products?category=controllers" class="dropdown-item">Charge Controllers</a> <!-- ✅ -->
                         </div>
                     </div>
                     <div class="nav-dropdown">
                         <button class="nav-link dropdown-toggle">Services ▼</button>
                         <div class="dropdown-menu">
-                            <a href="services.html" class="dropdown-item">All Services</a>
-                            <a href="services.html#residential" class="dropdown-item">Residential</a>
-                            <a href="services.html#commercial" class="dropdown-item">Commercial</a>
-                            <a href="services.html#maintenance" class="dropdown-item">Maintenance</a>
+                            <a href="/services" class="dropdown-item">All Services</a> <!-- ✅ -->
+                            <a href="/services#residential" class="dropdown-item">Residential</a> <!-- ✅ -->
+                            <a href="/services#commercial" class="dropdown-item">Commercial</a> <!-- ✅ -->
+                            <a href="/services#maintenance" class="dropdown-item">Maintenance</a> <!-- ✅ -->
                         </div>
                     </div>
-                    <a href="about.html" class="nav-link active">About</a>
-                    <a href="news.html" class="nav-link">News & Blog</a>
-                    <a href="contact.html" class="nav-link">Contact</a>
-                    <a href="admin.html" class="nav-link admin-link pro-badge">Pro Dashboard</a>
+                    <a href="/about" class="nav-link active">About</a> <!-- ✅ -->
+                    <a href="/news" class="nav-link">News & Blog</a> <!-- ✅ -->
+                    <a href="/contact" class="nav-link">Contact</a> <!-- ✅ -->
+                    <a href="/admin" class="nav-link admin-link pro-badge">Pro Dashboard</a> <!-- ✅ -->
                     <!-- NEW: Authentication and Cart Links -->
                     <div class="nav-auth-section" id="authSection">
                         <a href="#" id="loginBtn" style="display: none;">Login</a>
                         <a href="#" id="logoutBtn" style="display: none;">Logout</a>
-                        <a href="account.html" id="accountLink" style="display: none;">Account</a>
+                        <a href="/account" id="accountLink" style="display: none;">Account</a> <!-- ✅ -->
                         <a href="#" id="viewCartBtn" class="cart-link">🛒Cart (<span id="cartCount">0</span>)</a>
                     </div>
                 </nav>
@@ -211,7 +211,7 @@
             <div class="cta-content">
                 <h2>Join the Solar Revolution</h2>
                 <p>Become part of Nigeria's clean energy movement today</p>
-                <a href="contact.html" class="btn btn-primary btn-lg">Start Your Journey</a>
+                <a href="/contact" class="btn btn-primary btn-lg">Start Your Journey</a> <!-- ✅ -->
             </div>
         </div>
     </section>
@@ -226,26 +226,26 @@
                     <div class="social-links">
                         <a href="#" target="_blank" title="Facebook">f</a>
                         <a href="#" target="_blank" title="Instagram">📷</a>
-                        <a href="https://wa.me/2348012345678 " target="_blank" title="WhatsApp">💬</a>
+                        <a href="https://wa.me/2348012345678" target="_blank" title="WhatsApp">💬</a> <!-- ✅ Cleaned URL -->
                         <a href="#" target="_blank" title="LinkedIn">in</a>
                     </div>
                 </div>
                 <div class="footer-section">
                     <h4>Quick Links</h4>
                     <ul>
-                        <li><a href="index.html">Home</a></li>
-                        <li><a href="products.html">Products</a></li>
-                        <li><a href="services.html">Services</a></li>
-                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="/">Home</a></li> <!-- ✅ -->
+                        <li><a href="/products">Products</a></li> <!-- ✅ -->
+                        <li><a href="/services">Services</a></li> <!-- ✅ -->
+                        <li><a href="/about">About Us</a></li> <!-- ✅ -->
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h4>Products</h4>
                     <ul>
-                        <li><a href="products.html?category=batteries">Batteries</a></li>
-                        <li><a href="products.html?category=inverters">Inverters</a></li>
-                        <li><a href="products.html?category=panels">Solar Panels</a></li>
-                        <li><a href="products.html?category=controllers">Controllers</a></li>
+                        <li><a href="/products?category=batteries">Batteries</a></li> <!-- ✅ -->
+                        <li><a href="/products?category=inverters">Inverters</a></li> <!-- ✅ -->
+                        <li><a href="/products?category=panels">Solar Panels</a></li> <!-- ✅ -->
+                        <li><a href="/products?category=controllers">Controllers</a></li> <!-- ✅ -->
                     </ul>
                 </div>
                 <div class="footer-section">
@@ -264,7 +264,7 @@
     </footer>
 
     <!-- WhatsApp Button -->
-    <a href="https://wa.me/2348012345678 " class="whatsapp-float" target="_blank" title="Chat on WhatsApp">
+    <a href="https://wa.me/2348012345678" class="whatsapp-float" target="_blank" title="Chat on WhatsApp"> <!-- ✅ Cleaned URL -->
         <span class="whatsapp-icon">💬</span>
     </a>
 
@@ -288,33 +288,33 @@
             <div class="modal-content">
                 <h2>Your Account</h2>
                 <!-- Add this inside your account page content, perhaps below the order history -->
-<div class="edit-address-section">
-    <h3>Edit Delivery Address</h3>
-    <form id="editAddressForm">
-        <div class="form-group">
-            <label for="editStreet">Street Address:</label>
-            <input type="text" id="editStreet" name="street" required>
-        </div>
-        <div class="form-group">
-            <label for="editCity">City:</label>
-            <input type="text" id="editCity" name="city" required>
-        </div>
-        <div class="form-group">
-            <label for="editState">State:</label>
-            <input type="text" id="editState" name="state" required>
-        </div>
-        <div class="form-group">
-            <label for="editPostalCode">Postal Code:</label>
-            <input type="text" id="editPostalCode" name="postalCode">
-        </div>
-        <div class="user-contact-info">
-    <h3>Contact Information</h3>
-    <p><strong>Email:</strong> <span id="userEmail">Loading...</span></p>
-    <p><strong>Phone:</strong> <span id="userPhone">Loading...</span></p>
-</div>
-        <button type="submit" class="btn btn-primary">Save Address</button>
-    </form>
-</div>
+                <div class="edit-address-section">
+                    <h3>Edit Delivery Address</h3>
+                    <form id="editAddressForm">
+                        <div class="form-group">
+                            <label for="editStreet">Street Address:</label>
+                            <input type="text" id="editStreet" name="street" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editCity">City:</label>
+                            <input type="text" id="editCity" name="city" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editState">State:</label>
+                            <input type="text" id="editState" name="state" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editPostalCode">Postal Code:</label>
+                            <input type="text" id="editPostalCode" name="postalCode">
+                        </div>
+                        <div class="user-contact-info">
+                            <h3>Contact Information</h3>
+                            <p><strong>Email:</strong> <span id="userEmail">Loading...</span></p>
+                            <p><strong>Phone:</strong> <span id="userPhone">Loading...</span></p>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Address</button>
+                    </form>
+                </div>
                 <div id="orderHistory">
                     <!-- Order history will be populated by JS -->
                 </div>
@@ -334,135 +334,136 @@
         </div>
     </div>
 
-<!-- NEW: Login/Signup Modal -->
-<div class="modal-overlay" id="authModal">
-    <div class="modal-container">
-        <button class="modal-close" id="authClose">&times;</button>
-        <div class="modal-content">
-            <h2 id="authFormTitle">Login</h2>
-           <form id="authForm" data-mode="login">
-    <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username" required>
-    </div>
-    <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" required>
-    </div>
+    <!-- NEW: Login/Signup Modal -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal-container">
+            <button class="modal-close" id="authClose">&times;</button>
+            <div class="modal-content">
+                <h2 id="authFormTitle">Login</h2>
+                <form id="authForm" data-mode="login">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
 
-    <!-- NEW: Container for Signup-only fields -->
-   <!-- Inside your <form id="authForm">, modify the signup-only fields -->
-<div id="signupExtraFields" style="display: none;">
-    <!-- Email Field -->
-    <div class="form-group">
-        <label for="email">Email Address:</label>
-        <input type="email" id="email" name="email" placeholder="you@example.com">
-    </div>
+                    <!-- NEW: Container for Signup-only fields -->
+                    <div id="signupExtraFields" style="display: none;">
+                        <!-- Email Field -->
+                        <div class="form-group">
+                            <label for="email">Email Address:</label>
+                            <input type="email" id="email" name="email" placeholder="you@example.com">
+                        </div>
 
-    <!-- Phone Number Field -->
-    <div class="form-group">
-        <label for="phone">Phone Number:</label>
-        <input type="tel" id="phone" name="phone" placeholder="+234 801 234 5678" pattern="[+]?[0-9]{1,3}[0-9]{9,15}">
-    </div>
+                        <!-- Phone Number Field -->
+                        <div class="form-group">
+                            <label for="phone">Phone Number:</label>
+                            <input type="tel" id="phone" name="phone" placeholder="+234 801 234 5678" pattern="[+]?[0-9]{1,3}[0-9]{9,15}">
+                        </div>
 
-    <!-- Address Fields -->
-    <h4>Delivery Address</h4>
-    <div class="form-group">
-        <label for="street">Street Address:</label>
-        <input type="text" id="street" name="street" placeholder="e.g., 123 Main Street">
-    </div>
-    <div class="form-group">
-        <label for="city">City:</label>
-        <input type="text" id="city" name="city" placeholder="e.g., Lagos">
-    </div>
-    <div class="form-group">
-        <label for="state">State:</label>
-        <input type="text" id="state" name="state" placeholder="e.g., Lagos State">
-    </div>
-    <div class="form-group">
-        <label for="postalCode">Postal Code:</label>
-        <input type="text" id="postalCode" name="postalCode" placeholder="e.g., 100001">
-    </div>
-</div>
+                        <!-- Address Fields -->
+                        <h4>Delivery Address</h4>
+                        <div class="form-group">
+                            <label for="street">Street Address:</label>
+                            <input type="text" id="street" name="street" placeholder="e.g., 123 Main Street">
+                        </div>
+                        <div class="form-group">
+                            <label for="city">City:</label>
+                            <input type="text" id="city" name="city" placeholder="e.g., Lagos">
+                        </div>
+                        <div class="form-group">
+                            <label for="state">State:</label>
+                            <input type="text" id="state" name="state" placeholder="e.g., Lagos State">
+                        </div>
+                        <div class="form-group">
+                            <label for="postalCode">Postal Code:</label>
+                            <input type="text" id="postalCode" name="postalCode" placeholder="e.g., 100001">
+                        </div>
+                    </div>
 
-    <div id="authError" style="color: red; margin-bottom: 10px;"></div>
-    <button type="submit" id="authSubmitBtn" class="btn btn-primary">Login</button>
-    <div id="forgotPasswordSection" style="margin-top: 15px; text-align: center;">
-    <a href="#" class="btn btn-continue" id="forgotPasswordLink">Forgot Password?</a>
-</div>
-</form>
-            <p id="authToggleText">Don't have an account? <a href="#" id="signupFormSwitch">Sign Up</a></p>
-        </div>
-    </div>
-</div>
-<!-- Payment Simulation Modal -->
-<div class="modal-overlay" id="paymentModal">
-    <div class="modal-container">
-        <button class="modal-close" onclick="closePaymentModal()">&times;</button>
-        <div class="modal-content">
-            <h2>Pay with Remita</h2>
-            <p>Simulating payment for Order #<span id="simOrderID">...</span></p>
-            <p>Total Amount: ₦<span id="simOrderTotal">0</span></p>
-            <div id="paymentStatusDisplay" class="payment-status">
-                <!-- Status will be updated here -->
-            </div>
-            <div class="payment-actions">
-                <button id="simulatePaymentBtn" class="btn btn-primary">Simulate Payment</button>
-                <button id="checkStatusBtn" class="btn btn-continue" disabled>Check Payment Status</button>
+                    <div id="authError" style="color: red; margin-bottom: 10px;"></div>
+                    <button type="submit" id="authSubmitBtn" class="btn btn-primary">Login</button>
+                    <div id="forgotPasswordSection" style="margin-top: 15px; text-align: center;">
+                        <a href="#" class="btn btn-continue" id="forgotPasswordLink">Forgot Password?</a>
+                    </div>
+                </form>
+                <p id="authToggleText">Don't have an account? <a href="#" id="signupFormSwitch">Sign Up</a></p>
             </div>
         </div>
     </div>
-</div>
-<!-- Add this after your existing modals -->
-<div class="modal-overlay" id="forgotPasswordModal">
-    <div class="modal-container">
-        <button class="modal-close" onclick="closeForgotPasswordModal()">&times;</button>
-        <div class="forgot-modal modal-content">
-            <h2>Reset Your Password</h2>
-            <form id="forgotPasswordForm">
-                <div class="form-group">
-                    <label for="forgotPasswordUsername">Username</label>
-                    <input type="text" id="forgotPasswordUsername" name="username" required>
+
+    <!-- Payment Simulation Modal -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal-container">
+            <button class="modal-close" onclick="closePaymentModal()">&times;</button>
+            <div class="modal-content">
+                <h2>Pay with Remita</h2>
+                <p>Simulating payment for Order #<span id="simOrderID">...</span></p>
+                <p>Total Amount: ₦<span id="simOrderTotal">0</span></p>
+                <div id="paymentStatusDisplay" class="payment-status">
+                    <!-- Status will be updated here -->
                 </div>
-                <div class="form-group">
-                    <label for="forgotPasswordEmail">Email Address</label>
-                    <input type="email" id="forgotPasswordEmail" name="email" required>
+                <div class="payment-actions">
+                    <button id="simulatePaymentBtn" class="btn btn-primary">Simulate Payment</button>
+                    <button id="checkStatusBtn" class="btn btn-continue" disabled>Check Payment Status</button>
                 </div>
-                <div id="forgotPasswordError" style="color: red; margin-bottom: 10px;"></div>
-                <button type="submit" class="btn btn-primary">Send Reset Link</button>
-            </form>
-        </div>
-    </div>
-</div>
-<!-- Logout Confirmation Modal -->
-<div class="modal-overlay" id="confirmModal">
-    <div class="modal-container alert-modal">
-        <div class="alert-content">
-            <div class="alert-icon" id="confirmIcon">?</div>
-            <h3 id="confirmTitle">Confirm Action</h3>
-            <p id="confirmMessage">Are you sure you want to proceed?</p>
-            <div class="alert-buttons">
-                <button class="btn  btn-continue btn-primary" id="confirmYes">Yes</button>
-                <button class="btn btn-continue" id="confirmNo">No</button>
             </div>
         </div>
     </div>
-</div>
-<!-- Global Loading Overlay -->
-<div id="globalLoader" class="loader-overlay">
-    <div class="loader-spinner"></div>
-    <p class="loader-text">Loading, please wait...</p>
-</div>
-<!-- Keep your existing modals (alertModal, productModal, etc.) here -->
+
+    <!-- Forgot Password Modal -->
+    <div class="modal-overlay" id="forgotPasswordModal">
+        <div class="modal-container">
+            <button class="modal-close" onclick="closeForgotPasswordModal()">&times;</button>
+            <div class="forgot-modal modal-content">
+                <h2>Reset Your Password</h2>
+                <form id="forgotPasswordForm">
+                    <div class="form-group">
+                        <label for="forgotPasswordUsername">Username</label>
+                        <input type="text" id="forgotPasswordUsername" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="forgotPasswordEmail">Email Address</label>
+                        <input type="email" id="forgotPasswordEmail" name="email" required>
+                    </div>
+                    <div id="forgotPasswordError" style="color: red; margin-bottom: 10px;"></div>
+                    <button type="submit" class="btn btn-primary">Send Reset Link</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-container alert-modal">
+            <div class="alert-content">
+                <div class="alert-icon" id="confirmIcon">?</div>
+                <h3 id="confirmTitle">Confirm Action</h3>
+                <p id="confirmMessage">Are you sure you want to proceed?</p>
+                <div class="alert-buttons">
+                    <button class="btn btn-continue btn-primary" id="confirmYes">Yes</button>
+                    <button class="btn btn-continue" id="confirmNo">No</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Loading Overlay -->
+    <div id="globalLoader" class="loader-overlay">
+        <div class="loader-spinner"></div>
+        <p class="loader-text">Loading, please wait...</p>
+    </div>
+
     <script src="script.js"></script>
     <script>
-           document.addEventListener("DOMContentLoaded", () => {
-         
-
+        document.addEventListener("DOMContentLoaded", () => {
             // NEW: Initialize user session and add event listeners for auth/cart
             initializeUserSession(); // Ensure session is loaded
 
-          const viewCartBtn = document.getElementById('viewCartBtn');
+            const viewCartBtn = document.getElementById('viewCartBtn');
             if (viewCartBtn) {
                 viewCartBtn.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -470,18 +471,7 @@
                 });
             }
 
-            // const loginBtn = document.getElementById('loginBtn');
-            // if (loginBtn) {
-            //     loginBtn.addEventListener('click', (e) => {
-            //         e.preventDefault();
-            //         const username = prompt("Please enter a username to log in or create an account:");
-            //         if (username) {
-            //             handleLoginOrSignup(username);
-            //         }
-            //     });
-            // }
-
-             const logoutBtn = document.getElementById('logoutBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -495,24 +485,24 @@
                     e.preventDefault();
                     // Navigate to account page or load order history in a modal
                     loadOrderHistory(); // Example: Load history in a modal
-                     const accountModal = document.getElementById("accountModal"); // You need to create this modal in your HTML
-                     if (accountModal) {
-                         accountModal.classList.add("active");
-                         document.body.style.overflow = "hidden";
-                     }
+                    const accountModal = document.getElementById("accountModal"); // You need to create this modal in your HTML
+                    if (accountModal) {
+                        accountModal.classList.add("active");
+                        document.body.style.overflow = "hidden";
+                    }
                 });
             }
 
             // Add key listener for account modal close - NEW
             document.addEventListener("keydown", (e) => {
                 if (document.getElementById("accountModal")?.classList.contains("active")) {
-                  if (e.key === "Escape") { document.getElementById('accountModal').classList.remove('active'); document.body.style.overflow=''; }
+                    if (e.key === "Escape") {
+                        document.getElementById('accountModal').classList.remove('active');
+                        document.body.style.overflow = '';
+                    }
                 }
             });
-
-        })
-
-        
+        });
     </script>
 </body>
 </html>

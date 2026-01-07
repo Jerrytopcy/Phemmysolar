@@ -1563,7 +1563,7 @@ async function loadLatestNews() {
 <p class="news-date">${formatDate(article.date)}</p>
 <h3 class="news-title">${article.title}</h3>
 <p class="news-description">${article.description}</p>
-<a href="news.html" class="news-link" onclick="viewFullArticle(${article.id});">Read More →</a>
+<a href="news" class="news-link" onclick="viewFullArticle(${article.id});">Read More →</a>
 </div>
 </div>
 `,

@@ -807,113 +807,123 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
 
 // --- FORGOT PASSWORD ROUTE ---
 app.post('/api/forgot-password', async (req, res) => {
-  const { username, email } = req.body;
+    const { username, email } = req.body;
 
-  if (!username || !email) {
-    return res.status(400).json({ error: 'Username and email are required.' });
-  }
-
-  try {
-    const result = await pool.query(
-      'SELECT id, username, email FROM users WHERE username = $1 AND email = $2',
-      [username, email]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found with the provided username and email.' });
+    if (!username || !email) {
+        return res.status(400).json({ error: 'Username and email are required.' });
     }
 
-    const user = result.rows[0];
-    const resetToken = `${user.id}:${Date.now()}:${Math.random().toString(36).substr(2)}`;
-    const resetTokenExpiry = Date.now() + 3600000; // 1 hour
+    try {
+        // Find user by username and email
+        const result = await pool.query(
+            'SELECT id, username, email FROM users WHERE username = $1 AND email = $2',
+            [username, email]
+        );
 
-    await pool.query(
-      'UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE id = $3',
-      [resetToken, resetTokenExpiry, user.id]
-    );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found with the provided username and email.' });
+        }
 
-    const resetLink = `https://phemmysolar-production.up.railway.app/reset-password?token=${encodeURIComponent(resetToken)}`;
+        const user = result.rows[0];
 
-    const msg = {
-      to: email,
-      from: 'noreply@phemmysolar.com',
-      subject: 'Password Reset Request',
-      text: `Hello ${username},\n\nYou requested to reset your password. Please click the link below to reset it:\n${resetLink}\n\nThis link will expire in 1 hour.\n\nIf you did not request this, please ignore this email.`,
-      html: `<p>Hello ${username},</p>
-             <p>You requested to reset your password. Please click the link below to reset it:</p>
-             <p><a href="${resetLink}">${resetLink}</a></p>
-             <p>This link will expire in 1 hour.</p>
-             <p>If you did not request this, please ignore this email.</p>`
-    };
+        // Generate a secure JWT token for password reset
+        const resetToken = jwt.sign(
+            { userId: user.id }, // Payload
+            process.env.JWT_SECRET, // Secret key (must be set in env)
+            { expiresIn: '1h' } // Token expires in 1 hour
+        );
 
-    await sgMail.send(msg);
+        // Save the token in the database for verification
+        await pool.query(
+            'UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE id = $3',
+            [resetToken, Date.now() + 3600000, user.id] // 1 hour from now
+        );
 
-    console.log(`Password reset email sent to ${email}`);
+        // Create the reset URL (pointing to your frontend)
+        // IMPORTANT: Replace this with your actual frontend URL
+        const resetUrl = `https://www.phemmysolar.com/reset-password?token=${encodeURIComponent(resetToken)}`;
 
-    res.json({
-      success: true,
-      message: 'A password reset link has been sent to your email.'
-    });
+        // Compose the email
+        const msg = {
+            to: email,
+            from: 'noreply@phemmysolar.com', // Ensure this is a verified sender in SendGrid
+            subject: 'Password Reset Request',
+            html: `
+                <h2>Password Reset</h2>
+                <p>Hello ${username},</p>
+                <p>You requested a password reset for your PhemmySolar account.</p>
+                <p>Click the link below to reset your password:</p>
+                <a href="${resetUrl}" target="_blank">Reset Password</a>
+                <p>This link will expire in 1 hour.</p>
+                <p>If you did not request this, please ignore this email.</p>
+            `,
+        };
 
-  } catch (err) {
-    console.error('Error in forgot password route:', err);
-    res.status(500).json({ error: 'An error occurred while processing your request.' });
-  }
+        // Send the email
+        await sgMail.send(msg);
+
+        console.log(`Password reset email sent to ${email}`);
+
+        res.json({
+            success: true,
+            message: 'A password reset link has been sent to your email.'
+        });
+
+    } catch (err) {
+        console.error('Error in forgot password route:', err);
+        res.status(500).json({ error: 'An error occurred while processing your request.' });
+    }
 });
 
 // --- RESET PASSWORD ROUTE ---
 app.post('/api/reset-password', async (req, res) => {
-  const { token, newPassword } = req.body;
+    const { token, newPassword } = req.body;
 
-  if (!token || !newPassword) {
-    return res.status(400).json({ error: 'Token and new password are required.' });
-  }
-
-  try {
-    const parts = token.split(':');
-    if (parts.length !== 3) {
-      return res.status(400).json({ error: 'Invalid token format.' });
+    if (!token || !newPassword) {
+        return res.status(400).json({ error: 'Token and new password are required.' });
     }
 
-    const userId = parseInt(parts[0]);
-    const expiry = parseInt(parts[1]);
+    try {
+        // Verify the JWT token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    if (isNaN(userId) || isNaN(expiry)) {
-      return res.status(400).json({ error: 'Invalid token.' });
+        // Find the user by the ID in the token
+        const userResult = await pool.query(
+            'SELECT id, reset_token, reset_token_expiry FROM users WHERE id = $1',
+            [decoded.userId]
+        );
+
+        if (userResult.rows.length === 0) {
+            return res.status(400).json({ error: 'Invalid or expired token.' });
+        }
+
+        const user = userResult.rows[0];
+
+        // Check if the token is still valid (not expired)
+        if (user.reset_token !== token || user.reset_token_expiry < Date.now()) {
+            return res.status(400).json({ error: 'Token has expired or is invalid.' });
+        }
+
+        // Hash the new password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+        // Update the user's password and clear the reset token
+        await pool.query(
+            'UPDATE users SET passwordhash = $1, reset_token = NULL, reset_token_expiry = NULL WHERE id = $2',
+            [hashedPassword, decoded.userId]
+        );
+
+        res.json({
+            success: true,
+            message: 'Password successfully reset. You can now log in.'
+        });
+
+    } catch (err) {
+        console.error('Error resetting password:', err);
+        res.status(500).json({ error: 'An error occurred while resetting your password.' });
     }
-
-    if (Date.now() > expiry) {
-      return res.status(400).json({ error: 'Token has expired.' });
-    }
-
-    const result = await pool.query(
-      'SELECT id FROM users WHERE id = $1 AND reset_token = $2',
-      [userId, token]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(400).json({ error: 'Invalid or expired token.' });
-    }
-
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
-    await pool.query(
-      'UPDATE users SET passwordhash = $1, reset_token = NULL, reset_token_expiry = NULL WHERE id = $2',
-      [hashedPassword, userId]
-    );
-
-    res.json({
-      success: true,
-      message: 'Password reset successfully.'
-    });
-
-  } catch (err) {
-    console.error('Error resetting password:', err);
-    res.status(500).json({ error: 'An error occurred while resetting your password.' });
-  }
 });
-
 // --- ADMIN LOGIN ROUTE ---
 app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body;

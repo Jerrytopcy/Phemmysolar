@@ -483,8 +483,7 @@ body {
   gap: 0.5rem;
 }
 
-.btn-edit,
-.btn-delete {
+.btn-view {
   padding: 0.5rem 1rem;
   border-radius: 6px;
   font-size: 0.875rem;
@@ -493,22 +492,13 @@ body {
   transition: all 0.3s;
 }
 
-.btn-edit {
+.btn-view {
   background-color: var(--secondary-color);
   color: #fff;
 }
 
-.btn-edit:hover {
+.btn-view:hover {
   background-color: #0284c7;
-}
-
-.btn-delete {
-  background-color: var(--danger-color);
-  color: #fff;
-}
-
-.btn-delete:hover {
-  background-color: #dc2626;
 }
 
 /* Settings */
@@ -1481,9 +1471,8 @@ body {
     }
 }
 
-
-/* ===== User Form Modal Styling ===== */
-#userFormContainer {
+/* ===== View User Modal Styling ===== */
+#viewUserModal {
     position: fixed;
     top: 0;
     left: 0;
@@ -1497,11 +1486,11 @@ body {
     animation: adminFadeIn 0.2s ease-out;
 }
 
-#userFormContainer.active {
+#viewUserModal.active {
     display: flex;
 }
 
-#userFormContainer .modal-container {
+#viewUserModal .modal-card {
     background-color: #fff;
     border-radius: 16px;
     padding: 2rem;
@@ -1512,26 +1501,25 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    max-height: 85vh; /* Limit height to avoid overflow */
-    overflow-y: auto; /* Enable scrolling if content is too long */
+    max-height: 85vh;
+    overflow-y: auto;
 }
 
-#userFormContainer .modal-content {
-    width: 100%;
-}
-
-#userFormContainer .form-header {
+#viewUserModal .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #eee;
 }
 
-#userFormContainer .form-header h2 {
+#viewUserModal .modal-header h3 {
     color: var(--dark-color);
+    font-size: 1.5rem;
 }
 
-#userFormContainer .btn-close {
+#viewUserModal .btn-close {
     background: none;
     border: none;
     font-size: 2rem;
@@ -1540,53 +1528,82 @@ body {
     line-height: 1;
 }
 
-#userFormContainer .btn-close:hover {
+#viewUserModal .btn-close:hover {
     color: var(--danger-color);
 }
 
-#userFormContainer .product-form {
+#viewUserModal .modal-content {
+    width: 100%;
+}
+
+#viewUserModal .user-modal-content {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
 }
 
-#userFormContainer .form-group {
+#viewUserModal .user-header {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
 }
 
-#userFormContainer .form-group label {
+#viewUserModal .user-header h3 {
+    color: var(--dark-color);
+    font-size: 1.25rem;
+}
+
+#viewUserModal .user-role {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+#viewUserModal .user-role.user {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+#viewUserModal .user-role.admin {
+    background-color: #cce5ff;
+    color: #0056b3;
+}
+
+#viewUserModal .user-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+#viewUserModal .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+#viewUserModal .info-item strong {
     font-weight: 600;
     color: var(--dark-color);
 }
 
-#userFormContainer .form-group input,
-#userFormContainer .form-group select {
-    padding: 0.875rem;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1rem;
-    font-family: inherit;
-    transition: border-color 0.3s;
-    width: 100%; /* Ensure inputs fill container */
-    box-sizing: border-box;
+#viewUserModal .info-item span {
+    color: var(--text-color);
+    font-size: 0.9375rem;
 }
 
-#userFormContainer .form-group input:focus,
-#userFormContainer .form-group select:focus {
-    outline: none;
-    border-color: var(--primary-color);
-}
-
-#userFormContainer .form-actions {
+#viewUserModal .modal-actions {
     display: flex;
     gap: 1rem;
     margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid #eee;
 }
 
-#userFormContainer .btn {
-    padding: 0.875rem 2rem;
+#viewUserModal .btn {
+    padding: 0.875rem 1.5rem;
     border-radius: 8px;
     font-weight: 600;
     transition: all 0.3s;
@@ -1595,45 +1612,45 @@ body {
     font-size: 1rem;
 }
 
-#userFormContainer .btn-primary {
+#viewUserModal .btn-primary {
     background-color: var(--primary-color);
     color: #fff;
-    flex: 1; /* Make buttons equal width */
 }
 
-#userFormContainer .btn-primary:hover {
+#viewUserModal .btn-primary:hover {
     background-color: #d97706;
 }
 
-#userFormContainer .btn-secondary {
+#viewUserModal .btn-secondary {
     background-color: var(--border-color);
     color: var(--text-color);
-    flex: 1;
 }
 
-#userFormContainer .btn-secondary:hover {
+#viewUserModal .btn-secondary:hover {
     background-color: #cbd5e1;
 }
 
 /* Responsive Design for Mobile */
 @media (max-width: 768px) {
-    #userFormContainer .modal-container {
+    #viewUserModal .modal-card {
         max-width: 95vw;
         padding: 1rem;
         margin: 1rem;
     }
 
-    #userFormContainer .modal-content {
+    #viewUserModal .modal-content {
         padding: 1rem;
     }
 
-    #userFormContainer .form-group input,
-    #userFormContainer .form-group select {
-        padding: 0.75rem;
-        font-size: 0.9rem;
+    #viewUserModal .user-info-grid {
+        grid-template-columns: 1fr;
     }
 
-    #userFormContainer .btn {
+    #viewUserModal .info-item {
+        font-size: 0.875rem;
+    }
+
+    #viewUserModal .btn {
         padding: 0.75rem 1rem;
         font-size: 0.9rem;
     }

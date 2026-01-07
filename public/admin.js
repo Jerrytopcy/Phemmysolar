@@ -1156,8 +1156,7 @@ async function loadUsers() {
 <td>${user.order_count || 0}</td>
 <td>
 <div class="product-actions">
-<button class="btn-edit" onclick="editUser(${user.id})">Edit</button>
-<button class="btn-delete" onclick="deleteUser(${user.id})">Delete</button>
+<button class="btn-view" onclick="viewUser(${user.id})">Open View</button>
 </div>
 </td>
 </tr>
@@ -1171,77 +1170,7 @@ async function loadUsers() {
         hideLoader(); // Hide loader after loading is complete
     }
 }
-
-// Show user form
-function showUserForm() {
-    const formContainer = document.getElementById("userFormContainer");
-    const formTitle = document.getElementById("userFormTitle");
-    formTitle.textContent = "Edit User";
-    formContainer.style.display = "flex";
-}
-
-// Hide user form
-function hideUserForm() {
-    document.getElementById("userFormContainer").style.display = "none";
-    document.getElementById("userForm").reset();
-    currentEditingUserId = null;
-}
-
-// Handle user form submission
-async function handleUserSubmit(e) {
-    e.preventDefault();
-    const userId = document.getElementById("userId").value;
-    const userData = {
-        username: document.getElementById("username").value,
-        password: document.getElementById("password").value,
-        email: document.getElementById("email").value,
-        phone: document.getElementById("phone").value,
-        address: {
-            street: document.getElementById("street").value,
-            city: document.getElementById("city").value,
-            state: document.getElementById("state").value,
-            postalCode: document.getElementById("postalCode").value,
-            country: "Nigeria"
-        },
-        role: document.getElementById("userRole").value || 'user' // Add role field
-    };
-      // Only include password if it's filled in
-      if (passwordInput.value.trim() !== "") {
-          userData.password = passwordInput.value;
-      }
-    try {
-        showLoader(userId ? "Updating user..." : "Adding user..."); // Show loader during submission
-        const method = userId ? 'PUT' : 'POST'; // Use PUT for updates, POST for new
-        const url = userId ? `/api/users/${userId}` : '/api/users'; // Use route param, not query param
-        const response = await fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(userData),
-        });
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        }
-        const result = await response.json();
-        if (result.success) {
-            loadUsers(); // Reload the user list
-            hideUserForm(); // Close the form
-            await showAdminAlert(userId ? "User updated successfully!" : "User added successfully!", "Success");
-        } else {
-            throw new Error(result.error || "Failed to save user.");
-        }
-    } catch (error) {
-        console.error("Error saving user:", error);
-        await showAdminAlert(`Error saving user: ${error.message}`, "Error");
-    } finally {
-        hideLoader(); // Always hide loader after submission
-    }
-}
-
-// Edit user
-function editUser(userId) {
+function viewUser(userId) {
     fetch(`/api/users/${userId}`)
         .then(response => {
             if (!response.ok) {
@@ -1255,92 +1184,46 @@ function editUser(userId) {
                 return;
             }
 
-            // Use setTimeout to ensure DOM is ready
-            setTimeout(() => {
-                const userIdEl = document.getElementById("userId");
-                const usernameEl = document.getElementById("username");
-                const emailEl = document.getElementById("email");
-                const phoneEl = document.getElementById("phone");
-                const userRoleEl = document.getElementById("userRole");
-                const streetEl = document.getElementById("street");
-                const cityEl = document.getElementById("city");
-                const stateEl = document.getElementById("state");
-                const postalCodeEl = document.getElementById("postalCode");
+            // Populate modal content
+            const content = document.getElementById("viewUserContent");
+            content.innerHTML = `
+                <div class="user-modal-content">
+                    <div class="user-header">
+                        <h3>User Details</h3>
+                        <span class="user-role">${user.role}</span>
+                    </div>
+                    <div class="user-info-grid">
+                        <div class="info-item">
+                            <strong>Username:</strong>
+                            <span>${user.username}</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Email:</strong>
+                            <span>${user.email || "—"}</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Phone:</strong>
+                            <span>${user.phone || "—"}</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Order Count:</strong>
+                            <span>${user.order_count || 0}</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Address:</strong>
+                            <span>${user.address ? `${user.address.street}, ${user.address.city}, ${user.address.state} ${user.address.postalCode}, ${user.address.country}` : "—"}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
 
-                // Defensive check: Ensure all elements exist
-                if (!userIdEl || !usernameEl || !emailEl || !phoneEl || !userRoleEl || !streetEl || !cityEl || !stateEl || !postalCodeEl) {
-                    console.error("One or more user form fields are missing in DOM.");
-                    showAdminAlert("User form is incomplete. Please contact support.", "Error");
-                    return;
-                }
-
-                // Safely set values
-                userIdEl.value = user.id;
-                usernameEl.value = user.username;
-                emailEl.value = user.email || "";
-                phoneEl.value = user.phone || "";
-                userRoleEl.value = user.role || 'user';
-                streetEl.value = (user.address && user.address.street) ? user.address.street : "";
-                cityEl.value = (user.address && user.address.city) ? user.address.city : "";
-                stateEl.value = (user.address && user.address.state) ? user.address.state : "";
-                postalCodeEl.value = (user.address && user.address.postalCode) ? user.address.postalCode : "";
-
-                // Clear password field when editing (do not show current password)
-                const passwordEl = document.getElementById("password");
-                if (passwordEl) {
-                    passwordEl.value = ""; // Leave empty for security
-                }
-
-                
-
-                currentEditingUserId = userId;
-                showUserForm(true);
-
-            }, 0); // <-- This ensures the DOM is ready
-              // Hide password field when editing 
-                const passwordField = document.getElementById("password");
-                const passwordLabel = document.querySelector('label[for="password"]');
-                if (passwordField && passwordLabel) {
-                    passwordField.style.display = "none";
-                    passwordLabel.style.display = "none";
-                }
+            // Show modal
+            document.getElementById("viewUserModal").style.display = "flex";
         })
         .catch(error => {
-            console.error("Error fetching user for edit:", error);
+            console.error("Error fetching user for view:", error);
             showAdminAlert(`Error loading user: ${error.message}`, "Error");
         });
-}
-
-// Delete user
-async function deleteUser(userId) {
-    const confirmed = await showAdminConfirm(
-        "Are you sure you want to delete this user? This action cannot be undone.",
-        "Delete User",
-    );
-    if (confirmed) {
-        try {
-            showLoader("Deleting user..."); // Show loader while deleting user
-            const response = await fetch(`/api/users/${userId}`, { // Use route param, not query param
-                method: 'DELETE',
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-            }
-            const result = await response.json();
-            if (result.success) {
-                loadUsers(); // Reload the user list
-                await showAdminAlert("User deleted successfully!", "Success");
-            } else {
-                throw new Error(result.error || "Failed to delete user.");
-            }
-        } catch (error) {
-            console.error("Error deleting user:", error);
-            await showAdminAlert(`Error deleting user: ${error.message}`, "Error");
-        } finally {
-            hideLoader(); // Hide loader after deleting user
-        }
-    }
 }
 
 // Initialize admin panel
@@ -1456,24 +1339,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadProducts();
     loadTestimonials();
     loadNews();
-    // Add these event listeners inside the DOMContentLoaded block
-    // Add user button
-   
-    // Close user form button
-    const closeUserFormBtn = document.getElementById("closeUserFormBtn");
-    if (closeUserFormBtn) {
-        closeUserFormBtn.addEventListener("click", hideUserForm);
-    }
-    // Cancel user form button
-    const cancelUserFormBtn = document.getElementById("cancelUserFormBtn");
-    if (cancelUserFormBtn) {
-        cancelUserFormBtn.addEventListener("click", hideUserForm);
-    }
-    // User form submission
-    const userForm = document.getElementById("userForm");
-    if (userForm) {
-        userForm.addEventListener("submit", handleUserSubmit);
-    }
+    
     // Add event listener for the "Users" navigation item
     const usersNav = document.querySelector('[data-section="users"]');
     if (usersNav) {
@@ -1499,6 +1365,28 @@ document.addEventListener("DOMContentLoaded", () => {
             e.target.value = formatted;
         });
     }
+
+    // Close view user modal
+      document.getElementById("closeViewUserBtn")?.addEventListener("click", () => {
+          document.getElementById("viewUserModal").style.display = "none";
+      });
+      document.getElementById("closeViewUserBtn2")?.addEventListener("click", () => {
+          document.getElementById("viewUserModal").style.display = "none";
+      });
+
+      // Close on overlay click
+      document.getElementById("viewUserModal")?.addEventListener("click", (e) => {
+          if (e.target === document.getElementById("viewUserModal")) {
+              document.getElementById("viewUserModal").style.display = "none";
+          }
+      });
+
+      // Close on Escape key
+      document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && document.getElementById("viewUserModal").style.display === "flex") {
+              document.getElementById("viewUserModal").style.display = "none";
+          }
+      });
 });
 
 ["orderSearchInput", "statusFilter", "paymentFilter"]

@@ -398,57 +398,11 @@
             <!-- Add this after the settingsSection -->
             <section class="content-section" id="usersSection" style="display: none;">
                     <div class="section-actions">
-                        <span class="warning">(Admin Only) Treat with extreme carefulness</span>
+                        <span class="warning">(Admin Only) Here admin view users and filters them</span>
                     </div>
                     <div class="products-table-container">
                         <!-- Add this before the closing </body> tag -->
                  <!-- User Form Modal -->
-                <div id="userFormContainer" class="modal-overlay" style="display: none;">
-                <div class="modal-container">
-                <button id="closeUserFormBtn" class="btn-close">&times;</button>
-                    <div class="modal-content">
-                        <form id="userForm" class="product-form">
-                            <input type="hidden" id="userId" name="userId">
-                            <div class="form-group">
-                                <label for="username">Username:</label>
-                                <input type="text" id="username" name="username" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="password">Password:</label>
-                                <input type="password" id="password" name="password" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="email">Email:</label>
-                                <input type="email" id="email" name="email" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="phone">Phone Number:</label>
-                                <input type="tel" id="phone" name="phone" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="street">Street Address:</label>
-                                <input type="text" id="street" name="street" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="city">City:</label>
-                                <input type="text" id="city" name="city" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="state">State:</label>
-                                <input type="text" id="state" name="state" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="postalCode">Postal Code:</label>
-                                <input type="text" id="postalCode" name="postalCode">
-                            </div>
-                            <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">Save User</button>
-                                <button type="button" id="cancelUserFormBtn" class="btn btn-secondary">Cancel</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
                         <table class="products-table">
                             <thead>
                                 <tr>
@@ -581,6 +535,21 @@
   </div>
 </div>
 
+<!-- View User Modal -->
+<div id="viewUserModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>User Details</h3>
+            <button id="closeViewUserBtn" class="btn-close">&times;</button>
+        </div>
+        <div id="viewUserContent" class="modal-content">
+            <!-- Content will be injected here -->
+        </div>
+        <div class="modal-actions">
+            <button type="button" id="closeViewUserBtn2" class="btn btn-secondary">Close</button>
+        </div>
+    </div>
+</div>
 
 <div id="orderStatusModal" class="modal-overlay">
   <div class="modal-card">

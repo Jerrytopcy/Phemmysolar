@@ -440,6 +440,7 @@ function handleLogout() {
 }
 
 // Show the login/signup modal - ALWAYS show Login form first
+
 // Show the login/signup modal - ALWAYS show Login form first
 function showAuthModal() {
     const modal = document.getElementById("authModal");
@@ -450,15 +451,19 @@ function showAuthModal() {
         document.getElementById("authSubmitBtn").textContent = "Login";
         document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
         document.getElementById("signupExtraFields").style.display = "none";
-
+        
         // Clear form inputs and errors
         document.getElementById("authForm").reset();
         document.getElementById("authError").textContent = "";
-
+        
+        // Clear validation messages and spinners
+        hideValidationMessages();
+        const spinners = document.querySelectorAll('.field-spinner');
+        spinners.forEach(spinner => spinner.remove());
+        
         // Reattach event listeners for switching
         const signupSwitch = document.getElementById("signupFormSwitch");
         const loginSwitch = document.getElementById("loginFormSwitch");
-
         if (signupSwitch) {
             signupSwitch.removeEventListener("click", switchToSignup);
             signupSwitch.addEventListener("click", switchToSignup);
@@ -467,17 +472,17 @@ function showAuthModal() {
             loginSwitch.removeEventListener("click", switchToLogin);
             loginSwitch.addEventListener("click", switchToLogin);
         }
-
+        
         // --- REAL-TIME VALIDATION SETUP ---
         const usernameInput = document.getElementById("username");
         const emailInput = document.getElementById("email");
         const phoneInput = document.getElementById("phone");
-
+        
         // Remove existing listeners (if any)
         usernameInput?.removeEventListener("input", validateFieldOnInput);
         emailInput?.removeEventListener("input", validateFieldOnInput);
         phoneInput?.removeEventListener("input", validateFieldOnInput);
-
+        
         // Add new listeners
         if (usernameInput) {
             usernameInput.addEventListener("input", () => validateFieldOnInput("username"));
@@ -488,10 +493,9 @@ function showAuthModal() {
         if (phoneInput) {
             phoneInput.addEventListener("input", () => validateFieldOnInput("phone"));
         }
-
+        
         // Hide all validation messages initially
         hideValidationMessages();
-
         modal.classList.add("active");
         document.body.style.overflow = "hidden";
     }
@@ -502,6 +506,7 @@ function showAuthModal() {
 // ======================
 
 // Switch to Signup Form
+// Switch to Signup Form
 function switchToSignup(e) {
     e.preventDefault();
     document.getElementById("authFormTitle").textContent = "Sign Up";
@@ -509,7 +514,20 @@ function switchToSignup(e) {
     document.getElementById("authSubmitBtn").textContent = "Sign Up";
     document.getElementById("authToggleText").innerHTML = "Already have an account? <a href='#' id='loginFormSwitch'>Login</a>";
     document.getElementById("signupExtraFields").style.display = "block";
-
+    
+    // Clear all form inputs
+    document.getElementById("authForm").reset();
+    
+    // Clear any existing error messages
+    document.getElementById("authError").textContent = "";
+    
+    // Clear real-time validation messages
+    hideValidationMessages();
+    
+    // Remove any spinners that might be present
+    const spinners = document.querySelectorAll('.field-spinner');
+    spinners.forEach(spinner => spinner.remove());
+    
     // Reattach event listener for the new login link
     const loginSwitch = document.getElementById("loginFormSwitch");
     if (loginSwitch) {
@@ -526,7 +544,20 @@ function switchToLogin(e) {
     document.getElementById("authSubmitBtn").textContent = "Login";
     document.getElementById("authToggleText").innerHTML = "Don't have an account? <a href='#' id='signupFormSwitch'>Sign Up</a>";
     document.getElementById("signupExtraFields").style.display = "none";
-
+    
+    // Clear all form inputs
+    document.getElementById("authForm").reset();
+    
+    // Clear any existing error messages
+    document.getElementById("authError").textContent = "";
+    
+    // Clear real-time validation messages
+    hideValidationMessages();
+    
+    // Remove any spinners that might be present
+    const spinners = document.querySelectorAll('.field-spinner');
+    spinners.forEach(spinner => spinner.remove());
+    
     // Reattach event listener for the new signup link
     const signupSwitch = document.getElementById("signupFormSwitch");
     if (signupSwitch) {

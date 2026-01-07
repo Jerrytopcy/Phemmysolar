@@ -400,10 +400,7 @@
                     <div class="section-actions">
                         <span class="warning">(Admin Only) Here admin view users and filters them</span>
                     </div>
-                    <div class="products-table-container">
-                        <!-- Add this before the closing </body> tag -->
-                 <!-- User Form Modal -->
-                  <div class="order-filters">
+                     <div class="order-filters">
                     <input type="text" id="userSearchInput" placeholder="Search by Username or Email" />
                     <select id="userRoleFilter">
                         <option value="">All Roles</option>
@@ -416,6 +413,9 @@
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
+                <button id="exportCsvBtn" class="btn btn-primary">📥 Export CSV</button>
+                    <div class="products-table-container">
+                 
                         <table class="products-table">
                             <thead>
                                 <tr>
@@ -431,6 +431,11 @@
                                 <!-- Users will be loaded here -->
                             </tbody>
                         </table>
+                        <div class="pagination-controls">
+                            <button id="prevPageBtn" class="btn btn-secondary">← Previous</button>
+                            <span id="pageInfo">Page 1 of 1</span>
+                            <button id="nextPageBtn" class="btn btn-secondary">Next →</button>
+                        </div>
                     </div>
             </section>
         </main>

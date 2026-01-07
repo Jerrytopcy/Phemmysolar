@@ -7,6 +7,10 @@ let testimonialImage = "";
 let newsImage = "";
 let currentEditingUserId = null;
 
+let currentPage = 1;
+const usersPerPage = 10;
+let totalUsers = 0;
+let allUsers = []; // Store all users for pagination
 // ===== Global Loader Helpers =====
 function showLoader(text = "Loading, please wait...") {
     const loader = document.getElementById("globalLoader");
@@ -1131,41 +1135,53 @@ async function loadUsers() {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const users = await response.json(); // Assuming your API returns an array of users
-        if (users.length === 0) {
+        allUsers = await response.json(); // Store all users
+        totalUsers = allUsers.length;
+
+        // Apply filters first
+        applyUserFilters();
+
+        // Paginate
+        const startIndex = (currentPage - 1) * usersPerPage;
+        const paginatedUsers = allUsers.slice(startIndex, startIndex + usersPerPage);
+
+        if (paginatedUsers.length === 0) {
             tableBody.innerHTML = `
-<tr>
-<td colspan="6" class="empty-state">
-<p>No users found.</p>
-</td>
-</tr>
-`;
-            return;
-        }
-        tableBody.innerHTML = users
-        .map((user) => {
-            // Format address for display
-            const address = user.address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
-            const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
-            return `
-        <tr>
-            <td>${user.username}</td>
-            <td>${user.email || "Not set"}</td>
-            <td>${user.phone || "Not set"}</td>
-            <td>${fullAddress}</td>
-            <td>${user.order_count || 0}</td>
-            <td>
-                <button class="btn-view" 
-                        onclick="viewUser(${user.id})" 
-                        data-role="${user.role}" 
-                        data-active="${user.active !== false}">
-                    View
-                </button>
-            </td>
-        </tr>
-        `
-        })
-.join("");
+          <tr>
+          <td colspan="6" class="empty-state">
+          <p>No users found.</p>
+          </td>
+          </tr>
+          `;
+                      updatePaginationControls();
+                      return;
+                  }
+
+                  tableBody.innerHTML = paginatedUsers
+                      .map((user) => {
+                          const address = user.address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
+                          const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+                          return `
+          <tr>
+          <td>${user.username}</td>
+          <td>${user.email || "Not set"}</td>
+          <td>${user.phone || "Not set"}</td>
+          <td>${fullAddress}</td>
+          <td>${user.order_count || 0}</td>
+          <td>
+          <div class="product-actions">
+          <button class="btn-view" onclick="viewUser(${user.id})" data-role="${user.role}" data-active="${user.active !== false}">
+          View
+          </button>
+          </div>
+          </td>
+          </tr>
+          `
+            })
+            .join("");
+
+        updatePaginationControls();
+
     } catch (error) {
         console.error("Error loading users:", error);
         tableBody.innerHTML = `<tr><td colspan="6" class="error-message"><p>Error loading users: ${error.message}</p></td></tr>`;
@@ -1174,23 +1190,57 @@ async function loadUsers() {
     }
 }
 
+function updatePaginationControls() {
+    const totalPages = Math.ceil(totalUsers / usersPerPage);
+    const pageInfo = document.getElementById("pageInfo");
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+
+    const prevBtn = document.getElementById("prevPageBtn");
+    const nextBtn = document.getElementById("nextPageBtn");
+
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = currentPage >= totalPages;
+
+    prevBtn.addEventListener("click", () => {
+        if (currentPage > 1) {
+            currentPage--;
+            loadUsers(); // Reload with new page
+        }
+    });
+
+    nextBtn.addEventListener("click", () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            loadUsers(); // Reload with new page
+        }
+    });
+}
+
 function applyUserFilters() {
     const search = document.getElementById("userSearchInput").value.toLowerCase();
     const role = document.getElementById("userRoleFilter").value;
 
-    const tableBody = document.getElementById("usersTableBody");
-    const rows = Array.from(tableBody.querySelectorAll("tr"));
-
-    rows.forEach(row => {
-        const username = row.cells[0].textContent.toLowerCase();
-        const email = row.cells[1].textContent.toLowerCase();
-        const userRole = row.cells[5].querySelector(".btn-view").dataset.role || "user";
+    // Filter all users
+    const filteredUsers = allUsers.filter(user => {
+        const username = user.username.toLowerCase();
+        const email = (user.email || "").toLowerCase();
+        const userRole = user.role;
 
         const matchesSearch = username.includes(search) || email.includes(search);
         const matchesRole = !role || userRole === role;
 
-        row.style.display = matchesSearch && matchesRole ? "" : "none";
+        return matchesSearch && matchesRole;
     });
+
+    // Update global array for pagination
+    allUsers = filteredUsers;
+    totalUsers = filteredUsers.length;
+
+    // Reset to page 1 when filtering
+    currentPage = 1;
+
+    // Re-render table with pagination
+    loadUsers();
 }
 
 function viewUser(userId) {
@@ -1248,6 +1298,24 @@ function viewUser(userId) {
 
             // Show modal
             document.getElementById("viewUserModal").style.display = "flex";
+
+            // After showing the modal, log the view
+            fetch('/api/audit/user-view', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}` // Or however you store JWT
+                },
+                body: JSON.stringify({ userId: userId })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    console.warn('Failed to log user view.');
+                }
+            })
+            .catch(err => {
+                console.warn('Error logging user view:', err);
+            });
         })
         .catch(error => {
             console.error("Error fetching user for view:", error);
@@ -1260,6 +1328,7 @@ function viewUser(userId) {
 // Initialize admin panel
 document.addEventListener("DOMContentLoaded", () => {
     checkAuth();
+    document.getElementById("exportCsvBtn")?.addEventListener("click", exportToCSV);
     // Login form
     const loginForm = document.getElementById("loginForm");
     if (loginForm) {
@@ -1461,3 +1530,31 @@ document.addEventListener("click", (e) => {
         }
     }
 });
+function exportToCSV() {
+    const headers = ["Username", "Email", "Phone", "Address", "Order Count", "Role"];
+    const rows = allUsers.map(user => [
+        user.username,
+        user.email || "",
+        user.phone || "",
+        user.address ? `${user.address.street}, ${user.address.city}, ${user.address.state} ${user.address.postalCode}, ${user.address.country}` : "",
+        user.order_count || 0,
+        user.role
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+        headers.join(","),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `users_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}

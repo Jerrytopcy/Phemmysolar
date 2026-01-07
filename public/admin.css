@@ -1682,3 +1682,23 @@ body {
         font-size: 0.9rem;
     }
 }
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.pagination-controls .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+#pageInfo {
+    font-weight: 600;
+    color: var(--text-color);
+}
+#exportCsvBtn {
+    margin-left: 1rem;
+}

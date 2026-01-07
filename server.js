@@ -923,7 +923,22 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
+app.post('/api/audit/user-view', authMiddleware, async (req, res) => {
+    const { userId } = req.body;
+    const adminId = req.user.id; // Assuming admin is logged in
 
+    try {
+        await pool.query(`
+            INSERT INTO audit_logs (user_id, viewed_by, ip_address, user_agent)
+            VALUES ($1, $2, $3, $4)
+        `, [userId, adminId, req.ip, req.get('User-Agent')]);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error logging user view:', err);
+        res.status(500).json({ error: 'Failed to log user view' });
+    }
+});
 // --- REMITA WEBHOOK ROUTE ---
 app.post('/api/webhook/remita', async (req, res) => {
   const { transactionId, status } = req.body;

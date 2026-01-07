@@ -1481,6 +1481,298 @@ body {
 }
 
 
+/* ===== View User Modal Styling ===== */
+#viewUserModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: adminFadeIn 0.2s ease-out;
+}
+
+#viewUserModal.active {
+    display: flex;
+}
+
+#viewUserModal .modal-card {
+    background-color: #fff;
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 600px;
+    width: 90%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    animation: adminSlideUp 0.3s ease-out;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+#viewUserModal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #eee;
+}
+
+#viewUserModal .modal-header h3 {
+    color: var(--dark-color);
+    font-size: 1.5rem;
+}
+
+#viewUserModal .btn-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: var(--text-color);
+    cursor: pointer;
+    line-height: 1;
+}
+
+#viewUserModal .btn-close:hover {
+    color: var(--danger-color);
+}
+
+#viewUserModal .modal-content {
+    width: 100%;
+}
+
+#viewUserModal .user-modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+#viewUserModal .user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+#viewUserModal .user-header h3 {
+    color: var(--dark-color);
+    font-size: 1.25rem;
+}
+
+#viewUserModal .user-role {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+#viewUserModal .user-role.user {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+#viewUserModal .user-role.admin {
+    background-color: #cce5ff;
+    color: #0056b3;
+}
+
+#viewUserModal .user-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+#viewUserModal .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+#viewUserModal .info-item strong {
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+#viewUserModal .info-item span {
+    color: var(--text-color);
+    font-size: 0.9375rem;
+}
+
+#viewUserModal .modal-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid #eee;
+}
+
+#viewUserModal .btn {
+    padding: 0.875rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+#viewUserModal .btn-primary {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+#viewUserModal .btn-primary:hover {
+    background-color: #d97706;
+}
+
+#viewUserModal .btn-secondary {
+    background-color: var(--border-color);
+    color: var(--text-color);
+}
+
+#viewUserModal .btn-secondary:hover {
+    background-color: #cbd5e1;
+}
+
+/* Responsive Design for Mobile */
+@media (max-width: 768px) {
+    #viewUserModal .modal-card {
+        max-width: 95vw;
+        padding: 1rem;
+        margin: 1rem;
+    }
+
+    #viewUserModal .modal-content {
+        padding: 1rem;
+    }
+
+    #viewUserModal .user-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #viewUserModal .info-item {
+        font-size: 0.875rem;
+    }
+
+    #viewUserModal .btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+}
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.pagination-controls .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+#pageInfo {
+    font-weight: 600;
+    color: var(--text-color);
+}
+#exportCsvBtn {
+    margin-left: 1rem;
+}
+
+
+.recent-orders {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.5rem 0;
+}
+
+.order-item {
+  background: linear-gradient(135deg, #f5f7ff, #ffffff);
+  border-left: 5px solid #6c5ce7;
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 0.6rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.order-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.order-top,
+.order-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-id {
+  font-weight: 600;
+  color: #2d3436;
+}
+
+.order-date {
+  font-size: 0.8rem;
+  color: #636e72;
+}
+
+.order-amount {
+  font-weight: 700;
+  color: #00b894;
+}
+
+.order-status {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* Status colors */
+.status-pending {
+  border-left-color: #fdcb6e;
+}
+
+.status-pending .order-status {
+  background-color: #fff5d6;
+  color: #e17055;
+}
+
+.status-completed {
+  border-left-color: #00b894;
+}
+
+.status-completed .order-status {
+  background-color: #dff9f0;
+  color: #00b894;
+}
+
+.status-cancelled {
+  border-left-color: #d63031;
+}
+
+.status-cancelled .order-status {
+  background-color: #ffe5e5;
+  color: #d63031;
+}
+
+.order-empty {
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  padding: 0.6rem;
+}
 /* ===============================
    USER DETAILS MODAL STYLING
    =============================== */
@@ -1671,139 +1963,4 @@ body {
     opacity: 1;
     transform: scale(1);
   }
-}
-
-
-/* Responsive Design for Mobile */
-@media (max-width: 768px) {
-    #viewUserModal .modal-card {
-        max-width: 95vw;
-        padding: 1rem;
-        margin: 1rem;
-    }
-
-    #viewUserModal .modal-content {
-        padding: 1rem;
-    }
-
-    #viewUserModal .user-info-grid {
-        grid-template-columns: 1fr;
-    }
-
-    #viewUserModal .info-item {
-        font-size: 0.875rem;
-    }
-
-    #viewUserModal .btn {
-        padding: 0.75rem 1rem;
-        font-size: 0.9rem;
-    }
-}
-.pagination-controls {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.pagination-controls .btn {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-}
-
-#pageInfo {
-    font-weight: 600;
-    color: var(--text-color);
-}
-#exportCsvBtn {
-    margin-left: 1rem;
-}
-
-
-.recent-orders {
-  list-style: none;
-  padding-left: 0;
-  margin: 0.5rem 0;
-}
-
-.order-item {
-  background: linear-gradient(135deg, #f5f7ff, #ffffff);
-  border-left: 5px solid #6c5ce7;
-  border-radius: 8px;
-  padding: 0.8rem 1rem;
-  margin-bottom: 0.6rem;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.order-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-}
-
-.order-top,
-.order-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.order-id {
-  font-weight: 600;
-  color: #2d3436;
-}
-
-.order-date {
-  font-size: 0.8rem;
-  color: #636e72;
-}
-
-.order-amount {
-  font-weight: 700;
-  color: #00b894;
-}
-
-.order-status {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 12px;
-  font-weight: 600;
-  text-transform: capitalize;
-}
-
-/* Status colors */
-.status-pending {
-  border-left-color: #fdcb6e;
-}
-
-.status-pending .order-status {
-  background-color: #fff5d6;
-  color: #e17055;
-}
-
-.status-completed {
-  border-left-color: #00b894;
-}
-
-.status-completed .order-status {
-  background-color: #dff9f0;
-  color: #00b894;
-}
-
-.status-cancelled {
-  border-left-color: #d63031;
-}
-
-.status-cancelled .order-status {
-  background-color: #ffe5e5;
-  color: #d63031;
-}
-
-.order-empty {
-  text-align: center;
-  color: #999;
-  font-style: italic;
-  padding: 0.6rem;
 }

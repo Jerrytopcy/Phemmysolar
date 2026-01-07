@@ -2287,3 +2287,160 @@ body {
   background: rgba(16, 185, 129, 0.25);
   transform: translateY(-1px);
 }
+
+
+/* ===============================
+   MESSAGES SECTION – PREMIUM UI
+================================ */
+
+#messagesSection {
+  animation: fadeSlideIn 0.45s ease;
+}
+
+/* Header */
+#messagesSection .section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 22px;
+}
+
+#messagesSection .section-header h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.4px;
+}
+
+#messagesSection .section-header p {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Filters wrapper */
+#messagesSection .order-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+/* Search input */
+#messagesSection .order-filters input {
+  flex: 1;
+  min-width: 240px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  outline: none;
+  transition: border 0.25s ease box-shadow 0.25s ease;
+}
+
+#messagesSection .order-filters input::placeholder {
+  color: #9ca3af;
+}
+
+#messagesSection .order-filters input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+/* Status dropdown */
+#messagesSection .order-filters select {
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border 0.25s ease box-shadow 0.25s ease;
+}
+
+#messagesSection .order-filters select:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.18);
+}
+
+/* Table container */
+#messagesSection .products-table-container {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.05);
+}
+
+/* Table */
+#messagesSection .products-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Table header */
+#messagesSection .products-table thead th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  padding: 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Pagination */
+#messagesSection .pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+#messagesSection .pagination-controls span {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Pagination buttons */
+#messagesSection .pagination-controls button {
+  border: none;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+  box-shadow: 0 8px 22px rgba(99, 102, 241, 0.35);
+  transition: transform 0.2s ease box-shadow 0.25s ease;
+}
+
+#messagesSection .pagination-controls button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(99, 102, 241, 0.45);
+}
+
+/* Animation */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile tweaks */
+@media (max-width: 768px) {
+  #messagesSection .order-filters {
+    flex-direction: column;
+  }
+
+  #messagesSection .pagination-controls {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+

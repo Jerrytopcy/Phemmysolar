@@ -19,6 +19,59 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 // Serve static files from 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve HTML files without .html extension
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/contact', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'contact.html'));
+});
+
+app.get('/products', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'products.html'));
+});
+
+app.get('/news', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'news.html'));
+});
+
+app.get('/services', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'services.html'));
+});
+
+app.get('/about', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'about.html'));
+});
+
+app.get('/reset-password', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
+});
+
+// Optional: Also handle trailing slashes (e.g., /admin/)
+app.get('/admin/', (req, res) => {
+    res.redirect('/admin');
+});
+app.get('/contact/', (req, res) => {
+    res.redirect('/contact');
+});
+app.get('/products/', (req, res) => {
+    res.redirect('/products');
+});
+app.get('/news/', (req, res) => {
+    res.redirect('/news');
+});
+app.get('/services/', (req, res) => {
+    res.redirect('/services');
+});
+app.get('/about/', (req, res) => {
+    res.redirect('/about');
+});
+app.get('/reset-password/', (req, res) => {
+    res.redirect('/reset-password');
+});
+
+
 // Parse JSON bodies (increased limit for Base64 images)
 app.use(express.json({ limit: '500mb' }));
 
@@ -858,20 +911,122 @@ app.post('/api/forgot-password', async (req, res) => {
         const resetUrl = `https://www.phemmysolar.com/reset-password.html?token=${encodeURIComponent(resetToken)}`;
 
         // Compose the email
+        
+        // Compose the email
         const msg = {
             to: email,
-            from: 'noreply@phemmysolar.com',
-            subject: 'Password Reset Request',
+            from: 'info@phemmysolar.com', // Use verified sender
+            subject: `🔐 Password Reset Request for ${username}`,
             html: `
-                <h2>Password Reset</h2>
-                <p>Hello ${username},</p>
-                <p>You requested a password reset for your PhemmySolar account.</p>
-                <p>Click the link below to reset your password:</p>
-                <a href="${resetUrl}" target="_blank">Reset Password</a>
-                <p>This link will expire in 1 hour.</p>
-                <p>If you did not request this, please ignore this email.</p>
-            `,
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Password Reset</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    background-color: #f5f5f5;
+                    margin: 0;
+                    padding: 20px;
+                }
+                .email-container {
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    overflow: hidden;
+                }
+                .header {
+                    background: #007BFF; /* Blue header */
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                }
+                .header h2 {
+                    margin: 0;
+                    font-size: 24px;
+                }
+                .content {
+                    padding: 30px;
+                }
+                .message {
+                    background: #fff;
+                    border: 1px solid #ddd;
+                    padding: 15px;
+                    border-radius: 4px;
+                    margin: 20px 0;
+                }
+                .cta-button {
+                    display: inline-block;
+                    background: #007BFF;
+                    color: white;
+                    padding: 12px 24px;
+                    text-decoration: none;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    margin: 20px 0;
+                    text-align: center;
+                }
+                .footer {
+                    background: #eee;
+                    padding: 15px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: #666;
+                    border-top: 1px solid #ddd;
+                }
+                .timestamp {
+                    font-style: italic;
+                    color: #777;
+                    font-size: 14px;
+                    margin-top: 10px;
+                }
+                @media (max-width: 600px) {
+                    .email-container {
+                        margin: 10px;
+                    }
+                    .content {
+                        padding: 20px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="email-container">
+                <div class="header">
+                    <h2>🔐 Password Reset Request</h2>
+                </div>
+                <div class="content">
+                    <p>Hello <strong>${username}</strong>,</p>
+                    
+                    <div class="message">
+                        You requested a password reset for your <strong>PhemmySolar</strong> account.
+                    </div>
+
+                    <p>Click the button below to reset your password:</p>
+
+                    <a href="${resetUrl}" target="_blank" class="cta-button">Reset Password 🔑</a>
+
+                    <p>This link will expire in <strong>1 hour</strong>.</p>
+
+                    <p>If you did not request this, please ignore this email or contact support.</p>
+
+                    <div class="timestamp">🕒 Sent at: ${new Date().toLocaleString()}</div>
+                </div>
+                <div class="footer">
+                    🤖 This is an automated message. Please do not reply directly to this email.
+                </div>
+            </div>
+        </body>
+        </html>
+        `,
         };
+
 
         // Send the email
         await sgMail.send(msg);
@@ -1081,33 +1236,142 @@ app.post('/api/contact', async (req, res) => {
         // Send email to admin via SendGrid
         const msg = {
             to: process.env.ADMIN_EMAIL || 'admin@phemmysolar.ng',
-            from: 'noreply@phemmysolar.com',
-            subject: `[Contact Form] ${subject}`,
-            text: `
-New Contact Message:
-
-Name: ${name}
-Email: ${email}
-Phone: ${phone}
-Subject: ${subject}
-
-Message:
-${message}
-
----
-Sent at: ${new Date().toLocaleString()}
-`,
+            from: 'info@phemmysolar.com', // Use your verified sender
+            subject: `[📬 New Message] ${subject}`,
             html: `
-<h3>New Contact Message</h3>
-<p><strong>Name:</strong> ${name}</p>
-<p><strong>Email:</strong> ${email}</p>
-<p><strong>Phone:</strong> ${phone}</p>
-<p><strong>Subject:</strong> ${subject}</p>
-<p><strong>Message:</strong></p>
-<pre>${message}</pre>
-<hr>
-<p><em>Sent at: ${new Date().toLocaleString()}</em></p>
-`,
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>New Message from User</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    background-color: #f5f5f5;
+                    margin: 0;
+                    padding: 20px;
+                }
+                .email-container {
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    overflow: hidden;
+                }
+                .header {
+                    background: #007BFF; /* Blue header */
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                }
+                .header h2 {
+                    margin: 0;
+                    font-size: 24px;
+                }
+                .content {
+                    padding: 30px;
+                }
+                .section {
+                    margin-bottom: 20px;
+                    padding: 15px;
+                    background: #f9f9f9;
+                    border-left: 4px solid #007BFF;
+                    border-radius: 4px;
+                }
+                .label {
+                    font-weight: bold;
+                    color: #007BFF;
+                    display: block;
+                    margin-bottom: 5px;
+                }
+                .message {
+                    background: #fff;
+                    border: 1px solid #ddd;
+                    padding: 15px;
+                    border-radius: 4px;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                }
+                .cta {
+                    background: #FFF8E1;
+                    border: 1px solid #FFD54F;
+                    padding: 15px;
+                    border-radius: 4px;
+                    margin: 20px 0;
+                    text-align: center;
+                    font-weight: bold;
+                    color: #FF6F00;
+                }
+                .footer {
+                    background: #eee;
+                    padding: 15px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: #666;
+                    border-top: 1px solid #ddd;
+                }
+                .timestamp {
+                    font-style: italic;
+                    color: #777;
+                    font-size: 14px;
+                    margin-top: 10px;
+                }
+                @media (max-width: 600px) {
+                    .email-container {
+                        margin: 10px;
+                    }
+                    .content {
+                        padding: 20px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="email-container">
+                <div class="header">
+                    <h2>📬 New Message from User on Your App</h2>
+                </div>
+                <div class="content">
+                    <div class="section">
+                        <div class="label">👤 Name:</div>
+                        <div>${name}</div>
+                    </div>
+                    <div class="section">
+                        <div class="label">✉️ Email:</div>
+                        <div>${email}</div>
+                    </div>
+                    <div class="section">
+                        <div class="label">📞 Phone:</div>
+                        <div>${phone}</div>
+                    </div>
+                    <div class="section">
+                        <div class="label">📌 Subject:</div>
+                        <div>${subject}</div>
+                    </div>
+                    <div class="section">
+                        <div class="label">💬 Message:</div>
+                        <div class="message">${message}</div>
+                    </div>
+                    <div class="timestamp">🕒 Sent at: ${new Date().toLocaleString()}</div>
+
+                    <!-- ⚡️ ACTION REQUIRED CTA -->
+                    <div class="cta">
+                        🚨 <strong>Action Required:</strong><br>
+                        Please log in to your <a href="https://www.phemmysolar.com/admin/messages" target="_blank" style="color: #FF6F00; text-decoration: underline;">Admin Panel</a> to view and reply to this message.<br>
+                        💬 Replies sent through the admin dashboard are tracked and logged.
+                    </div>
+                </div>
+                <div class="footer">
+                    🤖 This is an automated message from Phemmy Solar. Please do not reply directly to this email.
+                </div>
+            </div>
+        </body>
+        </html>
+        `,
         };
 
         try {

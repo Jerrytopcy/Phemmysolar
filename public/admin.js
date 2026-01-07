@@ -20,8 +20,12 @@ function showLoader(text = "Loading, please wait...") {
     loader.classList.add("active");
     document.body.style.overflow = "hidden";
 }
-
-
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
 function hideLoader() {
     const loader = document.getElementById("globalLoader");
     if (!loader) return;
@@ -1319,7 +1323,6 @@ async function markAsRead(messageId) {
         await showAdminAlert('Error', error.message || 'Failed to mark message as read');
     }
 }
-
 async function viewMessage(messageId) {
     const token = sessionStorage.getItem("adminToken"); // ✅ Use correct token
 
@@ -1431,6 +1434,75 @@ async function viewMessage(messageId) {
     }
 }
 
+// Initialize event listeners for the messages section
+document.addEventListener('DOMContentLoaded', () => {
+
+
+    // Add this block for message section
+    const messageSearchInput = document.getElementById('messageSearchInput');
+    const messageStatusFilter = document.getElementById('messageStatusFilter');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+
+    if (messageSearchInput) {
+        messageSearchInput.addEventListener('input', loadMessages);
+    }
+
+    if (messageStatusFilter) {
+        messageStatusFilter.addEventListener('change', loadMessages);
+    }
+
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', () => {
+            if (currentMessagePage > 1) {
+                currentMessagePage--;
+                loadMessages();
+            }
+        });
+    }
+
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', () => {
+            currentMessagePage++;
+            loadMessages();
+        });
+    }
+
+    // 👇  handle closing the message details modal
+    const closeMessageDetailsBtn = document.getElementById('closeMessageDetailsBtn');
+    const closeMessageDetailsBtn2 = document.getElementById('closeMessageDetailsBtn2');
+    const messageDetailsModal = document.getElementById('messageDetailsModal');
+
+    if (closeMessageDetailsBtn && messageDetailsModal) {
+        closeMessageDetailsBtn.addEventListener('click', () => {
+            messageDetailsModal.style.display = 'none';
+        });
+    }
+
+    if (closeMessageDetailsBtn2 && messageDetailsModal) {
+        closeMessageDetailsBtn2.addEventListener('click', () => {
+            messageDetailsModal.style.display = 'none';
+        });
+    }
+
+    // Also allow clicking outside the modal to close it
+    if (messageDetailsModal) {
+        messageDetailsModal.addEventListener('click', (e) => {
+            if (e.target === messageDetailsModal) {
+                messageDetailsModal.style.display = 'none';
+            }
+        });
+    }
+
+    // Allow Escape key to close the modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && messageDetailsModal && messageDetailsModal.style.display === 'flex') {
+            messageDetailsModal.style.display = 'none';
+        }
+    });
+
+    
+});
 // Close View Modal
 document.getElementById('closeViewUserBtn')?.addEventListener('click', () => {
     document.getElementById('viewUserModal').style.display = 'none';
@@ -1785,73 +1857,6 @@ document.addEventListener("DOMContentLoaded", () => {
               document.getElementById("viewUserModal").style.display = "none";
           }
       });
-
-
-
-    // Add this block for message section
-    const messageSearchInput = document.getElementById('messageSearchInput');
-    const messageStatusFilter = document.getElementById('messageStatusFilter');
-    const prevPageBtn = document.getElementById('prevPageBtn');
-    const nextPageBtn = document.getElementById('nextPageBtn');
-
-    if (messageSearchInput) {
-        messageSearchInput.addEventListener('input', loadMessages);
-    }
-
-    if (messageStatusFilter) {
-        messageStatusFilter.addEventListener('change', loadMessages);
-    }
-
-    if (prevPageBtn) {
-        prevPageBtn.addEventListener('click', () => {
-            if (currentMessagePage > 1) {
-                currentMessagePage--;
-                loadMessages();
-            }
-        });
-    }
-
-    if (nextPageBtn) {
-        nextPageBtn.addEventListener('click', () => {
-            currentMessagePage++;
-            loadMessages();
-        });
-    }
-
-    // 👇  handle closing the message details modal
-    const closeMessageDetailsBtn = document.getElementById('closeMessageDetailsBtn');
-    const closeMessageDetailsBtn2 = document.getElementById('closeMessageDetailsBtn2');
-    const messageDetailsModal = document.getElementById('messageDetailsModal');
-
-    if (closeMessageDetailsBtn && messageDetailsModal) {
-        closeMessageDetailsBtn.addEventListener('click', () => {
-            messageDetailsModal.style.display = 'none';
-        });
-    }
-
-    if (closeMessageDetailsBtn2 && messageDetailsModal) {
-        closeMessageDetailsBtn2.addEventListener('click', () => {
-            messageDetailsModal.style.display = 'none';
-        });
-    }
-
-    // Also allow clicking outside the modal to close it
-    if (messageDetailsModal) {
-        messageDetailsModal.addEventListener('click', (e) => {
-            if (e.target === messageDetailsModal) {
-                messageDetailsModal.style.display = 'none';
-            }
-        });
-    }
-
-    // Allow Escape key to close the modal
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && messageDetailsModal && messageDetailsModal.style.display === 'flex') {
-            messageDetailsModal.style.display = 'none';
-        }
-    });
-
-
 });
 
 ["orderSearchInput", "statusFilter", "paymentFilter"]

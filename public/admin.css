@@ -2441,13 +2441,13 @@ body {
 /* Message body card */
 #messageDetailsModal .detail-row pre {
   background: #ffffff;
-  padding: 18px 20px;
+  /* padding: 18px 20px; */
   border-radius: 16px;
   font-size: 14px;
   line-height: 1.8;
   color: #374151;
   white-space: pre-wrap;
-  max-width: 100%;
+  min-width: 100%;
   overflow-wrap: break-word;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
 }
@@ -2458,7 +2458,7 @@ body {
 
 @media (max-width: 600px) {
   #messageDetailsModal .modal-card {
-    max-width: 95%;
+    min-width: 95%;
   }
 
   #messageDetailsModal #messageDetailsContent {

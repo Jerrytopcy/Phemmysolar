@@ -685,7 +685,8 @@ function handleNavigation(e) {
         settings: "Settings",
         testimonials: "Testimonial Management",
         news: "News Management",
-        users: "User Management"
+        users: "User Management",
+        messages:"Contact Messages"
     };
     document.getElementById("pageTitle").textContent = titles[targetSection];
     // Load data for the selected section
@@ -696,10 +697,10 @@ function handleNavigation(e) {
     } else if (targetSection === "news") {
         loadNews();
     } else if (targetSection === "users") {
-        loadUsers(); // Add this line to load users when users section is opened
+        loadUsers(); 
     } else if (targetSection === "orders") {
         loadOrders();
-    }
+    }else if (targetSection === "messages") loadMessages();
 }
 
 // Handle testimonial form submission
@@ -1196,6 +1197,200 @@ async function loadUsers() {
         isCurrentlyLoadingUsers = false; // Reset flag
     }
 }
+
+
+// --- CONTACT MESSAGES SECTION ---
+let currentMessagePage = 1;
+const MESSAGE_PER_PAGE = 10;
+
+async function loadMessages() {
+    showGlobalLoader(true);
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showErrorModal('Authentication Error', 'Please log in again.');
+            return;
+        }
+
+        const response = await fetch('/api/admin/messages', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch messages');
+        }
+
+        const messages = await response.json();
+
+        // Apply filters
+        const searchQuery = document.getElementById('messageSearchInput').value.toLowerCase().trim();
+        const statusFilter = document.getElementById('messageStatusFilter').value;
+
+        const filteredMessages = messages.filter(msg => {
+            const matchesSearch = !searchQuery ||
+                msg.name.toLowerCase().includes(searchQuery) ||
+                msg.email.toLowerCase().includes(searchQuery) ||
+                msg.subject.toLowerCase().includes(searchQuery);
+
+            const matchesStatus = !statusFilter ||
+                (statusFilter === 'unread' && !msg.read) ||
+                (statusFilter === 'read' && msg.read);
+
+            return matchesSearch && matchesStatus;
+        });
+
+        renderMessages(filteredMessages);
+        updatePagination(filteredMessages.length);
+
+    } catch (error) {
+        showErrorModal('Error', error.message || 'Failed to load messages');
+    } finally {
+        showGlobalLoader(false);
+    }
+}
+
+function renderMessages(messages) {
+    const tableBody = document.getElementById('messagesTableBody');
+    tableBody.innerHTML = '';
+
+    if (messages.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem;">
+                    No messages found.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    messages.forEach(msg => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${msg.name}</td>
+            <td><a href="mailto:${msg.email}">${msg.email}</a></td>
+            <td>${msg.subject}</td>
+            <td>${new Date(msg.timestamp).toLocaleString()}</td>
+            <td>
+                <span class="status-badge ${msg.read ? 'status-read' : 'status-unread'}">
+                    ${msg.read ? 'Read' : 'Unread'}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick="viewMessage(${msg.id})">View</button>
+                ${!msg.read ? `<button class="btn btn-sm btn-secondary" onclick="markAsRead(${msg.id})">Mark as Read</button>` : ''}
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+function updatePagination(totalCount) {
+    const pageInfo = document.getElementById('pageInfo');
+    const totalPages = Math.ceil(totalCount / MESSAGE_PER_PAGE);
+    pageInfo.textContent = `Page ${currentMessagePage} of ${totalPages}`;
+}
+
+async function markAsRead(messageId) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`/api/admin/messages/${messageId}/read`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            showSuccessModal('Success', 'Message marked as read.');
+            loadMessages(); // Refresh list
+        } else {
+            throw new Error('Failed to mark as read');
+        }
+    } catch (error) {
+        showErrorModal('Error', error.message);
+    }
+}
+
+async function viewMessage(messageId) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`/api/admin/messages/${messageId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch message');
+        }
+
+        const message = await response.json();
+
+        const modal = document.getElementById('viewUserModal');
+        const content = document.getElementById('viewUserContent');
+
+        content.innerHTML = `
+            <div class="user-details">
+                <h3>${message.subject}</h3>
+                <div class="detail-row">
+                    <strong>Name:</strong> <span>${message.name}</span>
+                </div>
+                <div class="detail-row">
+                    <strong>Email:</strong> <a href="mailto:${message.email}">${message.email}</a>
+                </div>
+                <div class="detail-row">
+                    <strong>Phone:</strong> <a href="tel:${message.phone}">${message.phone}</a>
+                </div>
+                <div class="detail-row">
+                    <strong>Sent:</strong> <span>${new Date(message.timestamp).toLocaleString()}</span>
+                </div>
+                <div class="detail-row">
+                    <strong>Status:</strong> 
+                    <span class="status-badge ${message.read ? 'status-read' : 'status-unread'}">
+                        ${message.read ? 'Read' : 'Unread'}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <strong>Message:</strong>
+                    <pre style="background: #f8f9fa; padding: 1rem; border-radius: 4px; white-space: pre-wrap; font-family: inherit;">${message.message}</pre>
+                </div>
+            </div>
+        `;
+
+        modal.style.display = 'flex';
+
+    } catch (error) {
+        showErrorModal('Error', error.message);
+    }
+}
+
+// Close View Modal
+document.getElementById('closeViewUserBtn')?.addEventListener('click', () => {
+    document.getElementById('viewUserModal').style.display = 'none';
+});
+document.getElementById('closeViewUserBtn2')?.addEventListener('click', () => {
+    document.getElementById('viewUserModal').style.display = 'none';
+});
+
+// Add event listeners for filters
+document.getElementById('messageSearchInput')?.addEventListener('input', loadMessages);
+document.getElementById('messageStatusFilter')?.addEventListener('change', loadMessages);
+
+// Optional: Add pagination buttons if needed
+document.getElementById('prevPageBtn')?.addEventListener('click', () => {
+    if (currentMessagePage > 1) {
+        currentMessagePage--;
+        loadMessages();
+    }
+});
+document.getElementById('nextPageBtn')?.addEventListener('click', () => {
+    currentMessagePage++;
+    loadMessages();
+});
 
 function updatePaginationControls() {
     const totalPages = Math.ceil(totalUsers / usersPerPage);

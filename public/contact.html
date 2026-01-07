@@ -448,30 +448,71 @@
     <script src="script.js"></script>
     <script>
         // Contact form handling
-        const contactForm = document.getElementById("contactForm")
+        const contactForm = document.getElementById("contactForm");
         if (contactForm) {
-            contactForm.addEventListener("submit", (e) => {
-                e.preventDefault()
+            contactForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+
                 const formData = {
                     name: document.getElementById("name").value,
                     email: document.getElementById("email").value,
                     phone: document.getElementById("phone").value,
                     subject: document.getElementById("subject").value,
                     message: document.getElementById("message").value,
+                };
+
+                // Show loading state
+                showGlobalLoader(true);
+
+                try {
+                    const response = await fetch('/api/contact', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData),
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        showAlertModal('Message Sent!', 'Thank you for contacting us. We will get back to you shortly.');
+                    } else {
+                        throw new Error(result.error || 'Something went wrong');
+                    }
+                } catch (error) {
+                    showAlertModal('Error', error.message);
+                } finally {
+                    showGlobalLoader(false);
+                    contactForm.reset();
                 }
-                console.log("Contact form submitted:", formData)
-                // Show success message
-                const alertModal = document.getElementById("alertModal")
-                const alertTitle = document.getElementById("alertTitle")
-                const alertMessage = document.getElementById("alertMessage")
-                alertTitle.textContent = "Message Sent!"
-                alertMessage.textContent = "Thank you for contacting us. We will get back to you shortly."
-                alertModal.classList.add("active")
-                document.body.style.overflow = "hidden"
-                // Reset form
-                contactForm.reset()
-            })
+            });
         }
+
+        // Helper functions (add if not defined)
+        function showGlobalLoader(show) {
+            const loader = document.getElementById('globalLoader');
+            if (show) {
+                loader.classList.add('active');
+            } else {
+                loader.classList.remove('active');
+            }
+        }
+
+        function showAlertModal(title, message) {
+            const alertModal = document.getElementById("alertModal");
+            const alertTitle = document.getElementById("alertTitle");
+            const alertMessage = document.getElementById("alertMessage");
+            alertTitle.textContent = title;
+            alertMessage.textContent = message;
+            alertModal.classList.add("active");
+            document.body.style.overflow = "hidden";
+        }
+
+        document.getElementById("alertOk").addEventListener("click", () => {
+            document.getElementById("alertModal").classList.remove("active");
+            document.body.style.overflow = "";
+        });
 
         const alertOk = document.getElementById("alertOk")
         if (alertOk) {

@@ -1057,6 +1057,148 @@ app.post('/api/audit/user-view', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Failed to log user view' });
     }
 });
+// --- CONTACT FORM ENDPOINT ---
+app.post('/api/contact', async (req, res) => {
+    const { name, email, phone, subject, message } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !phone || !subject || !message) {
+        return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    try {
+        // Save message to database
+        const result = await pool.query(
+            `INSERT INTO contact_messages (name, email, phone, subject, message)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id, created_at`,
+            [name, email, phone, subject, message]
+        );
+
+        const messageId = result.rows[0].id;
+        const createdAt = result.rows[0].created_at;
+
+        // Send email to admin via SendGrid
+        const msg = {
+            to: process.env.ADMIN_EMAIL || 'admin@phemmysolar.ng',
+            from: 'noreply@phemmysolar.ng',
+            subject: `[Contact Form] ${subject}`,
+            text: `
+New Contact Message:
+
+Name: ${name}
+Email: ${email}
+Phone: ${phone}
+Subject: ${subject}
+
+Message:
+${message}
+
+---
+Sent at: ${new Date().toLocaleString()}
+`,
+            html: `
+<h3>New Contact Message</h3>
+<p><strong>Name:</strong> ${name}</p>
+<p><strong>Email:</strong> ${email}</p>
+<p><strong>Phone:</strong> ${phone}</p>
+<p><strong>Subject:</strong> ${subject}</p>
+<p><strong>Message:</strong></p>
+<pre>${message}</pre>
+<hr>
+<p><em>Sent at: ${new Date().toLocaleString()}</em></p>
+`,
+        };
+
+        try {
+            await sgMail.send(msg);
+            console.log(`✅ Email sent to admin for contact message ID: ${messageId}`);
+        } catch (emailError) {
+            console.error('❌ Error sending email:', emailError.message);
+            // Still return success — we saved the message
+        }
+
+        // Respond to client
+        res.status(200).json({
+            success: true,
+            message: 'Your message has been received!',
+            messageId,
+            timestamp: createdAt
+        });
+
+    } catch (dbError) {
+        console.error('❌ Database error saving contact message:', dbError.message);
+        res.status(500).json({ error: 'Failed to save message. Please try again.' });
+    }
+});
+// --- ADMIN CONTACT MESSAGES ROUTE ---
+app.get('/api/admin/messages', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                id,
+                name,
+                email,
+                phone,
+                subject,
+                message,
+                created_at AS timestamp,
+                read
+            FROM contact_messages
+            ORDER BY created_at DESC
+        `);
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Admin fetch messages error:', err);
+        res.status(500).json({ error: 'Failed to fetch messages' });
+    }
+});
+
+// --- MARK MESSAGE AS READ ---
+app.patch('/api/admin/messages/:id/read', authMiddleware, adminOnly, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        await pool.query(
+            'UPDATE contact_messages SET read = TRUE WHERE id = $1',
+            [id]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Mark message as read error:', err);
+        res.status(500).json({ error: 'Failed to mark message as read' });
+    }
+});
+// --- GET SINGLE MESSAGE FOR VIEWING ---
+app.get('/api/admin/messages/:id', authMiddleware, adminOnly, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const result = await pool.query(`
+            SELECT 
+                id,
+                name,
+                email,
+                phone,
+                subject,
+                message,
+                created_at AS timestamp,
+                read
+            FROM contact_messages
+            WHERE id = $1
+        `, [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Message not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Error fetching single message:', err);
+        res.status(500).json({ error: 'Failed to fetch message' });
+    }
+});
 // --- REMITA WEBHOOK ROUTE ---
 app.post('/api/webhook/remita', async (req, res) => {
   const { transactionId, status } = req.body;

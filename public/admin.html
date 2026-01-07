@@ -67,6 +67,10 @@
                     <span class="nav-icon">👤</span>
                     <span>Users</span>
                 </a>
+                <a href="#" class="nav-item" data-section="messages">
+                    <span class="nav-icon">✉️</span>
+                    <span>Messages</span>
+                </a>
                 <a href="#" class="nav-item" data-section="settings">
                     <span class="nav-icon">⚙️</span>
                     <span>Settings</span>
@@ -437,6 +441,43 @@
                             <button id="nextPageBtn" class="btn btn-secondary">Next →</button>
                         </div>
                     </div>
+            </section>
+            
+            <!-- Messages Section -->
+            <section class="content-section" id="messagesSection" style="display: none;">
+                <div class="section-header">
+                    <h2>Contact Messages</h2>
+                    <p>View and manage messages from customers</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="order-filters">
+                    <input type="text" id="messageSearchInput" placeholder="Search by Name, Email or Subject" />
+                    <select id="messageStatusFilter">
+                        <option value="">All Statuses</option>
+                        <option value="unread">Unread</option>
+                        <option value="read">Read</option>
+                    </select>
+                </div>
+
+                <!-- Messages Table -->
+                <div class="products-table-container">
+                    <table class="products-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Subject</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="messagesTableBody">
+                            <!-- Messages will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
             </section>
         </main>
     </div>

@@ -1126,10 +1126,20 @@ function reverseDateFormat(formattedDate) {
 }
 
 // Load users into table
+let isCurrentlyLoadingUsers = false; // Add this global variable
+
 async function loadUsers() {
+    // Prevent multiple simultaneous loads
+    if (isCurrentlyLoadingUsers) {
+        console.log("loadUsers called but already loading, skipping.");
+        return;
+    }
+
+    isCurrentlyLoadingUsers = true;
+    console.log("loadUsers called");
+
     const tableBody = document.getElementById("usersTableBody");
     showLoader("Loading users..."); // Show loader while loading users
-
     try {
         const response = await fetch('/api/users');
         if (!response.ok) {
@@ -1137,57 +1147,53 @@ async function loadUsers() {
         }
         allUsers = await response.json(); // Store all users
         totalUsers = allUsers.length;
-
         // Apply filters first
         applyUserFilters();
-
         // Paginate
         const startIndex = (currentPage - 1) * usersPerPage;
         const paginatedUsers = allUsers.slice(startIndex, startIndex + usersPerPage);
-
         if (paginatedUsers.length === 0) {
             tableBody.innerHTML = `
-          <tr>
-          <td colspan="6" class="empty-state">
-          <p>No users found.</p>
-          </td>
-          </tr>
-          `;
-                      updatePaginationControls();
-                       hideLoader(); 
-                      return;
-                  }
-
-                  tableBody.innerHTML = paginatedUsers
-                      .map((user) => {
-                          const address = user.address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
-                          const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
-                          return `
-          <tr>
-          <td>${user.username}</td>
-          <td>${user.email || "Not set"}</td>
-          <td>${user.phone || "Not set"}</td>
-          <td>${fullAddress}</td>
-          <td>${user.order_count || 0}</td>
-          <td>
-          <div class="product-actions">
-          <button class="btn-view" onclick="viewUser(${user.id})" data-role="${user.role}" data-active="${user.active !== false}">
-          View
-          </button>
-          </div>
-          </td>
-          </tr>
-          `
+            <tr>
+                <td colspan="6" class="empty-state">
+                    <p>No users found.</p>
+                </td>
+            </tr>
+            `;
+            updatePaginationControls();
+            hideLoader();
+            isCurrentlyLoadingUsers = false; // Reset flag
+            return;
+        }
+        tableBody.innerHTML = paginatedUsers
+            .map((user) => {
+                const address = user.address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
+                const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+                return `
+                <tr>
+                    <td>${user.username}</td>
+                    <td>${user.email || "Not set"}</td>
+                    <td>${user.phone || "Not set"}</td>
+                    <td>${fullAddress}</td>
+                    <td>${user.order_count || 0}</td>
+                    <td>
+                        <div class="product-actions">
+                            <button class="btn-view" onclick="viewUser(${user.id})" data-role="${user.role}" data-active="${user.active !== false}">
+                                View
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                `
             })
             .join("");
-
         updatePaginationControls();
-
     } catch (error) {
         console.error("Error loading users:", error);
         tableBody.innerHTML = `<tr><td colspan="6" class="error-message"><p>Error loading users: ${error.message}</p></td></tr>`;
     } finally {
         hideLoader(); // Hide loader after loading is complete
+        isCurrentlyLoadingUsers = false; // Reset flag
     }
 }
 

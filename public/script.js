@@ -733,7 +733,26 @@ hideValidationMessage(fieldType);
                 "Logged In",
                 "success"
             );
-
+                // ✅ ADD THIS BLOCK: Update last_login via the new /api/user/last-login endpoint
+            try {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    const response = await fetch('/api/user/last-login', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    if (!response.ok) {
+                        console.warn('Failed to update last_login:', response.statusText);
+                    } else {
+                        console.log('Successfully updated last_login for user.');
+                    }
+                }
+                 } catch (err) {
+                    console.error('Error updating last_login:', err);
+                }
             await loadCartFromDatabase();
             return;
         }

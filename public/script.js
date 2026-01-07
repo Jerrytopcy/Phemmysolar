@@ -439,7 +439,7 @@ function handleLogout() {
     );
 }
 
-// Show the login/signup modal - ALWAYS show Login form first
+
 
 // Show the login/signup modal - ALWAYS show Login form first
 function showAuthModal() {
@@ -583,14 +583,13 @@ async function handleAuthSubmit(e) {
 
     const form = e.target;
     const authError = document.getElementById("authError");
-
     authError.textContent = "";
 
     const username = form.username.value.trim();
     const password = form.password.value;
 
     // ======================
-    // LIVE VALIDATION CHECKS
+    // LIVE VALIDATION CHECKS (REAL-TIME FEEDBACK)
     // ======================
     const usernameMsg = document.getElementById("usernameValidationMsg");
     const emailMsg = document.getElementById("emailValidationMsg");
@@ -652,31 +651,16 @@ async function handleAuthSubmit(e) {
         // Nigerian phone number
         const phoneRegex = /^(0\d{10}|234\d{10})$/;
         const cleanPhone = phone.replace(/\D/g, "");
-
         if (!phoneRegex.test(cleanPhone)) {
-            authError.textContent =
-                "Please enter a valid Nigerian phone number (e.g. 08012345678).";
+            authError.textContent = "Please enter a valid Nigerian phone number (e.g. 08012345678).";
             return;
         }
-
         phone = cleanPhone;
 
         // ======================
-        // CHECK AVAILABILITY
+        // CHECK AVAILABILITY (GLOBAL LOADER ONLY)
         // ======================
-        // Show spinner next to the field being validated
-        const field = document.getElementById(fieldType);
-        let spinner = document.getElementById(`${fieldType}Spinner`);
-
-        if (!spinner) {
-            spinner = document.createElement("span");
-            spinner.id = `${fieldType}Spinner`;
-            spinner.className = "field-spinner";
-            field.parentNode.insertBefore(spinner, field.nextSibling);
-        }
-
-// Hide any existing validation message temporarily
-hideValidationMessage(fieldType);
+        showLoader("Checking availability...");
 
         try {
             const checkResponse = await fetch("/api/auth/check", {
@@ -744,8 +728,7 @@ hideValidationMessage(fieldType);
         const result = await response.json();
 
         if (!response.ok || !result.success) {
-            authError.textContent =
-                result.error || "Authentication failed.";
+            authError.textContent = result.error || "Authentication failed.";
             return;
         }
 
@@ -764,7 +747,8 @@ hideValidationMessage(fieldType);
                 "Logged In",
                 "success"
             );
-                // ✅ ADD THIS BLOCK: Update last_login via the new /api/user/last-login endpoint
+
+            // ✅ Update last_login
             try {
                 const token = localStorage.getItem('token');
                 if (token) {
@@ -781,9 +765,10 @@ hideValidationMessage(fieldType);
                         console.log('Successfully updated last_login for user.');
                     }
                 }
-                 } catch (err) {
-                    console.error('Error updating last_login:', err);
-                }
+            } catch (err) {
+                console.error('Error updating last_login:', err);
+            }
+
             await loadCartFromDatabase();
             return;
         }
@@ -810,16 +795,12 @@ hideValidationMessage(fieldType);
         const loginResult = await loginResponse.json();
 
         if (!loginResponse.ok || !loginResult.success) {
-            authError.textContent =
-                "Account created, but auto login failed. Please log in.";
+            authError.textContent = "Account created, but auto login failed. Please log in.";
             return;
         }
 
         localStorage.setItem("token", loginResult.token);
-        localStorage.setItem(
-            "currentUser",
-            JSON.stringify(loginResult.user)
-        );
+        localStorage.setItem("currentUser", JSON.stringify(loginResult.user));
 
         updateUIBasedOnUser();
         closeAuthModal();
@@ -829,13 +810,9 @@ hideValidationMessage(fieldType);
         console.error("Auth error:", error);
         authError.textContent = "Network error. Please try again.";
     } finally {
-    // Remove spinner
-    const spinner = document.getElementById(`${fieldType}Spinner`);
-    if (spinner) spinner.remove();
-    hideLoader();
+        hideLoader();
     }
 }
-
 
 
 // Add event listener for Forgot Password Form

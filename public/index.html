@@ -510,6 +510,20 @@
     <script src="script.js"></script>
 
 <script>
+  
+window.addEventListener('DOMContentLoaded', () => {
+    // Check if we need to auto-show login modal
+    if (localStorage.getItem('showLoginModal') === 'true') {
+        const loginBtn = document.getElementById('loginBtn');
+        if (loginBtn) {
+            loginBtn.style.display = 'inline'; // Make the button visible
+            loginBtn.click(); // Trigger the modal
+        }
+        localStorage.removeItem('showLoginModal'); // Clear the flag
+    }
+});
+
+
     // Complete Hero Slider Script with Navigation and Indicators
 document.addEventListener('DOMContentLoaded', function() {
     const heroBackgrounds = document.getElementById('heroBackgrounds');

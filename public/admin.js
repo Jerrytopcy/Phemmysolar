@@ -1208,7 +1208,7 @@ async function loadMessages() {
     try {
         const token = localStorage.getItem('token');
         if (!token) {
-            showErrorModal('Authentication Error', 'Please log in again.');
+            console.log('Authentication Error', 'Please log in again.');
             return;
         }
 
@@ -1245,7 +1245,7 @@ async function loadMessages() {
         updatePagination(filteredMessages.length);
 
     } catch (error) {
-        showErrorModal('Error', error.message || 'Failed to load messages');
+        console.log('Error', error.message || 'Failed to load messages');
     } finally {
         hideLoader()
     }
@@ -1311,7 +1311,7 @@ async function markAsRead(messageId) {
             throw new Error('Failed to mark as read');
         }
     } catch (error) {
-        showErrorModal('Error', error.message);
+        console.log('Error', error.message);
     }
 }
 
@@ -1364,7 +1364,7 @@ async function viewMessage(messageId) {
         modal.style.display = 'flex';
 
     } catch (error) {
-        showErrorModal('Error', error.message);
+        console.log('Error', error.message);
     }
 }
 

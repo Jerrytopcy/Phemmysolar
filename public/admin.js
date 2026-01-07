@@ -1200,15 +1200,18 @@ async function loadUsers() {
 
 
 // --- CONTACT MESSAGES SECTION ---
+
 let currentMessagePage = 1;
 const MESSAGE_PER_PAGE = 10;
 
+// Load contact messages
 async function loadMessages() {
     showLoader();
     try {
-        const token = localStorage.getItem('token');
+        // Use the same authentication method as the rest of the admin panel
+        const token = sessionStorage.getItem("adminToken");
         if (!token) {
-            console.log('Authentication Error', 'Please log in again.');
+            await showAdminAlert("Authentication Error", "Please log in again.");
             return;
         }
 
@@ -1245,9 +1248,10 @@ async function loadMessages() {
         updatePagination(filteredMessages.length);
 
     } catch (error) {
-        console.log('Error', error.message || 'Failed to load messages');
+        console.error('Error loading messages:', error);
+        await showAdminAlert('Error', error.message || 'Failed to load messages');
     } finally {
-        hideLoader()
+        hideLoader();
     }
 }
 
@@ -1294,7 +1298,7 @@ function updatePagination(totalCount) {
 }
 
 async function markAsRead(messageId) {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem("adminToken");
     try {
         const response = await fetch(`/api/admin/messages/${messageId}/read`, {
             method: 'PATCH',
@@ -1305,18 +1309,19 @@ async function markAsRead(messageId) {
         });
 
         if (response.ok) {
-            showSuccessModal('Success', 'Message marked as read.');
+            await showAdminAlert('Success', 'Message marked as read.');
             loadMessages(); // Refresh list
         } else {
             throw new Error('Failed to mark as read');
         }
     } catch (error) {
-        console.log('Error', error.message);
+        console.error('Error marking message as read:', error);
+        await showAdminAlert('Error', error.message || 'Failed to mark message as read');
     }
 }
 
 async function viewMessage(messageId) {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem("adminToken");
     try {
         const response = await fetch(`/api/admin/messages/${messageId}`, {
             headers: {
@@ -1330,9 +1335,53 @@ async function viewMessage(messageId) {
 
         const message = await response.json();
 
-        const modal = document.getElementById('viewUserModal');
-        const content = document.getElementById('viewUserContent');
+        // Create or get the modal element specifically for messages
+        let messageModal = document.getElementById('messageDetailsModal');
+        if (!messageModal) {
+            // Create the modal dynamically if it doesn't exist
+            messageModal = document.createElement('div');
+            messageModal.id = 'messageDetailsModal';
+            messageModal.className = 'modal';
+            messageModal.style.display = 'none'; // Initially hidden
 
+            // Add close button
+            const closeButton = document.createElement('button');
+            closeButton.id = 'closeMessageDetailsBtn';
+            closeButton.className = 'close-btn';
+            closeButton.textContent = '×';
+
+            // Add content container
+            const contentContainer = document.createElement('div');
+            contentContainer.id = 'messageDetailsContent';
+            contentContainer.className = 'modal-content';
+
+            // Assemble the modal
+            messageModal.appendChild(closeButton);
+            messageModal.appendChild(contentContainer);
+            document.body.appendChild(messageModal);
+
+            // Add event listener to close button
+            closeButton.addEventListener('click', () => {
+                messageModal.style.display = 'none';
+            });
+
+            // Close on overlay click
+            messageModal.addEventListener('click', (e) => {
+                if (e.target === messageModal) {
+                    messageModal.style.display = 'none';
+                }
+            });
+
+            // Close on Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && messageModal.style.display === 'flex') {
+                    messageModal.style.display = 'none';
+                }
+            });
+        }
+
+        // Populate modal content
+        const content = document.getElementById('messageDetailsContent');
         content.innerHTML = `
             <div class="user-details">
                 <h3>${message.subject}</h3>
@@ -1349,7 +1398,7 @@ async function viewMessage(messageId) {
                     <strong>Sent:</strong> <span>${new Date(message.timestamp).toLocaleString()}</span>
                 </div>
                 <div class="detail-row">
-                    <strong>Status:</strong> 
+                    <strong>Status:</strong>
                     <span class="status-badge ${message.read ? 'status-read' : 'status-unread'}">
                         ${message.read ? 'Read' : 'Unread'}
                     </span>
@@ -1361,12 +1410,47 @@ async function viewMessage(messageId) {
             </div>
         `;
 
-        modal.style.display = 'flex';
+        // Show the modal
+        messageModal.style.display = 'flex';
 
     } catch (error) {
-        console.log('Error', error.message);
+        console.error('Error viewing message:', error);
+        await showAdminAlert('Error', error.message || 'Failed to view message');
     }
 }
+
+// Initialize event listeners for the messages section
+document.addEventListener('DOMContentLoaded', () => {
+    // Ensure the DOM is fully loaded before adding listeners
+    const messageSearchInput = document.getElementById('messageSearchInput');
+    const messageStatusFilter = document.getElementById('messageStatusFilter');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+
+    if (messageSearchInput) {
+        messageSearchInput.addEventListener('input', loadMessages);
+    }
+
+    if (messageStatusFilter) {
+        messageStatusFilter.addEventListener('change', loadMessages);
+    }
+
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', () => {
+            if (currentMessagePage > 1) {
+                currentMessagePage--;
+                loadMessages();
+            }
+        });
+    }
+
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', () => {
+            currentMessagePage++;
+            loadMessages();
+        });
+    }
+});
 
 // Close View Modal
 document.getElementById('closeViewUserBtn')?.addEventListener('click', () => {

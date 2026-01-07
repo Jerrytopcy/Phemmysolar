@@ -2500,3 +2500,50 @@ body {
 #messageDetailsModal #messageDetailsContent::-webkit-scrollbar-track {
   background: transparent;
 }
+/* ===============================
+   MESSAGE DETAILS RESPONSIVE STACK
+================================ */
+
+#messageDetailsModal .detail-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+
+#messageDetailsModal .detail-row strong {
+  min-width: 90px;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+#messageDetailsModal .detail-row span,
+#messageDetailsModal .detail-row a,
+#messageDetailsModal .detail-row pre {
+  color: #374151;
+}
+
+/* 🌸 Small screens */
+@media (max-width: 600px) {
+  #messageDetailsModal .detail-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  #messageDetailsModal .detail-row strong {
+    min-width: unset;
+    font-size: 13px;
+  }
+
+  #messageDetailsModal .detail-row span,
+  #messageDetailsModal .detail-row a {
+    font-size: 14px;
+    word-break: break-word;
+  }
+
+  #messageDetailsModal pre {
+    font-size: 13px;
+  }
+}
+

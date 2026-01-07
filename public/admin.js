@@ -1154,6 +1154,7 @@ async function loadUsers() {
           </tr>
           `;
                       updatePaginationControls();
+                       hideLoader(); 
                       return;
                   }
 
@@ -1317,23 +1318,23 @@ function viewUser(userId) {
             // Show modal
             document.getElementById("viewUserModal").style.display = "flex";
 
-            // // After showing the modal, log the view
-            // fetch('/api/audit/user-view', {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json',
-            //         'Authorization': `Bearer ${localStorage.getItem('token')}` // Or however you store JWT
-            //     },
-            //     body: JSON.stringify({ userId: userId })
-            // })
-            // .then(response => {
-            //     if (!response.ok) {
-            //         console.warn('Failed to log user view.');
-            //     }
-            // })
-            // .catch(err => {
-            //     console.warn('Error logging user view:', err);
-            // });
+            // After showing the modal, log the view
+            fetch('/api/audit/user-view', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}` // Or however you store JWT
+                },
+                body: JSON.stringify({ userId: userId })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    console.warn('Failed to log user view.');
+                }
+            })
+            .catch(err => {
+                console.warn('Error logging user view:', err);
+            });
         })
         .catch(error => {
             console.error("Error fetching user for view:", error);

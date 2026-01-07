@@ -845,11 +845,16 @@ async function handleForgotPasswordSubmit(e) {
     const username = document.getElementById("forgotPasswordUsername").value.trim();
     const email = document.getElementById("forgotPasswordEmail").value.trim();
 
+    const errorDiv = document.getElementById("forgotPasswordError");
+    errorDiv.textContent = "";
+
     if (!username || !email) {
-        document.getElementById("forgotPasswordError").textContent = "Username and email are required.";
+        errorDiv.textContent = "Username and email are required.";
         return;
     }
+
     showLoader("Sending password reset link...");
+
     try {
         const response = await fetch('/api/forgot-password', {
             method: 'POST',
@@ -862,23 +867,43 @@ async function handleForgotPasswordSubmit(e) {
         const result = await response.json();
 
         if (!response.ok) {
-            document.getElementById("forgotPasswordError").textContent = result.error || "An unexpected error occurred.";
+            errorDiv.textContent = result.error || "An unexpected error occurred.";
             return;
         }
 
         if (result.success) {
-            showCustomAlert(
-                `A password reset link has been sent to ${email}.`,
-                "Password Reset Requested",
-                "success"
-            );
-            closeForgotPasswordModal();
+            // ✅ SUCCESS: Create success message INSIDE modal
+            const modalContent = document.querySelector(".forgot-modal"); // target the modal content
+            const form = document.getElementById("forgotPasswordForm");
+
+            // Hide form
+            form.style.display = "none";
+
+            // Create success message div
+            const successMsg = document.createElement("div");
+            successMsg.id = "forgotPasswordSuccess";
+            successMsg.className = "alert alert-success mt-3";
+            successMsg.innerHTML = `
+                <strong>✅ Success!</strong><br>
+                A password reset link has been sent to <strong>${email}</strong>.<br><br>
+                <button class="btn btn-sm btn-secondary" onclick="closeForgotPasswordModal()">OK</button>
+            `;
+
+            // Insert before close button or at bottom of modal content
+            modalContent.appendChild(successMsg);
+
+            // Optional: Auto-close after 5 seconds
+            setTimeout(() => {
+                closeForgotPasswordModal();
+            }, 5000);
+
         } else {
-            document.getElementById("forgotPasswordError").textContent = result.error || "Password reset failed.";
+            errorDiv.textContent = result.error || "Password reset failed.";
         }
+
     } catch (error) {
         console.error("Network error during password reset:", error);
-        document.getElementById("forgotPasswordError").textContent = "Network error. Please try again.";
+        errorDiv.textContent = "Network error. Please try again.";
     } finally {
         hideLoader();
     }

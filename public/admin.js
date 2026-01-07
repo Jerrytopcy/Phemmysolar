@@ -21,12 +21,6 @@ function showLoader(text = "Loading, please wait...") {
     document.body.style.overflow = "hidden";
 }
 
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
 
 function hideLoader() {
     const loader = document.getElementById("globalLoader");

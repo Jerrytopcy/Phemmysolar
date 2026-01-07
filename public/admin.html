@@ -403,6 +403,19 @@
                     <div class="products-table-container">
                         <!-- Add this before the closing </body> tag -->
                  <!-- User Form Modal -->
+                  <div class="order-filters">
+                    <input type="text" id="userSearchInput" placeholder="Search by Username or Email" />
+                    <select id="userRoleFilter">
+                        <option value="">All Roles</option>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <select id="userStatusFilter">
+                        <option value="">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
                         <table class="products-table">
                             <thead>
                                 <tr>

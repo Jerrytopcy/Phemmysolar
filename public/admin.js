@@ -1143,26 +1143,29 @@ async function loadUsers() {
             return;
         }
         tableBody.innerHTML = users
-            .map((user) => {
-                // Format address for display
-                const address = user.address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
-                const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
-                return `
-<tr>
-<td>${user.username}</td>
-<td>${user.email || "Not set"}</td>
-<td>${user.phone || "Not set"}</td>
-<td>${fullAddress}</td>
-<td>${user.order_count || 0}</td>
-<td>
-<div class="product-actions">
-<button class="btn-view" onclick="viewUser(${user.id})">Open View</button>
-</div>
-</td>
-</tr>
-`
-            })
-            .join("");
+        .map((user) => {
+            // Format address for display
+            const address = user.address || { street: "", city: "", state: "", postalCode: "", country: "Nigeria" };
+            const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+            return `
+        <tr>
+            <td>${user.username}</td>
+            <td>${user.email || "Not set"}</td>
+            <td>${user.phone || "Not set"}</td>
+            <td>${fullAddress}</td>
+            <td>${user.order_count || 0}</td>
+            <td>
+                <button class="btn-view" 
+                        onclick="viewUser(${user.id})" 
+                        data-role="${user.role}" 
+                        data-active="${user.active !== false}">
+                    View
+                </button>
+            </td>
+        </tr>
+        `
+        })
+.join("");
     } catch (error) {
         console.error("Error loading users:", error);
         tableBody.innerHTML = `<tr><td colspan="6" class="error-message"><p>Error loading users: ${error.message}</p></td></tr>`;
@@ -1170,6 +1173,26 @@ async function loadUsers() {
         hideLoader(); // Hide loader after loading is complete
     }
 }
+
+function applyUserFilters() {
+    const search = document.getElementById("userSearchInput").value.toLowerCase();
+    const role = document.getElementById("userRoleFilter").value;
+
+    const tableBody = document.getElementById("usersTableBody");
+    const rows = Array.from(tableBody.querySelectorAll("tr"));
+
+    rows.forEach(row => {
+        const username = row.cells[0].textContent.toLowerCase();
+        const email = row.cells[1].textContent.toLowerCase();
+        const userRole = row.cells[5].querySelector(".btn-view").dataset.role || "user";
+
+        const matchesSearch = username.includes(search) || email.includes(search);
+        const matchesRole = !role || userRole === role;
+
+        row.style.display = matchesSearch && matchesRole ? "" : "none";
+    });
+}
+
 function viewUser(userId) {
     fetch(`/api/users/${userId}`)
         .then(response => {
@@ -1190,7 +1213,7 @@ function viewUser(userId) {
                 <div class="user-modal-content">
                     <div class="user-header">
                         <h3>User Details</h3>
-                        <span class="user-role">${user.role}</span>
+                        <span class="user-role ${user.role}">${user.role}</span>
                     </div>
                     <div class="user-info-grid">
                         <div class="info-item">
@@ -1373,6 +1396,10 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("closeViewUserBtn2")?.addEventListener("click", () => {
           document.getElementById("viewUserModal").style.display = "none";
       });
+      // Add event listeners for user filters
+        ["userSearchInput", "userRoleFilter"].forEach(id => {
+            document.getElementById(id).addEventListener("input", applyUserFilters);
+        });
 
       // Close on overlay click
       document.getElementById("viewUserModal")?.addEventListener("click", (e) => {

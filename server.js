@@ -841,7 +841,7 @@ app.post('/api/forgot-password', async (req, res) => {
 
         // Create the reset URL (pointing to your frontend)
         // IMPORTANT: Replace this with your actual frontend URL
-        const resetUrl = `https://www.phemmysolar.com/reset-password?token=${encodeURIComponent(resetToken)}`;
+        const resetUrl = `https://www.phemmysolar.com/reset-password.html?token=${encodeURIComponent(resetToken)}`;
 
         // Compose the email
         const msg = {

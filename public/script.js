@@ -849,23 +849,24 @@ async function handleForgotPasswordSubmit(e) {
     const modalContent = document.querySelector(".forgot-modal");
     const form = document.getElementById("forgotPasswordForm");
 
-    // Always use ONE container
-    let msgBox = document.getElementById("forgotPasswordSuccess");
-    if (!msgBox) {
-        msgBox = document.createElement("div");
-        msgBox.id = "forgotPasswordSuccess";
-        modalContent.appendChild(msgBox);
-    }
+    // Remove ANY existing message boxes completely
+    modalContent.querySelectorAll("#forgotPasswordSuccess").forEach(el => el.remove());
 
-    // 🔥 helper inside function only
+    // Create ONE message container
+    const msgBox = document.createElement("div");
+    msgBox.id = "forgotPasswordSuccess";
+
+    // 🔥 INSERT AT TOP, NOT APPEND
+    modalContent.insertBefore(msgBox, modalContent.firstChild);
+
     const showMessage = (type, title, message) => {
         let icon = "ℹ️";
         if (type === "success") icon = "✅";
         if (type === "error") icon = "❌";
         if (type === "warning") icon = "⚠️";
 
-        // ❌ CLEAR FIRST to prevent stacking
-        msgBox.innerHTML = "";
+        // Hide form ALWAYS so nothing stacks
+        form.style.display = "none";
 
         msgBox.innerHTML = `
           <div class="success-box ${type}">
@@ -928,8 +929,6 @@ async function handleForgotPasswordSubmit(e) {
         }
 
         if (result.success) {
-            form.style.display = "none";
-
             showMessage(
                 "success",
                 "Password Reset Sent",
@@ -957,6 +956,7 @@ async function handleForgotPasswordSubmit(e) {
         hideLoader();
     }
 }
+
 
 
 // --- END NEW: Custom Modal Functions for Login/Signup ---

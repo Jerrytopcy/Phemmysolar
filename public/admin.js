@@ -1298,17 +1298,28 @@ function viewUser(userId) {
                       </div>
                       <div class="info-item">
                           <strong>Recent Orders:</strong>
-                          <ul style="padding-left: 1.5rem; margin: 0.5rem 0;">
-                              ${user.recent_orders && user.recent_orders.length > 0 ? 
-                                  user.recent_orders.slice(0, 3).map(order => `
-                                      <li>
-                                          <strong>Order #${order.order_id}</strong> - ${new Date(order.date).toLocaleDateString()} 
-                                          <br>₦${order.total} • ${order.status}
-                                      </li>
-                                  `).join("") : 
-                                  "<li>No recent orders</li>"
-                              }
-                          </ul>
+                         <ul class="recent-orders">
+                        ${
+                          user.recent_orders && user.recent_orders.length > 0
+                            ? user.recent_orders.slice(0, 3).map(order => `
+                                <li class="order-item status-${order.status.toLowerCase()}">
+                                  <div class="order-top">
+                                    <span class="order-id">Order #${order.order_id}</span>
+                                    <span class="order-date">
+                                      ${new Date(order.date).toLocaleDateString()}
+                                    </span>
+                                  </div>
+
+                                  <div class="order-bottom">
+                                    <span class="order-amount">₦${order.total}</span>
+                                    <span class="order-status">${order.status}</span>
+                                  </div>
+                                </li>
+                              `).join("")
+                            : `<li class="order-empty">No recent orders</li>`
+                        }
+                      </ul>
+
                       </div>
                       <div class="info-item">
                           <strong>Address:</strong>

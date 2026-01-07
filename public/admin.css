@@ -1686,3 +1686,90 @@ body {
 #exportCsvBtn {
     margin-left: 1rem;
 }
+
+
+.recent-orders {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.5rem 0;
+}
+
+.order-item {
+  background: linear-gradient(135deg, #f5f7ff, #ffffff);
+  border-left: 5px solid #6c5ce7;
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 0.6rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.order-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.order-top,
+.order-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-id {
+  font-weight: 600;
+  color: #2d3436;
+}
+
+.order-date {
+  font-size: 0.8rem;
+  color: #636e72;
+}
+
+.order-amount {
+  font-weight: 700;
+  color: #00b894;
+}
+
+.order-status {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* Status colors */
+.status-pending {
+  border-left-color: #fdcb6e;
+}
+
+.status-pending .order-status {
+  background-color: #fff5d6;
+  color: #e17055;
+}
+
+.status-completed {
+  border-left-color: #00b894;
+}
+
+.status-completed .order-status {
+  background-color: #dff9f0;
+  color: #00b894;
+}
+
+.status-cancelled {
+  border-left-color: #d63031;
+}
+
+.status-cancelled .order-status {
+  background-color: #ffe5e5;
+  color: #d63031;
+}
+
+.order-empty {
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  padding: 0.6rem;
+}

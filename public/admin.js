@@ -1354,37 +1354,45 @@ async function viewMessage(messageId) {
         }
 
         // Populate modal content
-        content.innerHTML = `
+              content.innerHTML = `
             <div class="modal-header">
                 <h3>${message.subject}</h3>
             </div>
+
             <div class="modal-content">
                 <div class="detail-row">
-                    <strong>Name:</strong> <span>${message.name}</span>
+                    <strong>Name</strong>
+                    <span>${message.name}</span>
                 </div>
+
                 <div class="detail-row">
-                    <strong>Email:</strong> <a href="mailto:${message.email}">${message.email}</a>
+                    <strong>Email</strong>
+                    <a href="mailto:${message.email}">${message.email}</a>
                 </div>
+
                 <div class="detail-row">
-                    <strong>Phone:</strong> <a href="tel:${message.phone}">${message.phone}</a>
+                    <strong>Phone</strong>
+                    <a href="tel:${message.phone}">${message.phone}</a>
                 </div>
+
                 <div class="detail-row">
-                    <strong>Sent:</strong> <span>${new Date(message.timestamp).toLocaleString()}</span>
+                    <strong>Sent</strong>
+                    <span>${new Date(message.timestamp).toLocaleString()}</span>
                 </div>
+
                 <div class="detail-row">
-                    <strong>Status:</strong>
+                    <strong>Status</strong>
                     <span class="status-badge ${message.read ? 'status-read' : 'status-unread'}">
                         ${message.read ? 'Read' : 'Unread'}
                     </span>
                 </div>
-                <div class="detail-row">
-                    <strong>Message:</strong>
-                    <pre style="background: #f8f9fa; padding: 1rem; border-radius: 4px; white-space: pre-wrap; font-family: inherit;">${message.message}</pre>
+
+                <div class="message-box">
+                    <strong>Message</strong>
+                    <p>${message.message}</p>
                 </div>
             </div>
-            
         `;
-
         // Show the modal
         messageModal.style.display = 'flex';
 

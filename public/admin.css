@@ -593,7 +593,7 @@ body {
   filter: grayscale(0);
 }
 .warning {
-  background-color: rgb(209, 9, 9);
+  background-color: rgb(170, 127, 7);
   color: #ffffff;
   padding: 0.3rem;
   border-radius: 4px;

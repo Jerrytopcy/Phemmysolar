@@ -948,6 +948,56 @@ app.post('/api/auth/reset-password', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while resetting your password.' });
     }
 });
+
+
+// --- CHECK RESET STATUS BEFORE SHOWING FORM ---
+app.post('/api/auth/reset-password/check', async (req, res) => {
+    const { token } = req.body;
+
+    if (!token) {
+        return res.status(400).json({ error: 'Token is required.' });
+    }
+
+    try {
+        // Verify the JWT token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Find the user by the ID in the token
+        const userResult = await pool.query(
+            'SELECT id, last_password_reset FROM users WHERE id = $1',
+            [decoded.userId]
+        );
+
+        if (userResult.rows.length === 0) {
+            return res.status(400).json({ error: 'Invalid or expired token.' });
+        }
+
+        const user = userResult.rows[0];
+
+        // Check if reset was done in last 30 days
+        const now = Date.now();
+        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+        if (user.last_password_reset) {
+            const lastResetTime = new Date(user.last_password_reset).getTime();
+            if (now - lastResetTime < thirtyDaysMs) {
+                const nextResetDate = new Date(lastResetTime + thirtyDaysMs);
+                return res.json({
+                    success: true,
+                    last_password_reset: user.last_password_reset,
+                    next_reset_allowed: nextResetDate.toISOString()
+                });
+            }
+        }
+
+        // No restriction → allow reset
+        res.json({ success: true });
+
+    } catch (err) {
+        console.error('Error checking reset status:', err);
+        res.status(500).json({ error: 'An error occurred while checking your reset status.' });
+    }
+});
 // --- ADMIN LOGIN ROUTE ---
 app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body;

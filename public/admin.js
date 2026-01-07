@@ -1275,24 +1275,46 @@ function renderMessages(messages) {
     }
 
     messages.forEach(msg => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${msg.name}</td>
-            <td><a href="mailto:${msg.email}">${msg.email}</a></td>
-            <td>${msg.subject}</td>
-            <td>${new Date(msg.timestamp).toLocaleString()}</td>
-            <td>
-                <span class="status-badge ${msg.read ? 'status-read' : 'status-unread'}">
-                    ${msg.read ? 'Read' : 'Unread'}
-                </span>
-            </td>
-            <td>
-                <button class="btn btn-sm btn-primary" onclick="viewMessage(${msg.id})">View</button>
-                ${!msg.read ? `<button class="btn btn-sm btn-secondary" onclick="markAsRead(${msg.id})">Mark as Read</button>` : ''}
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
+    const row = document.createElement("tr");
+    row.className = "message-row";
+
+    row.innerHTML = `
+        <td class="cell-name">${msg.name}</td>
+
+        <td class="cell-email">
+            <a href="mailto:${msg.email}">${msg.email}</a>
+        </td>
+
+        <td class="cell-subject">${msg.subject}</td>
+
+        <td class="cell-date">
+            ${new Date(msg.timestamp).toLocaleString()}
+        </td>
+
+        <td class="cell-status">
+            <span class="msg-status ${msg.read ? "read" : "unread"}">
+                ${msg.read ? "Read" : "Unread"}
+            </span>
+        </td>
+
+        <td class="cell-actions">
+            <button class="action-btn view" onclick="viewMessage(${msg.id})">
+                View
+            </button>
+
+            ${
+              !msg.read
+                ? `<button class="action-btn mark" onclick="markAsRead(${msg.id})">
+                     Mark as Read
+                   </button>`
+                : ""
+            }
+        </td>
+    `;
+
+    tableBody.appendChild(row);
+});
+
 }
 
 function updatePagination(totalCount) {

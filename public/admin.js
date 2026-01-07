@@ -20,6 +20,12 @@ function showLoader(text = "Loading, please wait...") {
     loader.classList.add("active");
     document.body.style.overflow = "hidden";
 }
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
 
 function hideLoader() {
     const loader = document.getElementById("globalLoader");
@@ -1321,7 +1327,11 @@ async function markAsRead(messageId) {
 
 async function viewMessage(messageId) {
     const token = sessionStorage.getItem("adminToken"); // ✅ Use correct token
+
     try {
+        // Show loader before fetching
+        showLoader(); // Reuse your existing showLoader() function
+
         const response = await fetch(`/api/admin/messages/${messageId}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -1334,44 +1344,45 @@ async function viewMessage(messageId) {
 
         const message = await response.json();
 
-        // Create or get the modal element specifically for messages
+        // Hide loader after successful fetch
+        hideLoader();
+
+        // Get the modal
         let messageModal = document.getElementById('messageDetailsModal');
         if (!messageModal) {
-            // Create the modal dynamically if it doesn't exist
+            // Create modal dynamically if it doesn't exist
             messageModal = document.createElement('div');
             messageModal.id = 'messageDetailsModal';
-            messageModal.className = 'modal';
-            messageModal.style.display = 'none'; // Initially hidden
+            messageModal.className = 'modal-overlay'; // Match your CSS class
+            messageModal.style.display = 'none';
 
             // Add close button
             const closeButton = document.createElement('button');
             closeButton.id = 'closeMessageDetailsBtn';
-            closeButton.className = 'close-btn';
+            closeButton.className = 'btn-close';
             closeButton.textContent = '×';
 
             // Add content container
             const contentContainer = document.createElement('div');
             contentContainer.id = 'messageDetailsContent';
-            contentContainer.className = 'modal-content';
+            contentContainer.className = 'modal-card';
 
-            // Assemble the modal
+            // Assemble modal
             messageModal.appendChild(closeButton);
             messageModal.appendChild(contentContainer);
             document.body.appendChild(messageModal);
 
-            // Add event listener to close button
+            // Add event listeners
             closeButton.addEventListener('click', () => {
                 messageModal.style.display = 'none';
             });
 
-            // Close on overlay click
             messageModal.addEventListener('click', (e) => {
                 if (e.target === messageModal) {
                     messageModal.style.display = 'none';
                 }
             });
 
-            // Close on Escape key
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && messageModal.style.display === 'flex') {
                     messageModal.style.display = 'none';
@@ -1382,8 +1393,11 @@ async function viewMessage(messageId) {
         // Populate modal content
         const content = document.getElementById('messageDetailsContent');
         content.innerHTML = `
-            <div class="user-details">
+            <div class="modal-header">
                 <h3>${message.subject}</h3>
+                <button id="closeMessageDetailsBtn" class="btn-close">&times;</button>
+            </div>
+            <div class="modal-content">
                 <div class="detail-row">
                     <strong>Name:</strong> <span>${message.name}</span>
                 </div>
@@ -1407,6 +1421,9 @@ async function viewMessage(messageId) {
                     <pre style="background: #f8f9fa; padding: 1rem; border-radius: 4px; white-space: pre-wrap; font-family: inherit;">${message.message}</pre>
                 </div>
             </div>
+            <div class="modal-actions">
+                <button type="button" id="closeMessageDetailsBtn2" class="btn btn-secondary" onclick="closeModal('messageDetailsModal')">Close</button>
+            </div>
         `;
 
         // Show the modal
@@ -1414,6 +1431,7 @@ async function viewMessage(messageId) {
 
     } catch (error) {
         console.error('Error viewing message:', error);
+        hideLoader(); // Always hide loader on error
         await showAdminAlert('Error', error.message || 'Failed to view message');
     }
 }

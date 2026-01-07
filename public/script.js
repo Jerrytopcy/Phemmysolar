@@ -867,13 +867,25 @@ async function handleForgotPasswordSubmit(e) {
         const result = await response.json();
 
         if (!response.ok) {
+            // Handle rate limit error
+            if (result.error?.includes("once per month")) {
+                // Optional: Show when next reset is allowed
+                if (result.next_reset_allowed) {
+                    const nextDate = new Date(result.next_reset_allowed).toLocaleDateString();
+                    errorDiv.textContent = `You can only reset your password once per month. Next allowed: ${nextDate}.`;
+                } else {
+                    errorDiv.textContent = result.error;
+                }
+                return;
+            }
+            // Generic error
             errorDiv.textContent = result.error || "An unexpected error occurred.";
             return;
         }
 
         if (result.success) {
-            // ✅ SUCCESS: Create success message INSIDE modal
-            const modalContent = document.querySelector(".forgot-modal"); // target the modal content
+            // ✅ SUCCESS: Hide form, show success message INSIDE modal
+            const modalContent = document.querySelector(".forgot-modal"); // target modal content
             const form = document.getElementById("forgotPasswordForm");
 
             // Hide form
@@ -884,15 +896,25 @@ async function handleForgotPasswordSubmit(e) {
             successMsg.id = "forgotPasswordSuccess";
             successMsg.className = "alert alert-success mt-3";
             successMsg.innerHTML = `
-                <strong>✅ Success!</strong><br>
-                A password reset link has been sent to <strong>${email}</strong>.<br><br>
-                <button class="btn btn-sm btn-secondary" onclick="closeForgotPasswordModal()">OK</button>
+            <div class="success-box">
+                <div class="success-icon">✅</div>
+
+                <h4>Password Reset Sent</h4>
+
+                <p>
+                A password reset link has been sent to<br>
+                <strong>${email}</strong>
+                </p>
+
+                <button class="success-btn" onclick="closeForgotPasswordModal()">
+                OK
+                </button>
+            </div>
             `;
 
-            // Insert before close button or at bottom of modal content
             modalContent.appendChild(successMsg);
 
-            // Optional: Auto-close after 5 seconds
+            // Auto-close after 5 seconds
             setTimeout(() => {
                 closeForgotPasswordModal();
             }, 5000);

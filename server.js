@@ -816,7 +816,7 @@ app.post('/api/forgot-password', async (req, res) => {
     try {
         // Find user by username and email
         const result = await pool.query(
-            'SELECT id, username, email FROM users WHERE username = $1 AND email = $2',
+            'SELECT id, username, email, last_password_reset FROM users WHERE username = $1 AND email = $2',
             [username, email]
         );
 
@@ -825,6 +825,21 @@ app.post('/api/forgot-password', async (req, res) => {
         }
 
         const user = result.rows[0];
+
+        // Check if reset was done in last 30 days
+        const now = Date.now();
+        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+        if (user.last_password_reset) {
+            const lastResetTime = new Date(user.last_password_reset).getTime();
+            if (now - lastResetTime < thirtyDaysMs) {
+                const nextResetDate = new Date(lastResetTime + thirtyDaysMs);
+                return res.status(400).json({
+                    error: 'You can only reset your password once per month.',
+                    next_reset_allowed: nextResetDate.toISOString()
+                });
+            }
+        }
 
         // Generate a secure JWT token for password reset
         const resetToken = jwt.sign(
@@ -835,18 +850,17 @@ app.post('/api/forgot-password', async (req, res) => {
 
         // Save the token in the database for verification
         await pool.query(
-            'UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE id = $3',
+            'UPDATE users SET reset_token = $1, reset_token_expiry = $2, reset_token_used = FALSE WHERE id = $3',
             [resetToken, Date.now() + 3600000, user.id] // 1 hour from now
         );
 
         // Create the reset URL (pointing to your frontend)
-        // IMPORTANT: Replace this with your actual frontend URL
         const resetUrl = `https://www.phemmysolar.com/reset-password.html?token=${encodeURIComponent(resetToken)}`;
 
         // Compose the email
         const msg = {
             to: email,
-            from: 'noreply@phemmysolar.com', // Ensure this is a verified sender in SendGrid
+            from: 'noreply@phemmysolar.com',
             subject: 'Password Reset Request',
             html: `
                 <h2>Password Reset</h2>
@@ -876,7 +890,7 @@ app.post('/api/forgot-password', async (req, res) => {
 });
 
 // --- RESET PASSWORD ROUTE ---
-app.post('/api/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', async (req, res) => {
     const { token, newPassword } = req.body;
 
     if (!token || !newPassword) {
@@ -889,7 +903,7 @@ app.post('/api/reset-password', async (req, res) => {
 
         // Find the user by the ID in the token
         const userResult = await pool.query(
-            'SELECT id, reset_token, reset_token_expiry FROM users WHERE id = $1',
+            'SELECT id, reset_token, reset_token_expiry, reset_token_used FROM users WHERE id = $1',
             [decoded.userId]
         );
 
@@ -899,18 +913,28 @@ app.post('/api/reset-password', async (req, res) => {
 
         const user = userResult.rows[0];
 
-        // Check if the token is still valid (not expired)
-        if (user.reset_token !== token || user.reset_token_expiry < Date.now()) {
-            return res.status(400).json({ error: 'Token has expired or is invalid.' });
+        // Check if token is expired
+        if (user.reset_token_expiry < Date.now()) {
+            return res.status(400).json({ error: 'Token has expired.' });
+        }
+
+        // Check if token has already been used
+        if (user.reset_token_used) {
+            return res.status(400).json({ error: 'This reset link has already been used.' });
+        }
+
+        // Check if token matches
+        if (user.reset_token !== token) {
+            return res.status(400).json({ error: 'Invalid token.' });
         }
 
         // Hash the new password
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-        // Update the user's password and clear the reset token
+        // Update the user's password and mark token as used
         await pool.query(
-            'UPDATE users SET passwordhash = $1, reset_token = NULL, reset_token_expiry = NULL WHERE id = $2',
+            'UPDATE users SET passwordhash = $1, reset_token = NULL, reset_token_expiry = NULL, reset_token_used = TRUE, last_password_reset = NOW() WHERE id = $2',
             [hashedPassword, decoded.userId]
         );
 

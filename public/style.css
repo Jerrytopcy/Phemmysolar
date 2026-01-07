@@ -3297,4 +3297,58 @@ section {
 .input-error {
     border: 2px solid #dc3545 !important;
     background-color: #f8d7da !important;
+}.success-box {
+  background: #f0fff4;
+  border: 1px solid #c6f6d5;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  max-width: 380px;
+  margin: 0 auto;
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+.success-icon {
+  font-size: 42px;
+  margin-bottom: 10px;
+}
+
+.success-box h4 {
+  color: #2f855a;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.success-box p {
+  color: #22543d;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+
+.success-btn {
+  background: #2f855a;
+  color: #fff;
+  border: none;
+  padding: 8px 22px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s ease transform 0.2s ease;
+}
+
+.success-btn:hover {
+  background: #276749;
+  transform: scale(1.05);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

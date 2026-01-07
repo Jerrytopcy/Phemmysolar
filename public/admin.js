@@ -21,7 +21,6 @@ function showLoader(text = "Loading, please wait...") {
     document.body.style.overflow = "hidden";
 }
 
-
 function hideLoader() {
     const loader = document.getElementById("globalLoader");
     if (!loader) return;
@@ -1322,11 +1321,7 @@ async function markAsRead(messageId) {
 
 async function viewMessage(messageId) {
     const token = sessionStorage.getItem("adminToken"); // ✅ Use correct token
-
     try {
-        // Show loader before fetching
-        showLoader(); // Reuse your existing showLoader() function
-
         const response = await fetch(`/api/admin/messages/${messageId}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -1339,45 +1334,44 @@ async function viewMessage(messageId) {
 
         const message = await response.json();
 
-        // Hide loader after successful fetch
-        hideLoader();
-
-        // Get the modal
+        // Create or get the modal element specifically for messages
         let messageModal = document.getElementById('messageDetailsModal');
         if (!messageModal) {
-            // Create modal dynamically if it doesn't exist
+            // Create the modal dynamically if it doesn't exist
             messageModal = document.createElement('div');
             messageModal.id = 'messageDetailsModal';
-            messageModal.className = 'modal-overlay'; // Match your CSS class
-            messageModal.style.display = 'none';
+            messageModal.className = 'modal';
+            messageModal.style.display = 'none'; // Initially hidden
 
             // Add close button
             const closeButton = document.createElement('button');
             closeButton.id = 'closeMessageDetailsBtn';
-            closeButton.className = 'btn-close';
+            closeButton.className = 'close-btn';
             closeButton.textContent = '×';
 
             // Add content container
             const contentContainer = document.createElement('div');
             contentContainer.id = 'messageDetailsContent';
-            contentContainer.className = 'modal-card';
+            contentContainer.className = 'modal-content';
 
-            // Assemble modal
+            // Assemble the modal
             messageModal.appendChild(closeButton);
             messageModal.appendChild(contentContainer);
             document.body.appendChild(messageModal);
 
-            // Add event listeners
+            // Add event listener to close button
             closeButton.addEventListener('click', () => {
                 messageModal.style.display = 'none';
             });
 
+            // Close on overlay click
             messageModal.addEventListener('click', (e) => {
                 if (e.target === messageModal) {
                     messageModal.style.display = 'none';
                 }
             });
 
+            // Close on Escape key
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && messageModal.style.display === 'flex') {
                     messageModal.style.display = 'none';
@@ -1388,11 +1382,8 @@ async function viewMessage(messageId) {
         // Populate modal content
         const content = document.getElementById('messageDetailsContent');
         content.innerHTML = `
-            <div class="modal-header">
+            <div class="user-details">
                 <h3>${message.subject}</h3>
-                <button id="closeMessageDetailsBtn" class="btn-close">&times;</button>
-            </div>
-            <div class="modal-content">
                 <div class="detail-row">
                     <strong>Name:</strong> <span>${message.name}</span>
                 </div>
@@ -1416,9 +1407,6 @@ async function viewMessage(messageId) {
                     <pre style="background: #f8f9fa; padding: 1rem; border-radius: 4px; white-space: pre-wrap; font-family: inherit;">${message.message}</pre>
                 </div>
             </div>
-            <div class="modal-actions">
-                <button type="button" id="closeMessageDetailsBtn2" class="btn btn-secondary" onclick="closeModal('messageDetailsModal')">Close</button>
-            </div>
         `;
 
         // Show the modal
@@ -1426,11 +1414,83 @@ async function viewMessage(messageId) {
 
     } catch (error) {
         console.error('Error viewing message:', error);
-        hideLoader(); // Always hide loader on error
         await showAdminAlert('Error', error.message || 'Failed to view message');
     }
 }
+// Initialize event listeners for the messages section
+document.addEventListener('DOMContentLoaded', () => {
 
+
+    // Add this block for message section
+    const messageSearchInput = document.getElementById('messageSearchInput');
+    const messageStatusFilter = document.getElementById('messageStatusFilter');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+
+    if (messageSearchInput) {
+        messageSearchInput.addEventListener('input', loadMessages);
+    }
+
+    if (messageStatusFilter) {
+        messageStatusFilter.addEventListener('change', loadMessages);
+    }
+
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', () => {
+            if (currentMessagePage > 1) {
+                currentMessagePage--;
+                loadMessages();
+            }
+        });
+    }
+
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', () => {
+            currentMessagePage++;
+            loadMessages();
+        });
+    }
+
+
+    // Add close button event listeners for message details modal
+document.addEventListener('DOMContentLoaded', () => {
+    // ... existing code ...
+
+    // 👇 Add these lines to handle closing the message details modal
+    const closeMessageDetailsBtn = document.getElementById('closeMessageDetailsBtn');
+    const closeMessageDetailsBtn2 = document.getElementById('closeMessageDetailsBtn2');
+    const messageDetailsModal = document.getElementById('messageDetailsModal');
+
+    if (closeMessageDetailsBtn && messageDetailsModal) {
+        closeMessageDetailsBtn.addEventListener('click', () => {
+            messageDetailsModal.style.display = 'none';
+        });
+    }
+
+    if (closeMessageDetailsBtn2 && messageDetailsModal) {
+        closeMessageDetailsBtn2.addEventListener('click', () => {
+            messageDetailsModal.style.display = 'none';
+        });
+    }
+
+    // Also allow clicking outside the modal to close it
+    if (messageDetailsModal) {
+        messageDetailsModal.addEventListener('click', (e) => {
+            if (e.target === messageDetailsModal) {
+                messageDetailsModal.style.display = 'none';
+            }
+        });
+    }
+
+    // Allow Escape key to close the modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && messageDetailsModal && messageDetailsModal.style.display === 'flex') {
+            messageDetailsModal.style.display = 'none';
+        }
+    });
+});
+    
+});
 // Close View Modal
 document.getElementById('closeViewUserBtn')?.addEventListener('click', () => {
     document.getElementById('viewUserModal').style.display = 'none';
@@ -1785,73 +1845,6 @@ document.addEventListener("DOMContentLoaded", () => {
               document.getElementById("viewUserModal").style.display = "none";
           }
       });
-
-
-
-    // Add this block for message section
-    const messageSearchInput = document.getElementById('messageSearchInput');
-    const messageStatusFilter = document.getElementById('messageStatusFilter');
-    const prevPageBtn = document.getElementById('prevPageBtn');
-    const nextPageBtn = document.getElementById('nextPageBtn');
-
-    if (messageSearchInput) {
-        messageSearchInput.addEventListener('input', loadMessages);
-    }
-
-    if (messageStatusFilter) {
-        messageStatusFilter.addEventListener('change', loadMessages);
-    }
-
-    if (prevPageBtn) {
-        prevPageBtn.addEventListener('click', () => {
-            if (currentMessagePage > 1) {
-                currentMessagePage--;
-                loadMessages();
-            }
-        });
-    }
-
-    if (nextPageBtn) {
-        nextPageBtn.addEventListener('click', () => {
-            currentMessagePage++;
-            loadMessages();
-        });
-    }
-
-    // 👇  handle closing the message details modal
-    const closeMessageDetailsBtn = document.getElementById('closeMessageDetailsBtn');
-    const closeMessageDetailsBtn2 = document.getElementById('closeMessageDetailsBtn2');
-    const messageDetailsModal = document.getElementById('messageDetailsModal');
-
-    if (closeMessageDetailsBtn && messageDetailsModal) {
-        closeMessageDetailsBtn.addEventListener('click', () => {
-            messageDetailsModal.style.display = 'none';
-        });
-    }
-
-    if (closeMessageDetailsBtn2 && messageDetailsModal) {
-        closeMessageDetailsBtn2.addEventListener('click', () => {
-            messageDetailsModal.style.display = 'none';
-        });
-    }
-
-    // Also allow clicking outside the modal to close it
-    if (messageDetailsModal) {
-        messageDetailsModal.addEventListener('click', (e) => {
-            if (e.target === messageDetailsModal) {
-                messageDetailsModal.style.display = 'none';
-            }
-        });
-    }
-
-    // Allow Escape key to close the modal
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && messageDetailsModal && messageDetailsModal.style.display === 'flex') {
-            messageDetailsModal.style.display = 'none';
-        }
-    });
-
-
 });
 
 ["orderSearchInput", "statusFilter", "paymentFilter"]

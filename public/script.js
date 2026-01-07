@@ -849,7 +849,7 @@ async function handleForgotPasswordSubmit(e) {
     const modalContent = document.querySelector(".forgot-modal");
     const form = document.getElementById("forgotPasswordForm");
 
-    // Reuse or create message container
+    // Always use ONE container
     let msgBox = document.getElementById("forgotPasswordSuccess");
     if (!msgBox) {
         msgBox = document.createElement("div");
@@ -857,23 +857,24 @@ async function handleForgotPasswordSubmit(e) {
         modalContent.appendChild(msgBox);
     }
 
-    // Helper inside function only
-    const showMessage = (type, title, message, showButton = false) => {
+    // 🔥 helper inside function only
+    const showMessage = (type, title, message) => {
         let icon = "ℹ️";
         if (type === "success") icon = "✅";
         if (type === "error") icon = "❌";
         if (type === "warning") icon = "⚠️";
+
+        // ❌ CLEAR FIRST to prevent stacking
+        msgBox.innerHTML = "";
 
         msgBox.innerHTML = `
           <div class="success-box ${type}">
               <div class="success-icon">${icon}</div>
               <h4>${title}</h4>
               <p>${message}</p>
-              ${
-                showButton
-                  ? `<button class="success-btn" onclick="closeForgotPasswordModal()">OK</button>`
-                  : ""
-              }
+              <button class="success-btn" onclick="closeForgotPasswordModal()">
+                OK
+              </button>
           </div>
         `;
     };
@@ -887,7 +888,6 @@ async function handleForgotPasswordSubmit(e) {
         return;
     }
 
-    // Client-side rate limit (UX only)
     const now = Date.now();
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
     const lastResetKey = `lastPasswordReset_${username}_${email}`;
@@ -901,7 +901,8 @@ async function handleForgotPasswordSubmit(e) {
         showMessage(
             "warning",
             "Reset Limit Reached",
-            `You can only reset your password once per month.<br>Next allowed: <strong>${nextResetDate}</strong>.`
+            `You can only reset your password once per month.<br>
+             Next allowed: <strong>${nextResetDate}</strong>.`
         );
         return;
     }
@@ -918,23 +919,6 @@ async function handleForgotPasswordSubmit(e) {
         const result = await response.json();
 
         if (!response.ok) {
-            if (result.error?.includes("once per month")) {
-                const nextDate = result.next_reset_allowed
-                    ? new Date(result.next_reset_allowed).toLocaleDateString()
-                    : null;
-
-                showMessage(
-                    "warning",
-                    "Reset Limit Reached",
-                    nextDate
-                      ? `You can only reset your password once per month.<br>Next allowed: <strong>${nextDate}</strong>.`
-                      : result.error
-                );
-
-                localStorage.setItem(lastResetKey, Date.now().toString());
-                return;
-            }
-
             showMessage(
                 "error",
                 "Request Failed",
@@ -949,8 +933,8 @@ async function handleForgotPasswordSubmit(e) {
             showMessage(
                 "success",
                 "Password Reset Sent",
-                `A password reset link has been sent to<br><strong>${email}</strong>`,
-                true
+                `A password reset link has been sent to<br>
+                 <strong>${email}</strong>`
             );
 
             localStorage.setItem(lastResetKey, Date.now().toString());

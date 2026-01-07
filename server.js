@@ -507,11 +507,20 @@ app.get('/api/users/:id', async (req, res) => {
         u.phone,
         u.address::json AS address,
         u.role,
-        COUNT(o.id) AS order_count
+        u.last_login,
+        COUNT(o.id) AS order_count,
+        json_agg(
+          json_build_object(
+            'order_id', o.id,
+            'date', o.date,
+            'total', o.total,
+            'status', o.status
+          )
+        ) FILTER (WHERE o.id IS NOT NULL) AS recent_orders
       FROM users u
       LEFT JOIN orders o ON o.user_id = u.id
       WHERE u.id = $1
-      GROUP BY u.id, u.username, u.email, u.phone, u.address, u.role
+      GROUP BY u.id, u.username, u.email, u.phone, u.address, u.role, u.last_login
     `, [req.params.id]);
 
     if (result.rows.length === 0) {

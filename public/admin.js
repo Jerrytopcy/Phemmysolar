@@ -1263,35 +1263,53 @@ function viewUser(userId) {
             // Populate modal content
             const content = document.getElementById("viewUserContent");
             content.innerHTML = `
-                <div class="user-modal-content">
-                    <div class="user-header">
-                        <h3>User Details</h3>
-                        <span class="user-role ${user.role}">${user.role}</span>
-                    </div>
-                    <div class="user-info-grid">
-                        <div class="info-item">
-                            <strong>Username:</strong>
-                            <span>${user.username}</span>
-                        </div>
-                        <div class="info-item">
-                            <strong>Email:</strong>
-                            <span>${user.email || "—"}</span>
-                        </div>
-                        <div class="info-item">
-                            <strong>Phone:</strong>
-                            <span>${user.phone || "—"}</span>
-                        </div>
-                        <div class="info-item">
-                            <strong>Order Count:</strong>
-                            <span>${user.order_count || 0}</span>
-                        </div>
-                        <div class="info-item">
-                            <strong>Address:</strong>
-                            <span>${user.address ? `${user.address.street}, ${user.address.city}, ${user.address.state} ${user.address.postalCode}, ${user.address.country}` : "—"}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
+              <div class="user-modal-content">
+                  <div class="user-header">
+                      <h3>User Details</h3>
+                      <span class="user-role ${user.role}">${user.role}</span>
+                  </div>
+                  <div class="user-info-grid">
+                      <div class="info-item">
+                          <strong>Username:</strong>
+                          <span>${user.username}</span>
+                      </div>
+                      <div class="info-item">
+                          <strong>Email:</strong>
+                          <span>${user.email || "—"}</span>
+                      </div>
+                      <div class="info-item">
+                          <strong>Phone:</strong>
+                          <span>${user.phone || "—"}</span>
+                      </div>
+                      <div class="info-item">
+                          <strong>Order Count:</strong>
+                          <span>${user.order_count || 0}</span>
+                      </div>
+                      <div class="info-item">
+                          <strong>Last Login:</strong>
+                          <span>${user.last_login ? new Date(user.last_login).toLocaleString() : "Never"}</span>
+                      </div>
+                      <div class="info-item">
+                          <strong>Recent Orders:</strong>
+                          <ul style="padding-left: 1.5rem; margin: 0.5rem 0;">
+                              ${user.recent_orders && user.recent_orders.length > 0 ? 
+                                  user.recent_orders.slice(0, 3).map(order => `
+                                      <li>
+                                          <strong>Order #${order.order_id}</strong> - ${new Date(order.date).toLocaleDateString()} 
+                                          <br>₦${order.total} • ${order.status}
+                                      </li>
+                                  `).join("") : 
+                                  "<li>No recent orders</li>"
+                              }
+                          </ul>
+                      </div>
+                      <div class="info-item">
+                          <strong>Address:</strong>
+                          <span>${user.address ? `${user.address.street}, ${user.address.city}, ${user.address.state} ${user.address.postalCode}, ${user.address.country}` : "—"}</span>
+                      </div>
+                  </div>
+              </div>
+          `;
 
             // Hide loader after loading
             hideLoader();
@@ -1299,23 +1317,23 @@ function viewUser(userId) {
             // Show modal
             document.getElementById("viewUserModal").style.display = "flex";
 
-            // After showing the modal, log the view
-            fetch('/api/audit/user-view', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}` // Or however you store JWT
-                },
-                body: JSON.stringify({ userId: userId })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    console.warn('Failed to log user view.');
-                }
-            })
-            .catch(err => {
-                console.warn('Error logging user view:', err);
-            });
+            // // After showing the modal, log the view
+            // fetch('/api/audit/user-view', {
+            //     method: 'POST',
+            //     headers: {
+            //         'Content-Type': 'application/json',
+            //         'Authorization': `Bearer ${localStorage.getItem('token')}` // Or however you store JWT
+            //     },
+            //     body: JSON.stringify({ userId: userId })
+            // })
+            // .then(response => {
+            //     if (!response.ok) {
+            //         console.warn('Failed to log user view.');
+            //     }
+            // })
+            // .catch(err => {
+            //     console.warn('Error logging user view:', err);
+            // });
         })
         .catch(error => {
             console.error("Error fetching user for view:", error);

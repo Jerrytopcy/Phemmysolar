@@ -1081,7 +1081,7 @@ app.post('/api/contact', async (req, res) => {
         // Send email to admin via SendGrid
         const msg = {
             to: process.env.ADMIN_EMAIL || 'admin@phemmysolar.ng',
-            from: 'noreply@phemmysolar.ng',
+            from: 'noreply@phemmysolar.com',
             subject: `[Contact Form] ${subject}`,
             text: `
 New Contact Message:

@@ -1200,7 +1200,6 @@ async function loadUsers() {
 
 
 // --- CONTACT MESSAGES SECTION ---
-
 let currentMessagePage = 1;
 const MESSAGE_PER_PAGE = 10;
 
@@ -1208,7 +1207,7 @@ const MESSAGE_PER_PAGE = 10;
 async function loadMessages() {
     showLoader();
     try {
-        // Use the same authentication method as the rest of the admin panel
+        // ✅ Use the correct token from sessionStorage
         const token = sessionStorage.getItem("adminToken");
         if (!token) {
             await showAdminAlert("Authentication Error", "Please log in again.");
@@ -1217,7 +1216,7 @@ async function loadMessages() {
 
         const response = await fetch('/api/admin/messages', {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}` // ✅ Pass the token correctly
             }
         });
 
@@ -1298,7 +1297,7 @@ function updatePagination(totalCount) {
 }
 
 async function markAsRead(messageId) {
-    const token = sessionStorage.getItem("adminToken");
+    const token = sessionStorage.getItem("adminToken"); // ✅ Use correct token
     try {
         const response = await fetch(`/api/admin/messages/${messageId}/read`, {
             method: 'PATCH',
@@ -1321,7 +1320,7 @@ async function markAsRead(messageId) {
 }
 
 async function viewMessage(messageId) {
-    const token = sessionStorage.getItem("adminToken");
+    const token = sessionStorage.getItem("adminToken"); // ✅ Use correct token
     try {
         const response = await fetch(`/api/admin/messages/${messageId}`, {
             headers: {
@@ -1418,10 +1417,11 @@ async function viewMessage(messageId) {
         await showAdminAlert('Error', error.message || 'Failed to view message');
     }
 }
-
 // Initialize event listeners for the messages section
 document.addEventListener('DOMContentLoaded', () => {
-    // Ensure the DOM is fully loaded before adding listeners
+    // ... existing code ...
+
+    // Add this block for message section
     const messageSearchInput = document.getElementById('messageSearchInput');
     const messageStatusFilter = document.getElementById('messageStatusFilter');
     const prevPageBtn = document.getElementById('prevPageBtn');
@@ -1451,7 +1451,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
 // Close View Modal
 document.getElementById('closeViewUserBtn')?.addEventListener('click', () => {
     document.getElementById('viewUserModal').style.display = 'none';

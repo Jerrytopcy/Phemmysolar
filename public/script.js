@@ -840,6 +840,16 @@ function closeForgotPasswordModal() {
     }
 }
 
+// Clean up expired entries
+Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('lastPasswordReset_')) {
+        const storedTime = parseInt(localStorage.getItem(key));
+        if (now - storedTime > thirtyDaysMs) {
+            localStorage.removeItem(key);
+        }
+    }
+});
+
 async function handleForgotPasswordSubmit(e) {
     e.preventDefault();
     const username = document.getElementById("forgotPasswordUsername").value.trim();
@@ -850,6 +860,20 @@ async function handleForgotPasswordSubmit(e) {
 
     if (!username || !email) {
         errorDiv.textContent = "Username and email are required.";
+        return;
+    }
+
+    // ======================
+    // CLIENT-SIDE RATE LIMIT CHECK (UX ONLY)
+    // ======================
+    const now = Date.now();
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+    const lastResetKey = `lastPasswordReset_${username}_${email}`;
+    const lastResetTime = localStorage.getItem(lastResetKey);
+
+    if (lastResetTime && now - parseInt(lastResetTime) < thirtyDaysMs) {
+        const nextResetDate = new Date(parseInt(lastResetTime) + thirtyDaysMs).toLocaleDateString();
+        errorDiv.textContent = `You can only reset your password once per month. Next allowed: ${nextResetDate}.`;
         return;
     }
 
@@ -873,6 +897,9 @@ async function handleForgotPasswordSubmit(e) {
                 if (result.next_reset_allowed) {
                     const nextDate = new Date(result.next_reset_allowed).toLocaleDateString();
                     errorDiv.textContent = `You can only reset your password once per month. Next allowed: ${nextDate}.`;
+
+                    // Also store client-side for UX
+                    localStorage.setItem(lastResetKey, Date.now().toString());
                 } else {
                     errorDiv.textContent = result.error;
                 }
@@ -898,26 +925,26 @@ async function handleForgotPasswordSubmit(e) {
             successMsg.innerHTML = `
             <div class="success-box">
                 <div class="success-icon">✅</div>
-
                 <h4>Password Reset Sent</h4>
-
                 <p>
-                A password reset link has been sent to<br>
-                <strong>${email}</strong>
+                    A password reset link has been sent to<br>
+                    <strong>${email}</strong>
                 </p>
-
                 <button class="success-btn" onclick="closeForgotPasswordModal()">
-                OK
+                    OK
                 </button>
             </div>
             `;
 
             modalContent.appendChild(successMsg);
 
-            // Auto-close after 5 seconds
-            setTimeout(() => {
-                closeForgotPasswordModal();
-            }, 5000);
+            // Store client-side timestamp for UX
+            localStorage.setItem(lastResetKey, Date.now().toString());
+
+            // Optional: Auto-close after 5 seconds
+            // setTimeout(() => {
+            //     closeForgotPasswordModal();
+            // }, 5000);
 
         } else {
             errorDiv.textContent = result.error || "Password reset failed.";

@@ -48,28 +48,6 @@ app.get('/reset-password', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
 });
 
-// Optional: Also handle trailing slashes (e.g., /admin/)
-app.get('/admin/', (req, res) => {
-    res.redirect('/admin');
-});
-app.get('/contact/', (req, res) => {
-    res.redirect('/contact');
-});
-app.get('/products/', (req, res) => {
-    res.redirect('/products');
-});
-app.get('/news/', (req, res) => {
-    res.redirect('/news');
-});
-app.get('/services/', (req, res) => {
-    res.redirect('/services');
-});
-app.get('/about/', (req, res) => {
-    res.redirect('/about');
-});
-app.get('/reset-password/', (req, res) => {
-    res.redirect('/reset-password');
-});
 
 
 // Parse JSON bodies (increased limit for Base64 images)

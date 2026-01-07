@@ -1357,7 +1357,6 @@ async function viewMessage(messageId) {
         content.innerHTML = `
             <div class="modal-header">
                 <h3>${message.subject}</h3>
-                <button id="closeMessageDetailsBtn" class="btn-close" onclick="closeModal('messageDetailsModal')">&times;</button>
             </div>
             <div class="modal-content">
                 <div class="detail-row">
@@ -1383,9 +1382,7 @@ async function viewMessage(messageId) {
                     <pre style="background: #f8f9fa; padding: 1rem; border-radius: 4px; white-space: pre-wrap; font-family: inherit;">${message.message}</pre>
                 </div>
             </div>
-            <div class="modal-actions">
-                <button type="button" id="closeMessageDetailsBtn2" class="btn btn-secondary" onclick="closeModal('messageDetailsModal')">Close</button>
-            </div>
+            
         `;
 
         // Show the modal

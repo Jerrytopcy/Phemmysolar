@@ -1983,3 +1983,133 @@ body {
     color: #0f5132;
     border: 1px solid #badbcc;
 }
+/* Overlay with soft gradient glow */
+#messageDetailsModal {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    circle at top,
+    rgba(99, 102, 241, 0.35),
+    rgba(0, 0, 0, 0.65)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(6px);
+}
+
+/* Card */
+#messageDetailsModal .modal-card {
+  background: linear-gradient(145deg, #ffffff, #f8f7ff);
+  width: 100%;
+  max-width: 540px;
+  border-radius: 22px;
+  box-shadow:
+    0 30px 70px rgba(79, 70, 229, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+  animation: messageDetailsPop 0.4s ease;
+}
+
+/* Header */
+#messageDetailsModal .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+}
+
+#messageDetailsModal .modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+}
+
+/* Close button */
+#messageDetailsModal .btn-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #ffffff;
+  font-size: 22px;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  transition: background 0.25s ease transform 0.2s ease;
+}
+
+#messageDetailsModal .btn-close:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: rotate(90deg) scale(1.05);
+}
+
+/* Content */
+#messageDetailsModal .modal-content {
+  padding: 22px;
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.8;
+}
+
+/* Message blocks */
+#messageDetailsModal .modal-content p {
+  background: #ffffff;
+  padding: 12px 14px;
+  border-radius: 14px;
+  margin: 0 0 14px;
+  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.08);
+}
+
+#messageDetailsModal .modal-content strong {
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+/* Actions */
+#messageDetailsModal .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 22px;
+  background: #f8f7ff;
+}
+
+/* Button */
+#messageDetailsModal .btn-secondary {
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(99, 102, 241, 0.35);
+  transition: transform 0.25s ease box-shadow 0.25s ease;
+}
+
+#messageDetailsModal .btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(99, 102, 241, 0.45);
+}
+
+/* Animation */
+@keyframes messageDetailsPop {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  #messageDetailsModal .modal-card {
+    margin: 18px;
+  }
+}

@@ -840,115 +840,140 @@ function closeForgotPasswordModal() {
     }
 }
 
-
-
 async function handleForgotPasswordSubmit(e) {
     e.preventDefault();
+
     const username = document.getElementById("forgotPasswordUsername").value.trim();
     const email = document.getElementById("forgotPasswordEmail").value.trim();
 
-    const errorDiv = document.getElementById("forgotPasswordError");
-    errorDiv.textContent = "";
+    const modalContent = document.querySelector(".forgot-modal");
+    const form = document.getElementById("forgotPasswordForm");
+
+    // Reuse or create message container
+    let msgBox = document.getElementById("forgotPasswordSuccess");
+    if (!msgBox) {
+        msgBox = document.createElement("div");
+        msgBox.id = "forgotPasswordSuccess";
+        modalContent.appendChild(msgBox);
+    }
+
+    // Helper inside function only
+    const showMessage = (type, title, message, showButton = false) => {
+        let icon = "ℹ️";
+        if (type === "success") icon = "✅";
+        if (type === "error") icon = "❌";
+        if (type === "warning") icon = "⚠️";
+
+        msgBox.innerHTML = `
+          <div class="success-box ${type}">
+              <div class="success-icon">${icon}</div>
+              <h4>${title}</h4>
+              <p>${message}</p>
+              ${
+                showButton
+                  ? `<button class="success-btn" onclick="closeForgotPasswordModal()">OK</button>`
+                  : ""
+              }
+          </div>
+        `;
+    };
 
     if (!username || !email) {
-        errorDiv.textContent = "Username and email are required.";
+        showMessage(
+            "error",
+            "Missing Information",
+            "Username and email are required."
+        );
         return;
     }
 
-    // ======================
-    // CLIENT-SIDE RATE LIMIT CHECK (UX ONLY)
-    // ======================
+    // Client-side rate limit (UX only)
     const now = Date.now();
-    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
     const lastResetKey = `lastPasswordReset_${username}_${email}`;
     const lastResetTime = localStorage.getItem(lastResetKey);
 
     if (lastResetTime && now - parseInt(lastResetTime) < thirtyDaysMs) {
-        const nextResetDate = new Date(parseInt(lastResetTime) + thirtyDaysMs).toLocaleDateString();
-        errorDiv.textContent = `You can only reset your password once per month. Next allowed: ${nextResetDate}.`;
+        const nextResetDate = new Date(
+            parseInt(lastResetTime) + thirtyDaysMs
+        ).toLocaleDateString();
+
+        showMessage(
+            "warning",
+            "Reset Limit Reached",
+            `You can only reset your password once per month.<br>Next allowed: <strong>${nextResetDate}</strong>.`
+        );
         return;
     }
 
     showLoader("Sending password reset link...");
 
     try {
-        const response = await fetch('/api/forgot-password', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+        const response = await fetch("/api/forgot-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, email })
         });
 
         const result = await response.json();
 
         if (!response.ok) {
-            // Handle rate limit error
             if (result.error?.includes("once per month")) {
-                // Optional: Show when next reset is allowed
-                if (result.next_reset_allowed) {
-                    const nextDate = new Date(result.next_reset_allowed).toLocaleDateString();
-                    errorDiv.textContent = `You can only reset your password once per month. Next allowed: ${nextDate}.`;
+                const nextDate = result.next_reset_allowed
+                    ? new Date(result.next_reset_allowed).toLocaleDateString()
+                    : null;
 
-                    // Also store client-side for UX
-                    localStorage.setItem(lastResetKey, Date.now().toString());
-                } else {
-                    errorDiv.textContent = result.error;
-                }
+                showMessage(
+                    "warning",
+                    "Reset Limit Reached",
+                    nextDate
+                      ? `You can only reset your password once per month.<br>Next allowed: <strong>${nextDate}</strong>.`
+                      : result.error
+                );
+
+                localStorage.setItem(lastResetKey, Date.now().toString());
                 return;
             }
-            // Generic error
-            errorDiv.textContent = result.error || "An unexpected error occurred.";
+
+            showMessage(
+                "error",
+                "Request Failed",
+                result.error || "An unexpected error occurred."
+            );
             return;
         }
 
         if (result.success) {
-            // ✅ SUCCESS: Hide form, show success message INSIDE modal
-            const modalContent = document.querySelector(".forgot-modal"); // target modal content
-            const form = document.getElementById("forgotPasswordForm");
-
-            // Hide form
             form.style.display = "none";
 
-            // Create success message div
-            const successMsg = document.createElement("div");
-            successMsg.id = "forgotPasswordSuccess";
-            successMsg.className = "alert alert-success mt-3";
-            successMsg.innerHTML = `
-            <div class="success-box">
-                <div class="success-icon">✅</div>
-                <h4>Password Reset Sent</h4>
-                <p>
-                    A password reset link has been sent to<br>
-                    <strong>${email}</strong>
-                </p>
-                <button class="success-btn" onclick="closeForgotPasswordModal()">
-                    OK
-                </button>
-            </div>
-            `;
+            showMessage(
+                "success",
+                "Password Reset Sent",
+                `A password reset link has been sent to<br><strong>${email}</strong>`,
+                true
+            );
 
-            modalContent.appendChild(successMsg);
-
-            // Store client-side timestamp for UX
             localStorage.setItem(lastResetKey, Date.now().toString());
-
-            // Optional: Auto-close after 5 seconds
-            // setTimeout(() => {
-            //     closeForgotPasswordModal();
-            // }, 5000);
-
         } else {
-            errorDiv.textContent = result.error || "Password reset failed.";
+            showMessage(
+                "error",
+                "Reset Failed",
+                result.error || "Password reset failed."
+            );
         }
 
     } catch (error) {
-        console.error("Network error during password reset:", error);
-        errorDiv.textContent = "Network error. Please try again.";
+        console.error("Network error:", error);
+        showMessage(
+            "error",
+            "Network Error",
+            "Please check your internet connection and try again."
+        );
     } finally {
         hideLoader();
     }
 }
+
 
 // --- END NEW: Custom Modal Functions for Login/Signup ---
 

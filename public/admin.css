@@ -2547,3 +2547,30 @@ body {
   }
 }
 
+/* ===============================
+   WIDER DETAIL LAYOUT ON MOBILE
+================================ */
+
+@media (max-width: 600px) {
+  #messageDetailsModal #messageDetailsContent {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+
+  #messageDetailsModal .detail-row {
+    width: 100%;
+  }
+
+  #messageDetailsModal .detail-row strong {
+    width: 100%;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  #messageDetailsModal .detail-row span,
+  #messageDetailsModal .detail-row a,
+  #messageDetailsModal .detail-row pre {
+    width: 100%;
+    display: block;
+  }
+}

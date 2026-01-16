@@ -379,7 +379,7 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 allNewsArticles = await response.json();
-                console.log("[v0] Retrieved news articles:", allNewsArticles.length);
+                console.log("Retrieved news articles:", allNewsArticles.length);
 
                 // Display the news articles
                 displayNewsOnPage();

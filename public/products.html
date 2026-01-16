@@ -408,7 +408,7 @@
         let pageFilteredProducts = []
 
         function initProductsPage() {
-            console.log("[v0] Initializing products page")
+            console.log("Initializing products page")
             initializeData()
 
             // Fetch products from the API
@@ -420,7 +420,7 @@
                     return response.json();
                 })
                 .then(products => {
-                    console.log("[v0] Retrieved products:", products.length)
+                    console.log("Retrieved products:", products.length)
                     pageProducts = [...products]
                     pageFilteredProducts = [...products]
 
@@ -429,7 +429,7 @@
                     const categoryFilter = urlParams.get("category")
 
                     if (categoryFilter) {
-                        console.log("[v0] Filtering by category:", categoryFilter)
+                        console.log("Filtering by category:", categoryFilter)
                         pageFilteredProducts = pageFilteredProducts.filter(p => p.category === categoryFilter)
                     }
 

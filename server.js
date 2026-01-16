@@ -510,7 +510,7 @@ app.put('/api/news/:id', async (req, res) => {
   const { title, description, fullContent, image, date } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE news SET title = $1, description = $2, fullContent = $3, image = $4, date = $5 WHERE id = $6 RETURNING *',
+      'UPDATE news SET "title" = $1, "description" = $2, "fullContent" = $3, "image" = $4, "date" = $5 WHERE "id" = $6 RETURNING *',
       [title, description, fullContent, image, date, req.params.id]
     );
     if (result.rows.length === 0) {

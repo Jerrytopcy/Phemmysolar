@@ -469,9 +469,11 @@ app.delete('/api/testimonials/:id', async (req, res) => {
 });
 
 // --- NEWS ROUTES ---
+// --- NEWS ROUTES ---
+
 app.get('/api/news', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM news ORDER BY id');
+    const result = await pool.query('SELECT "id", "title", "description", "fullContent", "image", "date", "created_at" FROM news ORDER BY "id"');
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching news:', err);
@@ -481,7 +483,7 @@ app.get('/api/news', async (req, res) => {
 
 app.get('/api/news/:id', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM news WHERE id = $1', [req.params.id]);
+    const result = await pool.query('SELECT "id", "title", "description", "fullContent", "image", "date", "created_at" FROM news WHERE "id" = $1', [req.params.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'News article not found' });
     }
@@ -496,7 +498,7 @@ app.post('/api/news', async (req, res) => {
   const { title, description, fullContent, image, date } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO news (title, description, fullContent, image, date) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      'INSERT INTO news ("title", "description", "fullContent", "image", "date") VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [title, description, fullContent, image, date]
     );
     res.json({ success: true, news: result.rows[0] });
@@ -525,7 +527,7 @@ app.put('/api/news/:id', async (req, res) => {
 
 app.delete('/api/news/:id', async (req, res) => {
   try {
-    const result = await pool.query('DELETE FROM news WHERE id = $1 RETURNING *', [req.params.id]);
+    const result = await pool.query('DELETE FROM news WHERE "id" = $1 RETURNING *', [req.params.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'News article not found' });
     }

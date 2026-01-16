@@ -460,7 +460,7 @@
                 document.getElementById("articleTitle").innerText = article.title;
                 document.getElementById("articleDate").innerText = article.date;
                 document.getElementById("articleImage").src = article.image;
-                document.getElementById("articleBody").innerHTML = article.body;
+                document.getElementById("articleBody").innerHTML = article.fullContent;
                 articleModal.classList.add("active");
                 document.body.style.overflow = "hidden";
             } else {

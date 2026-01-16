@@ -1725,7 +1725,7 @@ function viewFullArticle(articleId) {
 
             document.getElementById("articleTitle").textContent = article.title;
             document.getElementById("articleDate").textContent = article.date;
-            document.getElementById("articleImage").src = article.image || "/placeholder.svg";
+            document.getElementById("articleImage").src = article.image || "/public/placeholder.svg";
             document.getElementById("articleBody").innerHTML = `<p>${(article.fullContent || article.body || article.description).replace(/ /g, "</p><p>")}</p>`;
 
             modal.classList.add("active");

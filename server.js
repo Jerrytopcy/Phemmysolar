@@ -845,6 +845,7 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
   }
 });
 // --- REQUERY PAYMENT STATUS ---
+// --- REAL REMITA PAYMENT VERIFICATION (SANDBOX MODE) ---
 app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
     const orderId = req.params.id;
     try {
@@ -855,7 +856,10 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
         );
 
         if (orderResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Order not found or unauthorized' });
+            return res.status(404).json({ 
+                success: false,
+                error: 'Order not found or unauthorized' 
+            });
         }
 
         const order = orderResult.rows[0];
@@ -869,17 +873,58 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
             });
         }
 
-        // Simulate calling Remita API to requery payment
-        // In production, you'd call Remita's actual API here
-        // For now, we'll simulate a successful payment if RRR exists
-        let newStatus = 'pending'; // default
+        // If no RRR, cannot requery
+        if (!order.transaction_id) {
+            return res.json({
+                success: false,
+                status: 'pending',
+                message: 'No payment reference (RRR) available for this order.'
+            });
+        }
 
-        if (order.transaction_id) {
-            // Simulate checking Remita — in real app, call Remita API
-            // For demo, assume payment is successful if RRR starts with "RRR"
-            if (order.transaction_id.startsWith('RRR')) {
-                newStatus = 'paid';
-            }
+        // Prepare Remita API request (using sandbox/demo endpoint)
+        const merchantId = process.env.REMITA_MERCHANT_ID; // e.g., "2547916"
+        const apiKey = process.env.REMITA_API_KEY; // e.g., "1946"
+
+        if (!merchantId || !apiKey) {
+            throw new Error('Remita credentials not configured');
+        }
+
+        // Create Basic Auth header
+        const auth = Buffer.from(`${merchantId}:${apiKey}`).toString('base64');
+
+        // Use DEMO endpoint
+        const response = await fetch('https://api-demo.remita.net/remita/ecomm/v1/validate/payment.json', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${auth}`
+            },
+            body: JSON.stringify({
+                merchantId: merchantId,
+                transactionId: order.transaction_id
+            })
+        });
+
+        const result = await response.json();
+
+        // Extract status from Remita response
+        let newStatus = 'pending';
+        let message = 'Payment not yet confirmed. Please try again later.';
+
+        if (result.status === '00') { // Success
+            newStatus = 'paid';
+            message = 'Payment successfully confirmed!';
+        } else if (result.status === '01') { // Failed
+            newStatus = 'failed';
+            message = 'Payment failed. Please contact support.';
+        } else if (result.status === '02') { // Pending
+            newStatus = 'pending';
+            message = 'Payment still processing. Please try again later.';
+        } else {
+            // Unknown status
+            newStatus = 'pending';
+            message = `Unknown status: ${result.status}. Please contact support.`;
         }
 
         // Update order status if changed
@@ -893,11 +938,17 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
         res.json({
             success: true,
             status: newStatus,
-            message: newStatus === 'paid' ? 'Payment confirmed' : 'Payment still pending'
+            message: message,
+            remitaResponse: result // For debugging
         });
+
     } catch (err) {
-        console.error('Requery payment error:', err);
-        res.status(500).json({ error: 'Failed to requery payment' });
+        console.error('Error requerying payment:', err);
+        res.status(500).json({ 
+            success: false,
+            error: 'Failed to requery payment. Please contact support.', 
+            details: err.message 
+        });
     }
 });
 // --- REMITA PAYMENT INITIATION ROUTE ---
@@ -934,12 +985,55 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             [rrr, orderId]
         );
         
-        // Here you would typically make an API call to Remita to generate the payment URL
-        // For demonstration, we'll create a mock redirect URL
-        // In a real implementation, you would use Remita's API
-        
-        // Mock Remita redirect URL - replace with actual Remita API call
-        const remitaRedirectUrl = `https://www.remita.net/pay/${rrr}?amount=${total}&orderId=${orderId}`;
+       // Use Remita's sandbox payment initiation API
+const merchantId = process.env.REMITA_MERCHANT_ID;
+const apiKey = process.env.REMITA_API_KEY;
+
+if (!merchantId || !apiKey) {
+    throw new Error('Remita credentials not configured');
+}
+
+// Create Basic Auth header
+const auth = Buffer.from(`${merchantId}:${apiKey}`).toString('base64');
+
+// Prepare payload for Remita payment initiation
+const payload = {
+    merchantId: merchantId,
+    serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID, // e.g., "4430739"
+    amount: total.toString(),
+    orderId: orderId.toString(),
+    transactionId: rrr,
+    responseUrl: `${process.env.FRONTEND_URL}/api/webhook/remita`, // Your webhook URL
+    returnUrl: `${process.env.FRONTEND_URL}/account`, // Where user returns after payment
+    payerName: req.user.username,
+    payerEmail: req.user.email,
+    payerPhone: req.user.phone
+};
+
+const response = await fetch('https://api-demo.remita.net/remita/ecomm/v1/payment.json', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${auth}`
+    },
+    body: JSON.stringify(payload)
+});
+
+const result = await response.json();
+
+if (!response.ok || result.status !== '00') {
+    throw new Error(`Remita payment initiation failed: ${result.message || 'Unknown error'}`);
+}
+
+// Get the actual payment URL from Remita
+const paymentUrl = result.data?.paymentUrl || result.paymentUrl;
+
+res.json({ 
+    success: true, 
+    redirectUrl: paymentUrl,
+    orderId: orderId,
+    rrr: rrr
+});
         
         res.json({ 
             success: true, 
@@ -953,19 +1047,29 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
     }
 });
 
-// --- REMITA WEBHOOK ENDPOINT ---
+
+// --- REAL REMITA WEBHOOK ENDPOINT ---
 app.post('/api/webhook/remita', async (req, res) => {
     try {
-        const { transactionId, status, rrr } = req.body;
+        const { transactionId, status } = req.body; // Extract from Remita's actual webhook
         
-        // Update order status based on payment status
-        let newStatus = status === 'SUCCESS' ? 'paid' : 'pending';
-        
+        // Map Remita status codes to your system
+        let newStatus = 'pending';
+        if (status === '00') {
+            newStatus = 'paid';
+        } else if (status === '01') {
+            newStatus = 'failed';
+        }
+
+        // Update order status
         await pool.query(
             'UPDATE orders SET status = $1, payment_status = $1 WHERE transaction_id = $2',
             [newStatus, transactionId]
         );
-        
+
+        // Log for debugging
+        console.log(`✅ Webhook processed: RRR=${transactionId}, Status=${newStatus}`);
+
         res.status(200).send('OK');
     } catch (err) {
         console.error('Error handling Remita webhook:', err);

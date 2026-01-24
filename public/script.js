@@ -186,7 +186,7 @@ function removeFromCart(productId) {
     syncCartToDatabase();
 }
 
-// Proceed to checkout
+
 // Proceed to checkout
 async function proceedToCheckout() {
     if (!cart || cart.length === 0) {
@@ -269,17 +269,20 @@ async function proceedToCheckout() {
         const result = await response.json();
         
         if (result.success && result.redirectUrl) {
-            // Clear cart after successful order creation
-            cart = [];
-            sessionStorage.removeItem('cart');
-            // Update UI to reflect empty cart
-            updateUIBasedOnUser();
-            // Close the cart modal first
-            closeCartModal();
-            
-            // Redirect to Remita payment page
+        // Clear cart
+        cart = [];
+        sessionStorage.removeItem('cart');
+        updateUIBasedOnUser();
+        closeCartModal();
+
+        // Show message before redirect
+        showCustomAlert("Redirecting to payment page...", "Please Wait", "info");
+        
+        // Delay redirect slightly to let alert show
+        setTimeout(() => {
             window.location.href = result.redirectUrl;
-        } else {
+        }, 1500);
+    } else {
             throw new Error('Payment initiation failed');
         }
     } catch (error) {

@@ -3352,3 +3352,22 @@ section {
     transform: translateY(0);
   }
 }
+.btn-requery {
+    background-color: #ffc107;
+    color: #212529;
+    border: none;
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-requery:hover {
+    background-color: #e0a800;
+}
+
+.btn-requery:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}

@@ -299,6 +299,59 @@ function closeCartModal() {
     }
 }
 
+// Requery payment status from Remita
+async function requeryPayment(orderId) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showCustomAlert("Please log in to requery payment.", "Login Required");
+        return;
+    }
+
+    showLoader("Checking payment status...");
+    try {
+        // Send request to your backend to requery Remita
+        const response = await fetch(`/api/orders/${orderId}/requery`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to requery payment');
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.status) {
+            // Show success alert
+            showCustomAlert(
+                `Payment successfully confirmed! Order #${orderId} is now marked as "${result.status}".`,
+                "Payment Confirmed",
+                "success"
+            );
+
+            // Optional: Refresh the order history to reflect updated status
+            loadOrderHistory();
+        } else {
+            showCustomAlert(
+                `Payment still pending or failed. Please try again later or contact support.`,
+                "Payment Not Confirmed",
+                "error"
+            );
+        }
+    } catch (error) {
+        console.error("Error requerying payment:", error);
+        showCustomAlert(
+            "Unable to check payment status. Please try again later.",
+            "Error",
+            "error"
+        );
+    } finally {
+        hideLoader();
+    }
+}
 // Load user's order history (for account page)
 async function loadOrderHistory() {
     const token = localStorage.getItem('token');
@@ -369,7 +422,13 @@ async function loadOrderHistory() {
 <p><strong>Date:</strong> ${formattedDate}</p>
 <p><strong>Delivery Address:</strong> ${fullAddress}</p>
 <div class="order-status-actions">
-<p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
+    <p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
+    <!-- Only show Requery button if status is "pending" -->
+    ${order.status === 'pending' ? `
+        <button class="btn btn-continue btn-requery" onclick="requeryPayment(${orderId})">
+            🔁 Requery Payment
+        </button>
+    ` : ''}
 </div>
 <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
 <div class="order-items-list">

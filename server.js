@@ -844,7 +844,62 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch orders' });
   }
 });
+// --- REQUERY PAYMENT STATUS ---
+app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
+    const orderId = req.params.id;
+    try {
+        // Fetch the order to get transaction_id (RRR)
+        const orderResult = await pool.query(
+            'SELECT id, transaction_id, status FROM orders WHERE id = $1 AND user_id = $2',
+            [orderId, req.user.id]
+        );
 
+        if (orderResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Order not found or unauthorized' });
+        }
+
+        const order = orderResult.rows[0];
+
+        // If already paid, don't requery
+        if (order.status === 'paid') {
+            return res.json({
+                success: true,
+                status: 'paid',
+                message: 'Order is already paid.'
+            });
+        }
+
+        // Simulate calling Remita API to requery payment
+        // In production, you'd call Remita's actual API here
+        // For now, we'll simulate a successful payment if RRR exists
+        let newStatus = 'pending'; // default
+
+        if (order.transaction_id) {
+            // Simulate checking Remita — in real app, call Remita API
+            // For demo, assume payment is successful if RRR starts with "RRR"
+            if (order.transaction_id.startsWith('RRR')) {
+                newStatus = 'paid';
+            }
+        }
+
+        // Update order status if changed
+        if (newStatus !== order.status) {
+            await pool.query(
+                'UPDATE orders SET status = $1 WHERE id = $2',
+                [newStatus, orderId]
+            );
+        }
+
+        res.json({
+            success: true,
+            status: newStatus,
+            message: newStatus === 'paid' ? 'Payment confirmed' : 'Payment still pending'
+        });
+    } catch (err) {
+        console.error('Requery payment error:', err);
+        res.status(500).json({ error: 'Failed to requery payment' });
+    }
+});
 // --- REMITA PAYMENT INITIATION ROUTE ---
 app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
     try {

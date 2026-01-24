@@ -845,6 +845,78 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
   }
 });
 
+// --- REMITA PAYMENT INITIATION ROUTE ---
+app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { items, total, deliveryAddress } = req.body;
+        
+        // Create order in database with pending status
+        const orderResult = await pool.query(
+            `INSERT INTO orders (user_id, total, delivery_address, payment_status, status)
+             VALUES ($1, $2, $3, 'pending', 'pending')
+             RETURNING id, date`,
+            [userId, total, deliveryAddress]
+        );
+        
+        const orderId = orderResult.rows[0].id;
+        
+        // Insert order items
+        for (const item of items) {
+            await pool.query(
+                `INSERT INTO order_items (order_id, product_id, quantity, price)
+                 VALUES ($1, $2, $3, $4)`,
+                [orderId, item.productId, item.quantity, item.price]
+            );
+        }
+        
+        // Generate RRR (Remittance Reference Number)
+        const rrr = `RRR${Date.now()}${Math.floor(Math.random() * 1000)}`;
+        
+        // Update order with RRR
+        await pool.query(
+            'UPDATE orders SET transaction_id = $1 WHERE id = $2',
+            [rrr, orderId]
+        );
+        
+        // Here you would typically make an API call to Remita to generate the payment URL
+        // For demonstration, we'll create a mock redirect URL
+        // In a real implementation, you would use Remita's API
+        
+        // Mock Remita redirect URL - replace with actual Remita API call
+        const remitaRedirectUrl = `https://www.remita.net/pay/${rrr}?amount=${total}&orderId=${orderId}`;
+        
+        res.json({ 
+            success: true, 
+            redirectUrl: remitaRedirectUrl,
+            orderId: orderId,
+            rrr: rrr
+        });
+    } catch (err) {
+        console.error('Order creation error:', err);
+        res.status(500).json({ error: 'Failed to create order' });
+    }
+});
+
+// --- REMITA WEBHOOK ENDPOINT ---
+app.post('/api/webhook/remita', async (req, res) => {
+    try {
+        const { transactionId, status, rrr } = req.body;
+        
+        // Update order status based on payment status
+        let newStatus = status === 'SUCCESS' ? 'paid' : 'pending';
+        
+        await pool.query(
+            'UPDATE orders SET status = $1, payment_status = $1 WHERE transaction_id = $2',
+            [newStatus, transactionId]
+        );
+        
+        res.status(200).send('OK');
+    } catch (err) {
+        console.error('Error handling Remita webhook:', err);
+        res.status(500).json({ error: 'Failed to update order status' });
+    }
+});
 // --- FORGOT PASSWORD ROUTE ---
 app.post('/api/forgot-password', async (req, res) => {
     const { username, email } = req.body;

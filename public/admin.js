@@ -440,7 +440,7 @@ function renderOrders(orders) {
     if (!orders || orders.length === 0) {
         tableBody.innerHTML = `
 <tr>
-<td colspan="6" class="empty-state">No orders found</td>
+<td colspan="7" class="empty-state">No orders found</td>
 </tr>`;
         return;
     }
@@ -455,6 +455,8 @@ ${order.status}
 </span>
 </td>
 <td>${new Date(order.date).toLocaleDateString()}</td>
+<!-- Add RRR column -->
+<td>${order.transaction_id || "—"}</td>
 <td>
 <button class="btn-view" onclick="viewOrder(${order.order_id})">
 View
@@ -488,7 +490,6 @@ async function viewOrder(orderId) {
         showLoader("Loading order details..."); // Show loader while loading order details
         const order = allOrders.find(o => o.order_id === orderId);
         if (!order) throw new Error("Order not found");
-
         // Fill meta
         document.getElementById("od-order-id").textContent = `#${order.order_id}`;
         document.getElementById("od-date").textContent =
@@ -496,7 +497,8 @@ async function viewOrder(orderId) {
         document.getElementById("od-status").textContent = order.status;
         document.getElementById("od-status").className =
             `status-badge status-${order.status.toLowerCase()}`;
-
+        // Add RRR display
+        document.getElementById("od-rrr").textContent = order.transaction_id || "Not available";
         // Customer
         document.getElementById("od-name").textContent = order.username;
         document.getElementById("od-email").textContent = order.email;
@@ -507,7 +509,6 @@ ${address.street}<br>
 ${address.city}, ${address.state}<br>
 ${address.postalCode || ""}
 `;
-
         // Items
         const itemsBody = document.getElementById("od-items");
         itemsBody.innerHTML = order.items.map(i => `
@@ -518,23 +519,20 @@ ${address.postalCode || ""}
 <td>${formatNaira(i.price * i.quantity)}</td>
 </tr>
 `).join("");
-
         // Summary
         document.getElementById("od-payment").textContent =
             order.payment_status;
         document.getElementById("od-total").textContent =
             formatNaira(order.total);
-
         // Buttons
         document.getElementById("printOrderBtn").onclick = () => window.print();
         document.getElementById("updateOrderStatusBtn").onclick =
             () => openOrderStatusModal(order.status)
-                .then(newStatus => {
-                    if (newStatus && newStatus !== order.status) {
-                        updateOrderStatus(order.order_id, newStatus);
-                    }
-                });
-
+            .then(newStatus => {
+                if (newStatus && newStatus !== order.status) {
+                    updateOrderStatus(order.order_id, newStatus);
+                }
+            });
         // Open modal
         document.getElementById("orderDetailsModal").style.display = "flex";
     } catch (err) {

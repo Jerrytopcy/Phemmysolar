@@ -187,6 +187,7 @@ function removeFromCart(productId) {
 }
 
 // Proceed to checkout
+// Proceed to checkout
 async function proceedToCheckout() {
     if (!cart || cart.length === 0) {
         showCustomAlert("Your cart is empty.", "Cart Empty");
@@ -202,7 +203,6 @@ async function proceedToCheckout() {
     try {
         const orderItems = [];
         let total = 0;
-
         // Loop through each item in the cart and fetch its details
         for (const cartItem of cart) {
             const response = await fetch(`/api/products/${cartItem.productId}`);
@@ -224,7 +224,6 @@ async function proceedToCheckout() {
                 });
             }
         }
-
         // Get the current address from the user's profile (via API)
         const userResponse = await fetch('/api/user', {
             headers: {
@@ -242,7 +241,6 @@ async function proceedToCheckout() {
             postalCode: "",
             country: "Nigeria"
         };
-
         // Create the order object with the calculated items and address
         const orderData = {
             items: orderItems.map(i => ({
@@ -253,9 +251,9 @@ async function proceedToCheckout() {
             total: total,
             deliveryAddress: currentAddress
         };
-
-        // SEND ORDER TO BACKEND
-        const response = await fetch('/api/orders', {
+        
+        // SEND ORDER TO BACKEND FOR REMITA PAYMENT INITIATION
+        const response = await fetch('/api/orders/remita-initiate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -263,29 +261,27 @@ async function proceedToCheckout() {
             },
             body: JSON.stringify(orderData)
         });
-
+        
         if (!response.ok) {
-            throw new Error('Failed to place order');
+            throw new Error('Failed to initiate payment');
         }
-
-        // Clear cart after successful checkout
-        cart = [];
-        sessionStorage.removeItem('cart');
-
-        // Update UI to reflect empty cart
-        updateUIBasedOnUser();
-
-        // Close the cart modal first
-        closeCartModal();
-
-        // Show success message
-        showCustomAlert("Your order has been successfully placed!", "Order Placed", "success");
-        await fetch('/api/cart', {
-            method: 'DELETE',
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
+        
+        const result = await response.json();
+        
+        if (result.success && result.redirectUrl) {
+            // Clear cart after successful order creation
+            cart = [];
+            sessionStorage.removeItem('cart');
+            // Update UI to reflect empty cart
+            updateUIBasedOnUser();
+            // Close the cart modal first
+            closeCartModal();
+            
+            // Redirect to Remita payment page
+            window.location.href = result.redirectUrl;
+        } else {
+            throw new Error('Payment initiation failed');
+        }
     } catch (error) {
         console.error("Error placing order:", error);
         showCustomAlert("Failed to place order. Please try again.", "Error");
@@ -352,32 +348,34 @@ async function loadOrderHistory() {
                 const productName = product?.name || "Product unavailable";
                 const imageUrl = product?.images?.[0] || '/placeholder.svg';
                 itemsHTML += `
-                    <div class="order-history-item">
-                        <div class="order-item-image-wrapper">
-                            <img src="${imageUrl}" alt="${productName}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
-                        </div>
-                        <div class="order-item-details">
-                            <div class="order-item-name">${productName}</div>
-                            <div class="order-item-meta">
-                                <span class="order-item-qty">Qty: ${item.quantity}</span>
-                                <span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
-                            </div>
-                        </div>
-                    </div>`;
+<div class="order-history-item">
+<div class="order-item-image-wrapper">
+<img src="${imageUrl}" alt="${productName}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+</div>
+<div class="order-item-details">
+<div class="order-item-name">${productName}</div>
+<div class="order-item-meta">
+<span class="order-item-qty">Qty: ${item.quantity}</span>
+<span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
+</div>
+</div>
+</div>`;
             }
             historyHTML += `
-                <div class="order-item">
-                    <p><strong>Order ID:</strong> ${orderId}</p>
-                    <p><strong>Date:</strong> ${formattedDate}</p>
-                    <p><strong>Delivery Address:</strong> ${fullAddress}</p>
-                    <div class="order-status-actions">
-                        <p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
-                    </div>
-                    <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
-                    <div class="order-items-list">
-                        ${itemsHTML}
-                    </div>
-                </div>`;
+<div class="order-item">
+<p><strong>Order ID:</strong> ${orderId}</p>
+<!-- Add RRR display -->
+<p><strong>RRR:</strong> ${order.transaction_id || "Not available"}</p>
+<p><strong>Date:</strong> ${formattedDate}</p>
+<p><strong>Delivery Address:</strong> ${fullAddress}</p>
+<div class="order-status-actions">
+<p><strong>Status:</strong> <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></p>
+</div>
+<p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
+<div class="order-items-list">
+${itemsHTML}
+</div>
+</div>`;
         }
         historyHTML += '</div>';
         document.getElementById('orderHistory').innerHTML = historyHTML;

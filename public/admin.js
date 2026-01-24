@@ -487,60 +487,75 @@ function applyOrderFilters() {
 
 async function viewOrder(orderId) {
     try {
-        showLoader("Loading order details..."); // Show loader while loading order details
+        showLoader("Loading order details...");
+
         const order = allOrders.find(o => o.order_id === orderId);
         if (!order) throw new Error("Order not found");
-        // Fill meta
+
+        // Meta
         document.getElementById("od-order-id").textContent = `#${order.order_id}`;
         document.getElementById("od-date").textContent =
             new Date(order.date).toLocaleString();
-        document.getElementById("od-status").textContent = order.status;
-        document.getElementById("od-status").className =
-            `status-badge status-${order.status.toLowerCase()}`;
-        // Add RRR display
-        document.getElementById("od-rrr").textContent = order.transaction_id || "Not available";
+
+        const statusEl = document.getElementById("od-status");
+        statusEl.textContent = order.status;
+        statusEl.className = `status-badge status-${order.status.toLowerCase()}`;
+
+        // RRR (safe check)
+        const rrrEl = document.getElementById("od-rrr");
+        if (rrrEl) {
+            rrrEl.textContent = order.transaction_id || "Not available";
+        }
+
         // Customer
         document.getElementById("od-name").textContent = order.username;
         document.getElementById("od-email").textContent = order.email;
         document.getElementById("od-phone").textContent = order.phone;
-        const address = order.delivery_address;
+
+        const address = order.delivery_address || {};
         document.getElementById("od-address").innerHTML = `
-${address.street}<br>
-${address.city}, ${address.state}<br>
-${address.postalCode || ""}
-`;
+            ${address.street || ""}<br>
+            ${address.city || ""}, ${address.state || ""}<br>
+            ${address.postalCode || ""}
+        `;
+
         // Items
         const itemsBody = document.getElementById("od-items");
         itemsBody.innerHTML = order.items.map(i => `
-<tr>
-<td>${i.name}</td>
-<td>${i.quantity}</td>
-<td>${formatNaira(i.price)}</td>
-<td>${formatNaira(i.price * i.quantity)}</td>
-</tr>
-`).join("");
+            <tr>
+                <td>${i.name}</td>
+                <td>${i.quantity}</td>
+                <td>${formatNaira(i.price)}</td>
+                <td>${formatNaira(i.price * i.quantity)}</td>
+            </tr>
+        `).join("");
+
         // Summary
-        document.getElementById("od-payment").textContent =
-            order.payment_status;
+        document.getElementById("od-payment").textContent = order.payment_status;
         document.getElementById("od-total").textContent =
             formatNaira(order.total);
+
         // Buttons
         document.getElementById("printOrderBtn").onclick = () => window.print();
-        document.getElementById("updateOrderStatusBtn").onclick =
-            () => openOrderStatusModal(order.status)
-            .then(newStatus => {
-                if (newStatus && newStatus !== order.status) {
-                    updateOrderStatus(order.order_id, newStatus);
-                }
-            });
+
+        document.getElementById("updateOrderStatusBtn").onclick = async () => {
+            const newStatus = await openOrderStatusModal(order.status);
+            if (newStatus && newStatus !== order.status) {
+                updateOrderStatus(order.order_id, newStatus);
+            }
+        };
+
         // Open modal
         document.getElementById("orderDetailsModal").style.display = "flex";
+
     } catch (err) {
-        showAdminAlert(err.message, "Order Error");
+        console.error(err);
+        showAdminAlert(err.message || "Something went wrong", "Order Error");
     } finally {
-        hideLoader(); // Hide loader after loading order details
+        hideLoader();
     }
 }
+
 
 let resolveOrderStatus;
 

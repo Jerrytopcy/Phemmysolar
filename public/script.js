@@ -188,6 +188,7 @@ function removeFromCart(productId) {
 
 
 // Proceed to checkout
+// Proceed to checkout
 async function proceedToCheckout() {
     if (!cart || cart.length === 0) {
         showCustomAlert("Your cart is empty.", "Cart Empty");
@@ -224,6 +225,7 @@ async function proceedToCheckout() {
                 });
             }
         }
+
         // Get the current address from the user's profile (via API)
         const userResponse = await fetch('/api/user', {
             headers: {
@@ -241,6 +243,7 @@ async function proceedToCheckout() {
             postalCode: "",
             country: "Nigeria"
         };
+
         // Create the order object with the calculated items and address
         const orderData = {
             items: orderItems.map(i => ({
@@ -251,7 +254,7 @@ async function proceedToCheckout() {
             total: total,
             deliveryAddress: currentAddress
         };
-        
+
         // SEND ORDER TO BACKEND FOR REMITA PAYMENT INITIATION
         const response = await fetch('/api/orders/remita-initiate', {
             method: 'POST',
@@ -261,28 +264,50 @@ async function proceedToCheckout() {
             },
             body: JSON.stringify(orderData)
         });
-        
+
         if (!response.ok) {
             throw new Error('Failed to initiate payment');
         }
-        
-        const result = await response.json();
-        
-        if (result.success && result.redirectUrl) {
-        // Clear cart
-        cart = [];
-        sessionStorage.removeItem('cart');
-        updateUIBasedOnUser();
-        closeCartModal();
 
-        // Show message before redirect
-        showCustomAlert("Redirecting to payment page...", "Please Wait", "info");
-        
-        // Delay redirect slightly to let alert show
-        setTimeout(() => {
-            window.location.href = result.redirectUrl;
-        }, 1500);
-    } else {
+        const result = await response.json();
+
+        if (result.success && result.orderId && result.rrr) {
+            // Clear cart
+            cart = [];
+            sessionStorage.removeItem('cart');
+            updateUIBasedOnUser();
+            closeCartModal();
+
+            // Open Remita payment modal
+            const remitaConfig = {
+                publicKey: 'pk_test_15P5ka7mdPxzHdp4hvLT84+iNhArU/Xvna9NpJIJBpIBXJFl5FtCuQP574mdPMrq', // Test public key
+                merchantId: result.merchantId,
+                serviceTypeId: result.serviceTypeId,
+                amount: result.amount,
+                orderId: result.orderId.toString(),
+                transactionId: result.rrr,
+                responseUrl: result.responseUrl,
+                returnUrl: result.returnUrl,
+                payerName: result.payerName,
+                payerEmail: result.payerEmail,
+                payerPhone: result.payerPhone,
+                onSuccess: function(response) {
+                    console.log('Payment successful:', response);
+                    // Redirect or update UI
+                    window.location.href = result.returnUrl;
+                },
+                onError: function(response) {
+                    console.error('Payment failed:', response);
+                    alert('Payment failed. Please try again.');
+                },
+                onClose: function() {
+                    console.log('Modal closed');
+                }
+            };
+
+            // Open Remita payment modal
+            RemitaPay.init(remitaConfig);
+        } else {
             throw new Error('Payment initiation failed');
         }
     } catch (error) {

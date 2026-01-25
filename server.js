@@ -78,7 +78,33 @@ const checkLimiter = rateLimit({
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+// --- HELPER: Get Remita v3 Access Token ---
+async function getRemitaToken() {
+  const { REMITA_PUBLIC_KEY, REMITA_SECRET_KEY } = process.env;
 
+  if (!REMITA_PUBLIC_KEY || !REMITA_SECRET_KEY) {
+    throw new Error('Remita Public or Secret Key not configured');
+  }
+
+  const response = await fetch('https://remita.net/remita/ecomm/v3/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Basic ${Buffer.from(`${REMITA_PUBLIC_KEY}:${REMITA_SECRET_KEY}`).toString('base64')}`
+    },
+    body: JSON.stringify({
+      grant_type: "client_credentials"
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to get Remita token: HTTP ${response.status} - ${errorText}`);
+  }
+
+  const tokenData = await response.json();
+  return tokenData.access_token;
+}
 // --- AUTH MIDDLEWARE ---
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -844,8 +870,8 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch orders' });
   }
 });
-// --- REQUERY PAYMENT STATUS ---
-// --- REAL REMITA PAYMENT VERIFICATION (SANDBOX MODE) ---
+
+// --- REQUERY PAYMENT STATUS (v3 API) ---
 app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
     const orderId = req.params.id;
     try {
@@ -882,31 +908,39 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
             });
         }
 
-        // Prepare Remita API request (using sandbox/demo endpoint)
-        const merchantId = process.env.REMITA_MERCHANT_ID; // e.g., "2547916"
-        const apiKey = process.env.REMITA_API_KEY; // e.g., "1946"
+        // Get Remita v3 access token
+        const accessToken = await getRemitaToken();
 
-        if (!merchantId || !apiKey) {
-            throw new Error('Remita credentials not configured');
-        }
+        // Prepare payload for validation
+        const payload = {
+            merchantId: process.env.REMITA_MERCHANT_ID,
+            transactionId: order.transaction_id
+        };
 
-        // Create Basic Auth header
-        const auth = Buffer.from(`${merchantId}:${apiKey}`).toString('base64');
-
-        // Use DEMO endpoint
-        const response = await fetch('https://remita.net/remita/ecomm/v1/payment.json', {
+        // Send validation request
+        const response = await fetch('https://remita.net/remita/ecomm/v3/validate/payment.json', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Basic ${auth}`
+                'Authorization': `Bearer ${accessToken}`
             },
-            body: JSON.stringify({
-                merchantId: merchantId,
-                transactionId: order.transaction_id
-            })
+            body: JSON.stringify(payload)
         });
 
-        const result = await response.json();
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Remita v3 validate API returned HTTP ${response.status}: ${errorText}`);
+            throw new Error(`Remita v3 validate failed: ${errorText}`);
+        }
+
+        let result;
+        try {
+            result = await response.json();
+        } catch (jsonError) {
+            const rawBody = await response.text();
+            console.error('Failed to parse Remita v3 validate response as JSON. Raw response:', rawBody);
+            throw new Error(`Remita v3 validate returned invalid JSON: ${rawBody}`);
+        }
 
         // Extract status from Remita response
         let newStatus = 'pending';
@@ -922,7 +956,6 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
             newStatus = 'pending';
             message = 'Payment still processing. Please try again later.';
         } else {
-            // Unknown status
             newStatus = 'pending';
             message = `Unknown status: ${result.status}. Please contact support.`;
         }
@@ -939,7 +972,7 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
             success: true,
             status: newStatus,
             message: message,
-            remitaResponse: result // For debugging
+            remitaResponse: result
         });
 
     } catch (err) {
@@ -951,8 +984,7 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
         });
     }
 });
-
-// --- REMITA PAYMENT INITIATION ROUTE ---
+// --- REMITA PAYMENT INITIATION ROUTE (v3 API) ---
 app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
     try {
         const userId = req.user.id;
@@ -985,68 +1017,58 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             [rrr, orderId]
         );
 
-        // Use Remita's sandbox payment initiation API
-        const merchantId = process.env.REMITA_MERCHANT_ID;
-        const apiKey = process.env.REMITA_API_KEY;
-        if (!merchantId || !apiKey) {
-            throw new Error('Remita credentials not configured');
-        }
+        // Get Remita v3 access token
+        const accessToken = await getRemitaToken();
 
-        // Create Basic Auth header
-        const auth = Buffer.from(`${merchantId}:${apiKey}`).toString('base64');
-
-        // Prepare payload for Remita payment initiation
+        // Prepare payload for Remita v3 payment initiation
         const payload = {
-            merchantId: merchantId,
-            serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID, // e.g., "4430739"
+            merchantId: process.env.REMITA_MERCHANT_ID,
+            serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID,
             amount: total.toString(),
             orderId: orderId.toString(),
             transactionId: rrr,
-            responseUrl: `${process.env.FRONTEND_URL}/api/webhook/remita`, // Your webhook URL
-            returnUrl: `${process.env.FRONTEND_URL}/account`, // Where user returns after payment
+            responseUrl: `${process.env.FRONTEND_URL}/api/webhook/remita`,
+            returnUrl: `${process.env.FRONTEND_URL}/account`,
             payerName: req.user.username,
             payerEmail: req.user.email,
             payerPhone: req.user.phone
         };
 
-          const response = await fetch('https://remita.net/remita/ecomm/v1/payment.json', {
+        // Send payment initiation request
+        const response = await fetch('https://remita.net/remita/ecomm/v3/payment.json', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Basic ${auth}`
+                'Authorization': `Bearer ${accessToken}`
             },
             body: JSON.stringify(payload)
         });
 
         // --- CRITICAL CHANGE: Check for success before parsing JSON ---
         if (!response.ok) {
-            // Read the response body as text to understand the error
             const errorText = await response.text();
-            console.error(`Remita API returned HTTP ${response.status}: ${errorText}`);
-            throw new Error(`Remita API failed with status ${response.status}. Response: ${errorText}`);
+            console.error(`Remita v3 API returned HTTP ${response.status}: ${errorText}`);
+            throw new Error(`Remita v3 API failed with status ${response.status}. Response: ${errorText}`);
         }
 
         let result;
         try {
-            result = await response.json(); // Now attempt to parse as JSON
+            result = await response.json();
         } catch (jsonError) {
-            // If parsing fails, log the raw response body
             const rawBody = await response.text();
-            console.error('Failed to parse Remita response as JSON. Raw response:', rawBody);
-            throw new Error(`Remita API returned invalid JSON: ${rawBody}`);
+            console.error('Failed to parse Remita v3 response as JSON. Raw response:', rawBody);
+            throw new Error(`Remita v3 API returned invalid JSON: ${rawBody}`);
         }
-
-        // --- END CRITICAL CHANGE ---
 
         // Check for Remita's specific status code
         if (result.status !== '00') {
-            throw new Error(`Remita payment initiation failed: ${result.message || 'Unknown error'}`);
+            throw new Error(`Remita v3 payment initiation failed: ${result.message || 'Unknown error'}`);
         }
 
         // Get the actual payment URL from Remita
         const paymentUrl = result.data?.paymentUrl || result.paymentUrl;
         if (!paymentUrl) {
-            throw new Error('Remita did not return a payment URL.');
+            throw new Error('Remita v3 did not return a payment URL.');
         }
 
         res.json({
@@ -1063,16 +1085,16 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
 });
 
 
-// --- REAL REMITA WEBHOOK ENDPOINT ---
+// --- REAL REMITA WEBHOOK ENDPOINT (v3 Compatible) ---
 app.post('/api/webhook/remita', async (req, res) => {
     try {
-        const { transactionId, status } = req.body; // Extract from Remita's actual webhook
-        
+        const { transactionId, status, paymentStatus } = req.body; // Extract from Remita's actual webhook
+
         // Map Remita status codes to your system
         let newStatus = 'pending';
-        if (status === '00') {
+        if (status === '00' || paymentStatus === 'PAID') {
             newStatus = 'paid';
-        } else if (status === '01') {
+        } else if (status === '01' || paymentStatus === 'FAILED') {
             newStatus = 'failed';
         }
 

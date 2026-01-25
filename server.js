@@ -88,7 +88,7 @@ async function getRemitaToken() {
   }
 
   // Use SANDBOX endpoint
-  const response = await fetch('https://api-demo.remita.net/remita/ecomm/v3/token', {
+  const response = await fetch('https://remita.net/remita/ecomm/v3/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -933,7 +933,7 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
         };
 
         // Send validation request
-        const response = await fetch('https://api-demo.remita.net/remita/ecomm/v3/validate/payment.json', {
+        const response = await fetch('https://remita.net/remita/ecomm/v3/validate/payment.json', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1050,7 +1050,7 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         };
 
         // Send payment initiation request
-        const response = await fetch('https://api-demo.remita.net/remita/ecomm/v3/payment.json', {
+        const response = await fetch('https://remita.net/remita/ecomm/v3/payment.json', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

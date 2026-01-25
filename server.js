@@ -79,6 +79,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 // --- HELPER: Get Remita v3 Access Token ---
+// --- HELPER: Get Remita v3 Access Token (Sandbox Mode) ---
 async function getRemitaToken() {
   const { REMITA_PUBLIC_KEY, REMITA_SECRET_KEY } = process.env;
 
@@ -86,7 +87,8 @@ async function getRemitaToken() {
     throw new Error('Remita Public or Secret Key not configured');
   }
 
-  const response = await fetch('https://remita.net/remita/ecomm/v3/token', {
+  // Use SANDBOX endpoint
+  const response = await fetch('https://api-demo.remita.net/remita/ecomm/v3/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -99,11 +101,24 @@ async function getRemitaToken() {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Failed to get Remita token: HTTP ${response.status} - ${errorText}`);
+    console.error(`Token request failed: HTTP ${response.status} - ${errorText}`);
+    throw new Error(`Failed to get Remita token: HTTP ${response.status}`);
   }
 
-  const tokenData = await response.json();
-  return tokenData.access_token;
+  let result;
+  try {
+    result = await response.json();
+  } catch (jsonError) {
+    const rawBody = await response.text();
+    console.error('Failed to parse token response as JSON. Raw response:', rawBody);
+    throw new Error(`Remita token API returned invalid JSON: ${rawBody}`);
+  }
+
+  if (!result.access_token) {
+    throw new Error('Remita token response missing access_token');
+  }
+
+  return result.access_token;
 }
 // --- AUTH MIDDLEWARE ---
 const authMiddleware = (req, res, next) => {
@@ -918,7 +933,7 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
         };
 
         // Send validation request
-        const response = await fetch('https://remita.net/remita/ecomm/v3/validate/payment.json', {
+        const response = await fetch('https://api-demo.remita.net/remita/ecomm/v3/validate/payment.json', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1035,7 +1050,7 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         };
 
         // Send payment initiation request
-        const response = await fetch('https://remita.net/remita/ecomm/v3/payment.json', {
+        const response = await fetch('https://api-demo.remita.net/remita/ecomm/v3/payment.json', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1731,6 +1746,28 @@ app.post('/api/webhook/remita', async (req, res) => {
     console.error('Error handling Remita webhook:', err);
     res.status(500).json({ error: 'Failed to update order status' });
   }
+});
+// --- TEMPORARY ROUTE TO LOG OUTBOUND IP ---
+app.get('/debug/ip', async (req, res) => {
+    const ip = req.ip || req.connection.remoteAddress;
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const realIp = forwardedFor ? forwardedFor.split(',')[0] : ip;
+
+    // Also try to get public IP via external service
+    let publicIp = 'Unknown';
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        publicIp = data.ip;
+    } catch (e) {
+        console.error('Failed to fetch public IP:', e.message);
+    }
+
+    res.json({
+        serverIp: realIp,
+        publicOutboundIp: publicIp,
+        headers: req.headers
+    });
 });
 
 // --- HEALTH CHECK ---

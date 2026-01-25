@@ -966,12 +966,19 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
     }
 });
 
-// --- REMITA PAYMENT INITIATION ROUTE (RETURN ORDER INFO ONLY) ---
 
+// --- REMITA PAYMENT INITIATION ROUTE (SAFE VERSION) ---
 app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
     try {
         const userId = req.user.id;
         const { items, total, deliveryAddress } = req.body;
+
+        if (!items || !total) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid order data'
+            });
+        }
 
         // 1. Create order (pending)
         const orderResult = await pool.query(
@@ -1009,7 +1016,9 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
 
         // 4. Call Remita to generate RRR
         const remitaRes = await fetch(
-            'https://remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit',
+            process.env.REMITA_TEST_MODE === 'true'
+                ? 'https://remitademo.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit'
+                : 'https://remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit',
             {
                 method: 'POST',
                 headers: {
@@ -1021,16 +1030,27 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         );
 
         const rawBody = await remitaRes.text();
+        console.log('Remita raw response:', rawBody); // Logs for debugging
 
-        if (!remitaRes.ok) {
-            console.error('Remita init failed:', rawBody);
-            throw new Error('Remita payment initiation failed');
+        // Check if response is JSON
+        if (!remitaRes.headers.get('content-type')?.includes('application/json')) {
+            console.error('Remita returned non-JSON response');
+            throw new Error('Remita payment initiation failed. Response is not JSON.');
         }
 
-        const remitaResult = JSON.parse(rawBody);
+        let remitaResult;
+        try {
+            remitaResult = JSON.parse(rawBody);
+        } catch (err) {
+            console.error('Failed to parse Remita response:', rawBody);
+            throw new Error('Remita returned invalid JSON.');
+        }
 
-        if (remitaResult.statuscode !== '00') {
-            throw new Error(`Remita error: ${remitaResult.status}`);
+        if (!remitaResult || remitaResult.statuscode !== '00') {
+            console.error('Remita error:', remitaResult);
+            throw new Error(
+                `Remita initiation failed: ${remitaResult?.status || 'Unknown error'}`
+            );
         }
 
         const rrr = remitaResult.RRR;
@@ -1050,9 +1070,10 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             returnUrl: `${process.env.FRONTEND_URL}/account`,
             payerName: req.user.username,
             payerEmail: req.user.email,
-            payerPhone: req.user.phone
+            payerPhone: req.user.phone,
+            merchantId: process.env.REMITA_MERCHANT_ID,
+            serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID
         });
-
     } catch (err) {
         console.error('Remita initiation error:', err);
         res.status(500).json({
@@ -1062,6 +1083,7 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         });
     }
 });
+
 
 
 

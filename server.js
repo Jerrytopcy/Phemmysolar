@@ -894,7 +894,7 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
         const auth = Buffer.from(`${merchantId}:${apiKey}`).toString('base64');
 
         // Use DEMO endpoint
-        const response = await fetch('https://remita.net/remita/ecomm/v1/validate/payment.json', {
+        const response = await fetch('https://api-demo.remita.net/remita/ecomm/v1/validate/payment.json', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -951,7 +951,7 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
         });
     }
 });
-// --- REMITA PAYMENT INITIATION ROUTE ---
+
 // --- REMITA PAYMENT INITIATION ROUTE ---
 app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
     try {
@@ -1009,7 +1009,7 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             payerPhone: req.user.phone
         };
 
-        const response = await fetch('https://remita.net/remita/ecomm/v1/payment.json', {
+        const response = await fetch('https://api-demo.remita.net/remita/ecomm/v1/payment.json', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

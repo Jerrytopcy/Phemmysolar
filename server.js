@@ -1747,28 +1747,6 @@ app.post('/api/webhook/remita', async (req, res) => {
     res.status(500).json({ error: 'Failed to update order status' });
   }
 });
-// --- TEMPORARY ROUTE TO LOG OUTBOUND IP ---
-app.get('/debug/ip', async (req, res) => {
-    const ip = req.ip || req.connection.remoteAddress;
-    const forwardedFor = req.headers['x-forwarded-for'];
-    const realIp = forwardedFor ? forwardedFor.split(',')[0] : ip;
-
-    // Also try to get public IP via external service
-    let publicIp = 'Unknown';
-    try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        publicIp = data.ip;
-    } catch (e) {
-        console.error('Failed to fetch public IP:', e.message);
-    }
-
-    res.json({
-        serverIp: realIp,
-        publicOutboundIp: publicIp,
-        headers: req.headers
-    });
-});
 
 // --- HEALTH CHECK ---
 app.get('/health', (req, res) => {

@@ -306,7 +306,29 @@ async function proceedToCheckout() {
             };
 
             // Open Remita payment modal
-            RemitaPay.init(remitaConfig);
+            const paymentEngine = RmPaymentEngine.init({
+            key: 'pk_test_15P5ka7mdPxzHdp4hvLT84+iNhArU/Xvna9NpJIJBpIBXJFl5FtCuQP574mdPMrq', // public key
+            customerId: result.orderId.toString(),
+            firstName: result.payerName,
+            email: result.payerEmail,
+            amount: result.amount,
+            narration: 'Order Payment',
+            transactionId: result.rrr,
+            onSuccess: function (response) {
+                console.log('Payment successful:', response);
+                window.location.href = result.returnUrl;
+            },
+            onError: function (response) {
+                console.error('Payment failed:', response);
+                alert('Payment failed. Please try again.');
+            },
+            onClose: function () {
+                console.log('Remita modal closed');
+            }
+        });
+
+            paymentEngine.showPaymentWidget();
+
         } else {
             throw new Error('Payment initiation failed');
         }

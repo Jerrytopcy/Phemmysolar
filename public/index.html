@@ -14,6 +14,9 @@
 <meta name="theme-color" content="#ffffff">
     <link rel="stylesheet" href="style.css">
 </head>
+<script src="https://login.remita.net/payment/v1/remita-pay-inline.bundle.js"></script>
+<script src="script.js"></script>
+
 <body>
     <!-- Header / Navbar -->
     <header class="header">
@@ -486,16 +489,13 @@
             </div>
         </div>
     </div>
-
-   
-
     <!-- Global Loading Overlay -->
     <div id="globalLoader" class="loader-overlay">
         <div class="loader-spinner"></div>
         <p class="loader-text">Loading, please wait...</p>
     </div>
 <!-- Remita JS SDK -->
-<script src="https://remita.net/remita/ecomm/v1/remita-pay.js"></script>
+
     <script src="script.js"></script>
     <script>
         window.addEventListener('DOMContentLoaded', () => {

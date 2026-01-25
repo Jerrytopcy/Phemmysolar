@@ -846,7 +846,7 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
   }
 });
 
-// --- REQUERY PAYMENT STATUS (v3 API) ---
+
 // --- REQUERY PAYMENT STATUS (v1 API) ---
 app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
     const orderId = req.params.id;
@@ -967,59 +967,102 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
 });
 
 // --- REMITA PAYMENT INITIATION ROUTE (RETURN ORDER INFO ONLY) ---
-// --- REMITA PAYMENT INITIATION ROUTE (RETURN ORDER INFO ONLY) ---
+
 app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
     try {
         const userId = req.user.id;
         const { items, total, deliveryAddress } = req.body;
 
-        // Create order in database with pending status
+        // 1. Create order (pending)
         const orderResult = await pool.query(
             `INSERT INTO orders (user_id, total, delivery_address, payment_status, status)
-            VALUES ($1, $2, $3, 'pending', 'pending')
-            RETURNING id, date`,
+             VALUES ($1, $2, $3, 'pending', 'pending')
+             RETURNING id`,
             [userId, total, deliveryAddress]
         );
+
         const orderId = orderResult.rows[0].id;
 
-        // Insert order items
+        // 2. Insert order items
         for (const item of items) {
             await pool.query(
                 `INSERT INTO order_items (order_id, product_id, quantity, price)
-                VALUES ($1, $2, $3, $4)`,
+                 VALUES ($1, $2, $3, $4)`,
                 [orderId, item.productId, item.quantity, item.price]
             );
         }
 
-        // Generate RRR (Remittance Reference Number)
-        const rrr = `RRR${Date.now()}${Math.floor(Math.random() * 1000)}`;
+        // 3. Prepare Remita init payload
+        const remitaPayload = {
+            serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID,
+            amount: total,
+            orderId: orderId.toString(),
+            payerName: req.user.username,
+            payerEmail: req.user.email,
+            payerPhone: req.user.phone,
+            description: 'Order Payment'
+        };
 
-        // Update order with RRR
+        const auth = Buffer.from(
+            `${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_API_KEY}`
+        ).toString('base64');
+
+        // 4. Call Remita to generate RRR
+        const remitaRes = await fetch(
+            'https://remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${auth}`
+                },
+                body: JSON.stringify(remitaPayload)
+            }
+        );
+
+        const rawBody = await remitaRes.text();
+
+        if (!remitaRes.ok) {
+            console.error('Remita init failed:', rawBody);
+            throw new Error('Remita payment initiation failed');
+        }
+
+        const remitaResult = JSON.parse(rawBody);
+
+        if (remitaResult.statuscode !== '00') {
+            throw new Error(`Remita error: ${remitaResult.status}`);
+        }
+
+        const rrr = remitaResult.RRR;
+
+        // 5. Save RRR
         await pool.query(
             'UPDATE orders SET transaction_id = $1 WHERE id = $2',
             [rrr, orderId]
         );
 
-        // Return only order info — let frontend handle payment
+        // 6. Send data to frontend
         res.json({
             success: true,
-            orderId: orderId,
-            rrr: rrr,
+            orderId,
+            rrr,
             amount: total.toString(),
-            merchantId: process.env.REMITA_MERCHANT_ID,
-            serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID,
             returnUrl: `${process.env.FRONTEND_URL}/account`,
-            responseUrl: `${process.env.FRONTEND_URL}/api/webhook/remita`,
             payerName: req.user.username,
             payerEmail: req.user.email,
             payerPhone: req.user.phone
         });
 
     } catch (err) {
-        console.error('Order creation error:', err);
-        res.status(500).json({ error: 'Failed to create order.', details: err.message });
+        console.error('Remita initiation error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to initiate Remita payment',
+            details: err.message
+        });
     }
 });
+
 
 
 // --- REAL REMITA WEBHOOK ENDPOINT (v3 Compatible) ---

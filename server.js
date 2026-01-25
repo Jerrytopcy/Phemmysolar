@@ -80,6 +80,7 @@ const pool = new Pool({
 });
 // --- HELPER: Get Remita v3 Access Token ---
 // --- HELPER: Get Remita v3 Access Token (Sandbox Mode) ---
+// --- HELPER: Get Remita v3 Access Token (Sandbox Mode) ---
 async function getRemitaToken() {
   const { REMITA_PUBLIC_KEY, REMITA_SECRET_KEY } = process.env;
 
@@ -99,17 +100,18 @@ async function getRemitaToken() {
     })
   });
 
+  // --- READ BODY ONCE AS TEXT ---
+  const rawBody = await response.text();
+
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Token request failed: HTTP ${response.status} - ${errorText}`);
+    console.error(`Token request failed: HTTP ${response.status} - ${rawBody}`);
     throw new Error(`Failed to get Remita token: HTTP ${response.status}`);
   }
 
   let result;
   try {
-    result = await response.json();
+    result = JSON.parse(rawBody); // Parse from saved text
   } catch (jsonError) {
-    const rawBody = await response.text();
     console.error('Failed to parse token response as JSON. Raw response:', rawBody);
     throw new Error(`Remita token API returned invalid JSON: ${rawBody}`);
   }
@@ -942,19 +944,20 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
             body: JSON.stringify(payload)
         });
 
+        // --- READ BODY ONCE AS TEXT ---
+        const rawBody = await response.text();
+
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Remita v3 validate API returned HTTP ${response.status}: ${errorText}`);
-            throw new Error(`Remita v3 validate failed: ${errorText}`);
+          console.error(`Remita v3 validate API returned HTTP ${response.status}: ${rawBody}`);
+          throw new Error(`Remita v3 validate failed: ${rawBody}`);
         }
 
         let result;
         try {
-            result = await response.json();
+          result = JSON.parse(rawBody);
         } catch (jsonError) {
-            const rawBody = await response.text();
-            console.error('Failed to parse Remita v3 validate response as JSON. Raw response:', rawBody);
-            throw new Error(`Remita v3 validate returned invalid JSON: ${rawBody}`);
+          console.error('Failed to parse Remita v3 validate response as JSON. Raw response:', rawBody);
+          throw new Error(`Remita v3 validate returned invalid JSON: ${rawBody}`);
         }
 
         // Extract status from Remita response
@@ -1060,19 +1063,20 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         });
 
         // --- CRITICAL CHANGE: Check for success before parsing JSON ---
+        // --- READ BODY ONCE AS TEXT ---
+        const rawBody = await response.text();
+
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Remita v3 API returned HTTP ${response.status}: ${errorText}`);
-            throw new Error(`Remita v3 API failed with status ${response.status}. Response: ${errorText}`);
+          console.error(`Remita v3 API returned HTTP ${response.status}: ${rawBody}`);
+          throw new Error(`Remita v3 API failed with status ${response.status}. Response: ${rawBody}`);
         }
 
         let result;
         try {
-            result = await response.json();
+          result = JSON.parse(rawBody);
         } catch (jsonError) {
-            const rawBody = await response.text();
-            console.error('Failed to parse Remita v3 response as JSON. Raw response:', rawBody);
-            throw new Error(`Remita v3 API returned invalid JSON: ${rawBody}`);
+          console.error('Failed to parse Remita v3 response as JSON. Raw response:', rawBody);
+          throw new Error(`Remita v3 API returned invalid JSON: ${rawBody}`);
         }
 
         // Check for Remita's specific status code

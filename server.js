@@ -952,98 +952,113 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
     }
 });
 // --- REMITA PAYMENT INITIATION ROUTE ---
+// --- REMITA PAYMENT INITIATION ROUTE ---
 app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
     try {
         const userId = req.user.id;
         const { items, total, deliveryAddress } = req.body;
-        
+
         // Create order in database with pending status
         const orderResult = await pool.query(
             `INSERT INTO orders (user_id, total, delivery_address, payment_status, status)
-             VALUES ($1, $2, $3, 'pending', 'pending')
-             RETURNING id, date`,
+            VALUES ($1, $2, $3, 'pending', 'pending')
+            RETURNING id, date`,
             [userId, total, deliveryAddress]
         );
-        
         const orderId = orderResult.rows[0].id;
-        
+
         // Insert order items
         for (const item of items) {
             await pool.query(
                 `INSERT INTO order_items (order_id, product_id, quantity, price)
-                 VALUES ($1, $2, $3, $4)`,
+                VALUES ($1, $2, $3, $4)`,
                 [orderId, item.productId, item.quantity, item.price]
             );
         }
-        
+
         // Generate RRR (Remittance Reference Number)
         const rrr = `RRR${Date.now()}${Math.floor(Math.random() * 1000)}`;
-        
+
         // Update order with RRR
         await pool.query(
             'UPDATE orders SET transaction_id = $1 WHERE id = $2',
             [rrr, orderId]
         );
-        
-       // Use Remita's sandbox payment initiation API
-const merchantId = process.env.REMITA_MERCHANT_ID;
-const apiKey = process.env.REMITA_API_KEY;
 
-if (!merchantId || !apiKey) {
-    throw new Error('Remita credentials not configured');
-}
+        // Use Remita's sandbox payment initiation API
+        const merchantId = process.env.REMITA_MERCHANT_ID;
+        const apiKey = process.env.REMITA_API_KEY;
+        if (!merchantId || !apiKey) {
+            throw new Error('Remita credentials not configured');
+        }
 
-// Create Basic Auth header
-const auth = Buffer.from(`${merchantId}:${apiKey}`).toString('base64');
+        // Create Basic Auth header
+        const auth = Buffer.from(`${merchantId}:${apiKey}`).toString('base64');
 
-// Prepare payload for Remita payment initiation
-const payload = {
-    merchantId: merchantId,
-    serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID, // e.g., "4430739"
-    amount: total.toString(),
-    orderId: orderId.toString(),
-    transactionId: rrr,
-    responseUrl: `${process.env.FRONTEND_URL}/api/webhook/remita`, // Your webhook URL
-    returnUrl: `${process.env.FRONTEND_URL}/account`, // Where user returns after payment
-    payerName: req.user.username,
-    payerEmail: req.user.email,
-    payerPhone: req.user.phone
-};
+        // Prepare payload for Remita payment initiation
+        const payload = {
+            merchantId: merchantId,
+            serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID, // e.g., "4430739"
+            amount: total.toString(),
+            orderId: orderId.toString(),
+            transactionId: rrr,
+            responseUrl: `${process.env.FRONTEND_URL}/api/webhook/remita`, // Your webhook URL
+            returnUrl: `${process.env.FRONTEND_URL}/account`, // Where user returns after payment
+            payerName: req.user.username,
+            payerEmail: req.user.email,
+            payerPhone: req.user.phone
+        };
 
-const response = await fetch('https://remita.net/remita/ecomm/v1/payment.json', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${auth}`
-    },
-    body: JSON.stringify(payload)
-});
+        const response = await fetch('https://remita.net/remita/ecomm/v1/payment.json', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${auth}`
+            },
+            body: JSON.stringify(payload)
+        });
 
-const result = await response.json();
+        // --- CRITICAL CHANGE: Check for success before parsing JSON ---
+        if (!response.ok) {
+            // Read the response body as text to understand the error
+            const errorText = await response.text();
+            console.error(`Remita API returned HTTP ${response.status}: ${errorText}`);
+            throw new Error(`Remita API failed with status ${response.status}. Response: ${errorText}`);
+        }
 
-if (!response.ok || result.status !== '00') {
-    throw new Error(`Remita payment initiation failed: ${result.message || 'Unknown error'}`);
-}
+        let result;
+        try {
+            result = await response.json(); // Now attempt to parse as JSON
+        } catch (jsonError) {
+            // If parsing fails, log the raw response body
+            const rawBody = await response.text();
+            console.error('Failed to parse Remita response as JSON. Raw response:', rawBody);
+            throw new Error(`Remita API returned invalid JSON: ${rawBody}`);
+        }
 
-// Get the actual payment URL from Remita
-const paymentUrl = result.data?.paymentUrl || result.paymentUrl;
+        // --- END CRITICAL CHANGE ---
 
-res.json({ 
-    success: true, 
-    redirectUrl: paymentUrl,
-    orderId: orderId,
-    rrr: rrr
-});
-        
-        res.json({ 
-            success: true, 
-            redirectUrl: remitaRedirectUrl,
+        // Check for Remita's specific status code
+        if (result.status !== '00') {
+            throw new Error(`Remita payment initiation failed: ${result.message || 'Unknown error'}`);
+        }
+
+        // Get the actual payment URL from Remita
+        const paymentUrl = result.data?.paymentUrl || result.paymentUrl;
+        if (!paymentUrl) {
+            throw new Error('Remita did not return a payment URL.');
+        }
+
+        res.json({
+            success: true,
+            redirectUrl: paymentUrl,
             orderId: orderId,
             rrr: rrr
         });
+
     } catch (err) {
         console.error('Order creation error:', err);
-        res.status(500).json({ error: 'Failed to create order' });
+        res.status(500).json({ error: 'Failed to create order or initiate payment.', details: err.message });
     }
 });
 

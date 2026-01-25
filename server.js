@@ -974,13 +974,9 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         const { items, total, deliveryAddress } = req.body;
 
         if (!items || !total) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid order data'
-            });
+            return res.status(400).json({ success: false, error: 'Invalid order data' });
         }
 
-        // 1. Create order (pending)
         const orderResult = await pool.query(
             `INSERT INTO orders (user_id, total, delivery_address, payment_status, status)
              VALUES ($1, $2, $3, 'pending', 'pending')
@@ -990,7 +986,6 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
 
         const orderId = orderResult.rows[0].id;
 
-        // 2. Insert order items
         for (const item of items) {
             await pool.query(
                 `INSERT INTO order_items (order_id, product_id, quantity, price)
@@ -999,8 +994,7 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             );
         }
 
-        // 3. Prepare Remita payload
-        const remitaPayload = {
+        const payload = {
             serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID,
             amount: total,
             orderId: orderId.toString(),
@@ -1011,75 +1005,63 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         };
 
         const auth = Buffer.from(
-            `${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_API_KEY}`
+            `${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_SECRET_KEY}`
         ).toString('base64');
 
-        // 4. Call Remita API (POST only)
-        const remitaRes = await fetch(
+        const url =
             process.env.REMITA_TEST_MODE === 'true'
-                ? 'https://remitademo.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit'
-                : 'https://remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Basic ${auth}`
-                },
-                body: JSON.stringify(remitaPayload),
-                redirect: 'manual' // Prevent fetch from changing POST to GET
-            }
-        );
+                ? 'https://api-demo.remita.net/echannelsvc/merchant/api/paymentinit'
+                : 'https://api.remita.net/echannelsvc/merchant/api/paymentinit';
 
-        const rawBody = await remitaRes.text();
-        console.log('Remita raw response:', rawBody);
+        const remitaRes = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Basic ${auth}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
 
-        // 5. Parse double-wrapped JSON
-        let remitaResult;
+        const raw = await remitaRes.text();
+        console.log('Remita raw response:', raw);
+
+        let data;
         try {
-            const outer = JSON.parse(rawBody);
-            remitaResult = outer.responseData ? JSON.parse(outer.responseData) : outer;
-        } catch (err) {
-            console.error('Failed to parse Remita JSON:', rawBody);
-            throw new Error('Remita returned invalid JSON');
+            data = JSON.parse(raw);
+        } catch {
+            throw new Error('Remita returned HTML instead of JSON');
         }
 
-        if (!remitaResult || remitaResult.responseCode !== '00') {
-            console.error('Remita error:', remitaResult);
-            throw new Error(`Remita initiation failed: ${remitaResult.responseMsg || 'Unknown error'}`);
+        if (data.statuscode !== '00') {
+            throw new Error(data.status || 'Remita initiation failed');
         }
 
-        const rrr = remitaResult.RRR || remitaResult.rRR;
-
-        // 6. Save RRR to order
         await pool.query(
             'UPDATE orders SET transaction_id = $1 WHERE id = $2',
-            [rrr, orderId]
+            [data.RRR, orderId]
         );
 
-        // 7. Send RRR to frontend
         res.json({
             success: true,
             orderId,
-            rrr,
+            rrr: data.RRR,
             amount: total.toString(),
-            returnUrl: `${process.env.FRONTEND_URL}/account`,
+            merchantId: process.env.REMITA_MERCHANT_ID,
+            serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID,
             payerName: req.user.username,
             payerEmail: req.user.email,
             payerPhone: req.user.phone,
-            merchantId: process.env.REMITA_MERCHANT_ID,
-            serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID
+            returnUrl: `${process.env.FRONTEND_URL}/account`
         });
+
     } catch (err) {
         console.error('Remita initiation error:', err);
         res.status(500).json({
             success: false,
-            error: 'Failed to initiate Remita payment',
-            details: err.message
+            error: err.message
         });
     }
 });
-
-
 
 
 

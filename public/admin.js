@@ -1275,51 +1275,42 @@ async function loadMessages() {
 function renderMessages(messages) {
     const tableBody = document.getElementById('messagesTableBody');
     tableBody.innerHTML = '';
-
     if (messages.length === 0) {
         tableBody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 2rem;">
-                    No messages found.
-                </td>
-            </tr>
+            <tr><td colspan="6" style="text-align: center; padding: 2rem;">No messages found.</td></tr>
         `;
         return;
     }
 
     messages.forEach(msg => {
-  const row = document.createElement("tr");
-  row.className = "message-row";
-  row.innerHTML = `
-<td class="cell-name">${msg.name}</td>
-<td class="cell-email">
-  <a href="mailto:${msg.email}">${msg.email}</a>
-</td>
-<td class="cell-subject">${msg.subject}</td>
-<td class="cell-date">
-  ${new Date(msg.timestamp).toLocaleString()}
-</td>
-<td class="cell-status">
-  <span class="msg-status ${msg.read ? "read" : "unread"}">
-    ${msg.read ? "Read" : "Unread"}
-  </span>
-</td>
-<td class="cell-actions">
-  <button class="action-btn view" onclick="viewMessage(${msg.id})">
-    View
-  </button>
-  ${
-    !msg.read
-      ? `<button class="action-btn reply" onclick="openReplyForm(${msg.id}, '${msg.email}', '${msg.subject}')">
-          Reply
-        </button>`
-      : ""
-  }
-</td>
-`;
-  tableBody.appendChild(row);
-});
+        const statusText = msg.replied_at 
+            ? "Replied"
+            : (msg.read ? "Read" : "Unread");
+        const statusClass = msg.replied_at 
+            ? "status-replied"
+            : (msg.read ? "status-read" : "status-unread");
 
+        const row = document.createElement("tr");
+        row.className = "message-row";
+        row.innerHTML = `
+            <td class="cell-name">${msg.name}</td>
+            <td class="cell-email">
+                <a href="mailto:${msg.email}">${msg.email}</a>
+            </td>
+            <td class="cell-subject">${msg.subject}</td>
+            <td class="cell-date">${new Date(msg.timestamp).toLocaleString()}</td>
+            <td class="cell-status">
+                <span class="msg-status ${statusClass}">${statusText}</span>
+            </td>
+            <td class="cell-actions">
+                <button class="action-btn view" onclick="viewMessage(${msg.id})">View</button>
+                ${!msg.read && !msg.replied_at
+                    ? `<button class="action-btn reply" onclick="openReplyForm(${msg.id}, '${msg.email}', '${msg.subject}')">Reply</button>`
+                    : ""}
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
 }
 
 function updatePagination(totalCount) {
@@ -1351,81 +1342,82 @@ async function markAsRead(messageId) {
     }
 }
 async function viewMessage(messageId) {
-    const token = sessionStorage.getItem("adminToken"); // ✅ Use correct token
+    const token = sessionStorage.getItem("adminToken");
+    if (!token) {
+        await showAdminAlert("Authentication Error", "Please log in again.");
+        return;
+    }
 
     try {
-        // Show loader before fetching
         showLoader();
 
-        const response = await fetch(`/api/admin/messages/${messageId}`, {
+        // Step 1: Mark as read first (auto)
+        const markReadRes = await fetch(`/api/admin/messages/${messageId}/read`, {
+            method: 'PATCH',
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
         });
-
-        if (!response.ok) {
-            throw new Error('Failed to fetch message');
+        if (!markReadRes.ok) {
+            throw new Error('Failed to mark message as read');
         }
+
+        // Step 2: Fetch updated message (now with read=true)
+        const response = await fetch(`/api/admin/messages/${messageId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch message');
 
         const message = await response.json();
 
-        // Hide loader after successful fetch
         hideLoader();
 
-        // Get the existing modal from HTML (no need to create it!)
+        // Populate modal
         const messageModal = document.getElementById('messageDetailsModal');
         const content = document.getElementById('messageDetailsContent');
+        if (!messageModal || !content) throw new Error('Modal not found');
 
-        if (!messageModal || !content) {
-            throw new Error('Message modal not found in DOM.');
-        }
-
-        // Populate modal content
-              content.innerHTML = `
+        content.innerHTML = `
             <div class="modal-header">
                 <h3>${message.subject}</h3>
             </div>
-
             <div class="modal-content">
                 <div class="detail-row">
                     <strong>Name</strong>
                     <span>${message.name}</span>
                 </div>
-
                 <div class="detail-row">
                     <strong>Email</strong>
                     <a href="mailto:${message.email}">${message.email}</a>
                 </div>
-
                 <div class="detail-row">
                     <strong>Phone</strong>
                     <a href="tel:${message.phone}">${message.phone}</a>
                 </div>
-
                 <div class="detail-row">
                     <strong>Sent</strong>
                     <span>${new Date(message.timestamp).toLocaleString()}</span>
                 </div>
-
                 <div class="detail-row">
                     <strong>Status</strong>
                     <span class="status-badge ${message.read ? 'status-read' : 'status-unread'}">
                         ${message.read ? 'Read' : 'Unread'}
                     </span>
                 </div>
-
                 <div class="message-box">
                     <strong>Message</strong>
                     <p>${message.message}</p>
                 </div>
             </div>
         `;
-        // Show the modal
+
+        // Show modal
         messageModal.style.display = 'flex';
 
     } catch (error) {
         console.error('Error viewing message:', error);
-        hideLoader(); // Always hide loader on error
+        hideLoader();
         await showAdminAlert('Error', error.message || 'Failed to view message');
     }
 }

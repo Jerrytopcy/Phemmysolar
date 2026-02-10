@@ -1698,6 +1698,49 @@ app.get('/api/admin/messages/:id', authMiddleware, adminOnly, async (req, res) =
         res.status(500).json({ error: 'Failed to fetch message' });
     }
 });
+
+// --- REPLY TO MESSAGE ROUTE ---
+app.post('/api/admin/messages/:id/reply', authMiddleware, adminOnly, async (req, res) => {
+  const { id } = req.params;
+  const { to, subject, body } = req.body;
+
+  // Validate
+  if (!to || !subject || !body) {
+    return res.status(400).json({ error: 'To, subject, and body are required.' });
+  }
+
+  try {
+    // Optional: Log or update message (e.g., set replied_at)
+    await pool.query(
+      'UPDATE contact_messages SET replied_at = NOW(), read = TRUE WHERE id = $1',
+      [id]
+    );
+
+    // Send reply via SendGrid
+    const msg = {
+      to: to,
+      from: process.env.ADMIN_EMAIL || 'info@phemmysolar.com',
+      subject: subject,
+      html: `
+        <div style="font-family: sans-serif; line-height: 1.6;">
+          <h3>PhemmySolar Support</h3>
+          <p>Hello,</p>
+          <p>${body.replace(/\n/g, '<br>')}</p>
+          <hr>
+          <p><small>This is an automated reply from PhemmySolar Admin Panel.</small></p>
+        </div>
+      `
+    };
+
+    await sgMail.send(msg);
+
+    res.json({ success: true, message: 'Reply sent successfully.' });
+  } catch (err) {
+    console.error('Error sending reply:', err);
+    res.status(500).json({ error: 'Failed to send reply', details: err.message });
+  }
+});
+
 // --- REMITA WEBHOOK ROUTE ---
 app.post('/api/webhook/remita', async (req, res) => {
   const { transactionId, status } = req.body;

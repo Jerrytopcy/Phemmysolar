@@ -1288,44 +1288,36 @@ function renderMessages(messages) {
     }
 
     messages.forEach(msg => {
-    const row = document.createElement("tr");
-    row.className = "message-row";
-
-    row.innerHTML = `
-        <td class="cell-name">${msg.name}</td>
-
-        <td class="cell-email">
-            <a href="mailto:${msg.email}">${msg.email}</a>
-        </td>
-
-        <td class="cell-subject">${msg.subject}</td>
-
-        <td class="cell-date">
-            ${new Date(msg.timestamp).toLocaleString()}
-        </td>
-
-        <td class="cell-status">
-            <span class="msg-status ${msg.read ? "read" : "unread"}">
-                ${msg.read ? "Read" : "Unread"}
-            </span>
-        </td>
-
-        <td class="cell-actions">
-            <button class="action-btn view" onclick="viewMessage(${msg.id})">
-                View
-            </button>
-
-            ${
-              !msg.read
-                ? `<button class="action-btn mark" onclick="markAsRead(${msg.id})">
-                     Mark as Read
-                   </button>`
-                : ""
-            }
-        </td>
-    `;
-
-    tableBody.appendChild(row);
+  const row = document.createElement("tr");
+  row.className = "message-row";
+  row.innerHTML = `
+<td class="cell-name">${msg.name}</td>
+<td class="cell-email">
+  <a href="mailto:${msg.email}">${msg.email}</a>
+</td>
+<td class="cell-subject">${msg.subject}</td>
+<td class="cell-date">
+  ${new Date(msg.timestamp).toLocaleString()}
+</td>
+<td class="cell-status">
+  <span class="msg-status ${msg.read ? "read" : "unread"}">
+    ${msg.read ? "Read" : "Unread"}
+  </span>
+</td>
+<td class="cell-actions">
+  <button class="action-btn view" onclick="viewMessage(${msg.id})">
+    View
+  </button>
+  ${
+    !msg.read
+      ? `<button class="action-btn reply" onclick="openReplyForm(${msg.id}, '${msg.email}', '${msg.subject}')">
+          Reply
+        </button>`
+      : ""
+  }
+</td>
+`;
+  tableBody.appendChild(row);
 });
 
 }
@@ -1694,6 +1686,75 @@ function viewUser(userId) {
             hideLoader();
         });
 }
+
+// Open reply modal with pre-filled data
+function openReplyForm(messageId, toEmail, originalSubject) {
+  document.getElementById("replyMessageId").value = messageId;
+  document.getElementById("replyToEmail").value = toEmail;
+  document.getElementById("replySubject").value = `Re: ${originalSubject}`;
+  document.getElementById("replyBody").focus();
+
+  document.getElementById("replyMessageModal").style.display = "flex";
+}
+
+// Close reply modal
+document.getElementById("closeReplyModalBtn")?.addEventListener("click", () => {
+  document.getElementById("replyMessageModal").style.display = "none";
+});
+
+document.getElementById("cancelReplyBtn")?.addEventListener("click", () => {
+  document.getElementById("replyMessageModal").style.display = "none";
+});
+
+// Handle reply form submission
+document.getElementById("replyForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  
+  const messageId = document.getElementById("replyMessageId").value;
+  const toEmail = document.getElementById("replyToEmail").value;
+  const subject = document.getElementById("replySubject").value;
+  const body = document.getElementById("replyBody").value;
+
+  const token = sessionStorage.getItem("adminToken");
+  if (!token) {
+    await showAdminAlert("Authentication Error", "Please log in again.");
+    return;
+  }
+
+  try {
+    showLoader("Sending reply...");
+    
+    const response = await fetch(`/api/admin/messages/${messageId}/reply`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ to: toEmail, subject, body })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: "Unknown error" }));
+      throw new Error(err.error || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      await showAdminAlert("Reply sent successfully!", "Success");
+      // Optional: Mark as read + refresh list
+      await markAsRead(messageId); // Reuse existing function
+    } else {
+      throw new Error(result.error || "Reply failed");
+    }
+  } catch (err) {
+    console.error("Reply error:", err);
+    await showAdminAlert(`Failed to send reply: ${err.message}`, "Error");
+  } finally {
+    hideLoader();
+    document.getElementById("replyMessageModal").style.display = "none";
+    document.getElementById("replyForm").reset();
+  }
+});
 
 // Initialize admin panel
 document.addEventListener("DOMContentLoaded", () => {

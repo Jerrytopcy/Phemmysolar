@@ -1145,7 +1145,7 @@ app.post('/api/forgot-password', async (req, res) => {
         // Create the reset URL (pointing to your frontend)
         const resetUrl = `https://www.phemmysolar.com/reset-password?token=${encodeURIComponent(resetToken)}`;
 
-        // Compose the email
+     
         
         // Compose the email
         const msg = {
@@ -1470,7 +1470,7 @@ app.post('/api/contact', async (req, res) => {
 
         // Send email to admin via SendGrid
         const msg = {
-            to: process.env.ADMIN_EMAIL || 'admin@phemmysolar.ng',
+            to: process.env.ADMIN_EMAIL || 'admin@phemmysolar.com',
             from: 'info@phemmysolar.com', // Use your verified sender
             subject: `[📬 New Message] ${subject}`,
             html: `
@@ -1717,20 +1717,25 @@ app.post('/api/admin/messages/:id/reply', authMiddleware, adminOnly, async (req,
     );
 
     // Send reply via SendGrid
-    const msg = {
-      to: to,
-      from: process.env.ADMIN_EMAIL || 'info@phemmysolar.com',
-      subject: subject,
-      html: `
-        <div style="font-family: sans-serif; line-height: 1.6;">
-          <h3>PhemmySolar Support</h3>
-          <p>Hello,</p>
-          <p>${body.replace(/\n/g, '<br>')}</p>
-          <hr>
-          <p><small>This is an automated reply from PhemmySolar Admin Panel.</small></p>
-        </div>
-      `
-    };
+   const msg = {
+  to: to,
+  from: {
+    email: process.env.SENDGRID_FROM_EMAIL, // MUST be verified
+    name: "PhemmySolar Support"
+  },
+  replyTo: to, // user can reply back to admin inbox
+  subject: subject,
+  html: `
+    <div style="font-family: sans-serif; line-height: 1.6;">
+      <h3>PhemmySolar Support</h3>
+      <p>Hello,</p>
+      <p>${body.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")}</p>
+      <hr>
+      <p><small>This is an automated reply from PhemmySolar Admin Panel.</small></p>
+    </div>
+  `
+};
+
 
     await sgMail.send(msg);
 

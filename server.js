@@ -1741,7 +1741,7 @@ app.post('/api/admin/messages/:id/reply', authMiddleware, adminOnly, async (req,
       </div>
 
       <div style="padding:25px;">
-        <p style="font-size:16px;">Hello <strong>${userName}</strong>,</p>
+        <p style="font-size:16px;">Hello</p>
 
         <p style="font-size:15px;line-height:1.6;">
           ${body

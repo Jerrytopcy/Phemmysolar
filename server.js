@@ -1632,26 +1632,28 @@ app.post('/api/contact', async (req, res) => {
 });
 // --- ADMIN CONTACT MESSAGES ROUTE ---
 app.get('/api/admin/messages', authMiddleware, adminOnly, async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT 
-                id,
-                name,
-                email,
-                phone,
-                subject,
-                message,
-                created_at AS timestamp,
-                read
-            FROM contact_messages
-            ORDER BY created_at DESC
-        `);
-
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Admin fetch messages error:', err);
-        res.status(500).json({ error: 'Failed to fetch messages' });
-    }
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        name,
+        email,
+        phone,
+        subject,
+        message,
+        created_at AS timestamp,
+        read,
+        replied_at,
+        reply_status,
+        reply_text
+      FROM contact_messages
+      ORDER BY created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Admin fetch messages error:', err);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
 });
 
 // --- MARK MESSAGE AS READ ---
@@ -1713,9 +1715,11 @@ app.post('/api/admin/messages/:id/reply', authMiddleware, adminOnly, async (req,
     // Optional: Log or update message (e.g., set replied_at)
     await pool.query(
   `UPDATE contact_messages 
-   SET replied_at = NOW(), 
-       read = TRUE, 
-       reply_text = $1 
+   SET 
+     replied_at = NOW(),
+     read = TRUE,
+     reply_status = 'replied',
+     reply_text = $1 
    WHERE id = $2`,
   [body, id]
 );

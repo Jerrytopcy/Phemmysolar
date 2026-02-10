@@ -1400,7 +1400,15 @@ async function viewMessage(messageId) {
    // 4. Render modal
 const modal = document.getElementById('messageDetailsModal');
 const content = document.getElementById('messageDetailsContent');
-
+const formatReplyText = (text) => {
+  if (!text) return "No reply text provided.";
+  // Preserve line breaks: \n → <br>, and prevent XSS by escaping HTML first
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>");
+};
 const replySection = message.replied_at
   ? `
     <div class="reply-section">
@@ -1412,9 +1420,7 @@ const replySection = message.replied_at
             ${new Date(message.replied_at).toLocaleString()}
           </span>
         </div>
-        <p class="reply-text">
-          ${message.reply_text || "No reply text available."}
-        </p>
+         <div class="reply-text">${formatReplyText(message.reply_text)}</div>
       </div>
     </div>
   `

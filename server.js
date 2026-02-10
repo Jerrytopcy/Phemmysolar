@@ -1596,7 +1596,7 @@ app.post('/api/contact', async (req, res) => {
                     <!-- ⚡️ ACTION REQUIRED CTA -->
                     <div class="cta">
                         🚨 <strong>Action Required:</strong><br>
-                        Please log in to your <a href="https://www.phemmysolar.com/admin/messages" target="_blank" style="color: #FF6F00; text-decoration: underline;">Admin Panel</a> to view and reply to this message.<br>
+                        Please log in to your <a href="https://www.phemmysolar.com/admin" target="_blank" style="color: #FF6F00; text-decoration: underline;">Admin Panel</a> to view and reply to this message.<br>
                         💬 Replies sent through the admin dashboard are tracked and logged.
                     </div>
                 </div>
@@ -1726,14 +1726,50 @@ app.post('/api/admin/messages/:id/reply', authMiddleware, adminOnly, async (req,
   replyTo: to, // user can reply back to admin inbox
   subject: subject,
   html: `
-    <div style="font-family: sans-serif; line-height: 1.6;">
-      <h3>PhemmySolar Support</h3>
-      <p>Hello,</p>
-      <p>${body.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")}</p>
-      <hr>
-      <p><small>This is an automated reply from PhemmySolar Admin Panel.</small></p>
+  <div style="background-color:#f4f6f8;padding:30px 0;">
+    <div style="
+      max-width:600px;
+      margin:0 auto;
+      background:#ffffff;
+      border-radius:6px;
+      overflow:hidden;
+      font-family:Arial,Helvetica,sans-serif;
+      color:#333333;
+    ">
+      <div style="background:#0a2540;padding:20px;">
+        <h2 style="margin:0;color:#ffffff;">PhemmySolar Support</h2>
+      </div>
+
+      <div style="padding:25px;">
+        <p style="font-size:16px;">Hello <strong>${userName}</strong>,</p>
+
+        <p style="font-size:15px;line-height:1.6;">
+          ${body
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\n/g, "<br>")
+          }
+        </p>
+
+        <p style="margin-top:25px;font-size:14px;">
+          Warm regards,<br>
+          <strong>PhemmySolar Support Team</strong>
+        </p>
+      </div>
+
+      <div style="
+        background:#f0f0f0;
+        padding:15px;
+        text-align:center;
+        font-size:12px;
+        color:#666;
+      ">
+        This message was sent from the PhemmySolar Admin Panel.
+      </div>
     </div>
-  `
+  </div>
+`
+
 };
 
 

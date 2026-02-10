@@ -1311,7 +1311,6 @@ function renderMessages(messages) {
         `;
         tableBody.appendChild(row);
     });
-    loadMessages();
 }
 
 function updatePagination(totalCount) {
@@ -1332,7 +1331,6 @@ async function markAsRead(messageId) {
         });
 
         if (response.ok) {
-            await showAdminAlert('Success', 'Message marked as read.');
             loadMessages(); // Refresh list
         } else {
             throw new Error('Failed to mark as read');

@@ -1673,32 +1673,31 @@ app.patch('/api/admin/messages/:id/read', authMiddleware, adminOnly, async (req,
 });
 // --- GET SINGLE MESSAGE FOR VIEWING ---
 app.get('/api/admin/messages/:id', authMiddleware, adminOnly, async (req, res) => {
-    const { id } = req.params;
-
-    try {
-        const result = await pool.query(`
-            SELECT 
-                id,
-                name,
-                email,
-                phone,
-                subject,
-                message,
-                created_at AS timestamp,
-                read
-            FROM contact_messages
-            WHERE id = $1
-        `, [id]);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Message not found' });
-        }
-
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error('Error fetching single message:', err);
-        res.status(500).json({ error: 'Failed to fetch message' });
+  const { id } = req.params;
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        name,
+        email,
+        phone,
+        subject,
+        message,
+        created_at AS timestamp,
+        read,
+        replied_at,
+        reply_text
+      FROM contact_messages
+      WHERE id = $1
+    `, [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Message not found' });
     }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching single message:', err);
+    res.status(500).json({ error: 'Failed to fetch message' });
+  }
 });
 
 // --- REPLY TO MESSAGE ROUTE ---

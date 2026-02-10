@@ -1397,7 +1397,6 @@ async function viewMessage(messageId) {
 
     hideLoader();
 
-    // 4. Render modal (uses message.read — now true)
    // 4. Render modal
 const modal = document.getElementById('messageDetailsModal');
 const content = document.getElementById('messageDetailsContent');

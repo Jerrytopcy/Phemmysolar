@@ -1304,13 +1304,14 @@ function renderMessages(messages) {
             </td>
             <td class="cell-actions">
                 <button class="action-btn view" onclick="viewMessage(${msg.id})">View</button>
-                ${!msg.read && !msg.replied_at
+                ${!msg.replied_at
                     ? `<button class="action-btn reply" onclick="openReplyForm(${msg.id}, '${msg.email}', '${msg.subject}')">Reply</button>`
                     : ""}
             </td>
         `;
         tableBody.appendChild(row);
     });
+    loadMessages();
 }
 
 function updatePagination(totalCount) {

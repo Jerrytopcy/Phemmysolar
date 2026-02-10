@@ -6,6 +6,7 @@ let productImages = [];
 let testimonialImage = "";
 let newsImage = "";
 let currentEditingUserId = null;
+let cachedMessages = []; 
 
 let currentPage = 1;
 const usersPerPage = 10;
@@ -1243,7 +1244,8 @@ async function loadMessages() {
         }
 
         const messages = await response.json();
-
+         cachedMessages = [...messages]; // ← Store for fast updates
+        applyMessageFilters(); // Now uses cachedMessages
         // Apply filters
         const searchQuery = document.getElementById('messageSearchInput').value.toLowerCase().trim();
         const statusFilter = document.getElementById('messageStatusFilter').value;
@@ -1340,85 +1342,94 @@ async function markAsRead(messageId) {
         await showAdminAlert('Error', error.message || 'Failed to mark message as read');
     }
 }
+function applyMessageFilters() {
+  const searchQuery = document.getElementById('messageSearchInput').value.toLowerCase().trim();
+  const statusFilter = document.getElementById('messageStatusFilter').value;
+
+  let filtered = [...cachedMessages];
+
+  if (searchQuery) {
+    filtered = filtered.filter(msg =>
+      msg.name.toLowerCase().includes(searchQuery) ||
+      msg.email.toLowerCase().includes(searchQuery) ||
+      msg.subject.toLowerCase().includes(searchQuery)
+    );
+  }
+
+  if (statusFilter === 'unread') filtered = filtered.filter(msg => !msg.read);
+  else if (statusFilter === 'read') filtered = filtered.filter(msg => msg.read);
+
+  renderMessages(filtered);
+  updatePagination(filtered.length);
+}
+
 async function viewMessage(messageId) {
-    const token = sessionStorage.getItem("adminToken");
-    if (!token) {
-        await showAdminAlert("Authentication Error", "Please log in again.");
-        return;
+  const token = sessionStorage.getItem("adminToken");
+  if (!token) {
+    await showAdminAlert("Authentication Error", "Please log in again.");
+    return;
+  }
+
+  try {
+    showLoader();
+
+    // 1. Mark as read on server
+    const markRes = await fetch(`/api/admin/messages/${messageId}/read`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!markRes.ok) throw new Error('Failed to mark as read');
+
+    // 2. Update local cache
+    const idx = cachedMessages.findIndex(m => m.id === messageId);
+    if (idx !== -1) {
+      cachedMessages[idx] = { ...cachedMessages[idx], read: true };
     }
 
-    try {
-        showLoader();
+    // 3. Fetch updated message (for modal)
+    const resp = await fetch(`/api/admin/messages/${messageId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!resp.ok) throw new Error('Failed to fetch message');
+    const message = await resp.json();
 
-        // Step 1: Mark as read first (auto)
-        const markReadRes = await fetch(`/api/admin/messages/${messageId}/read`, {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        if (!markReadRes.ok) {
-            throw new Error('Failed to mark message as read');
-        }
+    hideLoader();
 
-        // Step 2: Fetch updated message (now with read=true)
-        const response = await fetch(`/api/admin/messages/${messageId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch message');
+    // 4. Render modal (uses message.read — now true)
+    const modal = document.getElementById('messageDetailsModal');
+    const content = document.getElementById('messageDetailsContent');
+    content.innerHTML = `
+      <div class="modal-header"><h3>${message.subject}</h3></div>
+      <div class="modal-content">
+        <div class="detail-row"><strong>Name</strong><span>${message.name}</span></div>
+        <div class="detail-row"><strong>Email</strong><a href="mailto:${message.email}">${message.email}</a></div>
+        <div class="detail-row"><strong>Phone</strong><a href="tel:${message.phone}">${message.phone}</a></div>
+        <div class="detail-row"><strong>Sent</strong><span>${new Date(message.timestamp).toLocaleString()}</span></div>
+        <div class="detail-row">
+          <strong>Status</strong>
+          <span class="status-badge ${message.read ? 'status-read' : 'status-unread'}">
+            ${message.read ? 'Read' : 'Unread'}
+          </span>
+        </div>
+        <div class="message-box">
+          <strong>Message</strong>
+          <p>${message.message}</p>
+        </div>
+      </div>
+    `;
+    modal.style.display = 'flex';
 
-        const message = await response.json();
+    // 5. ✅ Refresh table *without full reload* — just re-filter & re-render
+    applyMessageFilters();
 
-        hideLoader();
-
-        // Populate modal
-        const messageModal = document.getElementById('messageDetailsModal');
-        const content = document.getElementById('messageDetailsContent');
-        if (!messageModal || !content) throw new Error('Modal not found');
-
-        content.innerHTML = `
-            <div class="modal-header">
-                <h3>${message.subject}</h3>
-            </div>
-            <div class="modal-content">
-                <div class="detail-row">
-                    <strong>Name</strong>
-                    <span>${message.name}</span>
-                </div>
-                <div class="detail-row">
-                    <strong>Email</strong>
-                    <a href="mailto:${message.email}">${message.email}</a>
-                </div>
-                <div class="detail-row">
-                    <strong>Phone</strong>
-                    <a href="tel:${message.phone}">${message.phone}</a>
-                </div>
-                <div class="detail-row">
-                    <strong>Sent</strong>
-                    <span>${new Date(message.timestamp).toLocaleString()}</span>
-                </div>
-                <div class="detail-row">
-                    <strong>Status</strong>
-                    <span class="status-badge ${message.read ? 'status-read' : 'status-unread'}">
-                        ${message.read ? 'Read' : 'Unread'}
-                    </span>
-                </div>
-                <div class="message-box">
-                    <strong>Message</strong>
-                    <p>${message.message}</p>
-                </div>
-            </div>
-        `;
-
-        // Show modal
-        messageModal.style.display = 'flex';
-
-    } catch (error) {
-        console.error('Error viewing message:', error);
-        hideLoader();
-        await showAdminAlert('Error', error.message || 'Failed to view message');
-    }
+  } catch (error) {
+    console.error('Error viewing message:', error);
+    hideLoader();
+    await showAdminAlert('Error', error.message || 'Failed to view message');
+  }
 }
 
 // Initialize event listeners for the messages section

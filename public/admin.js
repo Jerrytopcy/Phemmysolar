@@ -1398,28 +1398,76 @@ async function viewMessage(messageId) {
     hideLoader();
 
     // 4. Render modal (uses message.read — now true)
-    const modal = document.getElementById('messageDetailsModal');
-    const content = document.getElementById('messageDetailsContent');
-    content.innerHTML = `
-      <div class="modal-header"><h3>${message.subject}</h3></div>
-      <div class="modal-content">
-        <div class="detail-row"><strong>Name</strong><span>${message.name}</span></div>
-        <div class="detail-row"><strong>Email</strong><a href="mailto:${message.email}">${message.email}</a></div>
-        <div class="detail-row"><strong>Phone</strong><a href="tel:${message.phone}">${message.phone}</a></div>
-        <div class="detail-row"><strong>Sent</strong><span>${new Date(message.timestamp).toLocaleString()}</span></div>
-        <div class="detail-row">
-          <strong>Status</strong>
-          <span class="status-badge ${message.read ? 'status-read' : 'status-unread'}">
-            ${message.read ? 'Read' : 'Unread'}
+   // 4. Render modal
+const modal = document.getElementById('messageDetailsModal');
+const content = document.getElementById('messageDetailsContent');
+
+const replySection = message.replied_at
+  ? `
+    <div class="reply-section">
+      <h4 style="margin-top: 1.5rem; color: #2c3e50;">Admin Reply</h4>
+      <div class="reply-bubble">
+        <div class="reply-meta">
+          <span class="reply-author">PhemmySolar Support</span>
+          <span class="reply-timestamp">
+            ${new Date(message.replied_at).toLocaleString()}
           </span>
         </div>
-        <div class="message-box">
-          <strong>Message</strong>
-          <p>${message.message}</p>
-        </div>
+        <p class="reply-text">
+          ${message.reply_text || "No reply text available."}
+        </p>
       </div>
-    `;
-    modal.style.display = 'flex';
+    </div>
+  `
+  : "";
+
+content.innerHTML = `
+  <div class="modal-header">
+    <h3>${message.subject}</h3>
+  </div>
+
+  <div class="modal-content">
+    <div class="detail-row"><strong>Name</strong><span>${message.name}</span></div>
+    <div class="detail-row"><strong>Email</strong>
+      <a href="mailto:${message.email}">${message.email}</a>
+    </div>
+    <div class="detail-row"><strong>Phone</strong>
+      <a href="tel:${message.phone}">${message.phone}</a>
+    </div>
+    <div class="detail-row"><strong>Sent</strong>
+      <span>${new Date(message.timestamp).toLocaleString()}</span>
+    </div>
+
+    <div class="detail-row">
+      <strong>Status</strong>
+      <span class="status-badge ${
+        message.replied_at
+          ? 'status-replied'
+          : message.read
+            ? 'status-read'
+            : 'status-unread'
+      }">
+        ${
+          message.replied_at
+            ? 'Replied'
+            : message.read
+              ? 'Read'
+              : 'Unread'
+        }
+      </span>
+    </div>
+
+    <div class="message-box">
+      <strong>Original Message</strong>
+      <p>${message.message}</p>
+    </div>
+
+    ${replySection}
+  </div>
+`;
+
+modal.style.display = 'flex';
+
 
     // 5. ✅ Refresh table *without full reload* — just re-filter & re-render
     applyMessageFilters();

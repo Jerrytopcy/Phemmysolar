@@ -1712,9 +1712,13 @@ app.post('/api/admin/messages/:id/reply', authMiddleware, adminOnly, async (req,
   try {
     // Optional: Log or update message (e.g., set replied_at)
     await pool.query(
-      'UPDATE contact_messages SET replied_at = NOW(), read = TRUE WHERE id = $1',
-      [id]
-    );
+  `UPDATE contact_messages 
+   SET replied_at = NOW(), 
+       read = TRUE, 
+       reply_text = $1 
+   WHERE id = $2`,
+  [body, id]
+);
 
     // Send reply via SendGrid
    const msg = {

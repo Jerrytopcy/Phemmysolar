@@ -2413,3 +2413,26 @@ body {
   background: linear-gradient(90deg, #6366f1, #8b5cf6);
   cursor: pointer;
 }
+
+
+.reply-section { margin-top: 1.5rem; }
+.reply-bubble {
+  background-color: #f8f9fa;
+  border-left: 4px solid #007BFF;
+  padding: 12px 16px;
+  border-radius: 0 4px 4px 0;
+  font-size: 0.95rem;
+}
+.reply-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 8px;
+}
+.reply-author { font-weight: bold; color: #007BFF; }
+.reply-text { margin: 0; line-height: 1.5; }
+.status-replied {
+  background-color: #d4edda;
+  color: #155724;
+}

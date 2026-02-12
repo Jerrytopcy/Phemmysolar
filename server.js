@@ -331,12 +331,12 @@ app.delete('/api/cart', authMiddleware, async (req, res) => {
   }
 });
 
+// PRODUCTS ROUTES - SPECIFIC ROUTES MUST COME BEFORE GENERAL ROUTES
 
-
-// --- PRODUCTS ROUTES ---
-// Get a single product by ID (SPECIFIC route - comes first)
+// Get a single product by ID (SPECIFIC route - comes FIRST)
 app.get('/api/products/:id', async (req, res) => {
   try {
+    console.log("Single product route called with ID:", req.params.id); // Debug log
     const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
@@ -416,6 +416,7 @@ app.patch('/api/products/:id/reactivate', async (req, res) => {
 // GET all ACTIVE products (for customer-facing views)
 app.get('/api/products', async (req, res) => {
   try {
+    console.log("Getting active products"); // Debug log
     const result = await pool.query('SELECT * FROM products WHERE COALESCE(active, TRUE) = TRUE ORDER BY id');
     res.json(result.rows);
   } catch (err) {
@@ -425,8 +426,10 @@ app.get('/api/products', async (req, res) => {
 });
 
 // NEW: GET ALL products (including inactive ones) - for admin panel
+// THIS MUST BE DEFINED AFTER THE /:id ROUTE
 app.get('/api/products/all', async (req, res) => {
   try {
+    console.log("Getting all products (including inactive)"); // Debug log
     const result = await pool.query('SELECT * FROM products ORDER BY id');
     res.json(result.rows);
   } catch (err) {
@@ -450,6 +453,7 @@ app.post('/api/products', async (req, res) => {
     res.status(500).json({ error: 'Failed to create product' });
   }
 });
+
 // --- TESTIMONIALS ROUTES ---
 app.get('/api/testimonials', async (req, res) => {
   try {

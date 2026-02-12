@@ -208,8 +208,7 @@ function formatNaira(price) {
 async function loadProducts() {
     try {
         showLoader("Loading products...");
-        // Use the new endpoint that returns all products (including inactive)
-        const response = await fetch('/api/products/all');
+        const response = await fetch('/api/products');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -221,6 +220,81 @@ async function loadProducts() {
         const tableBody = document.getElementById("productsTableBody");
         
         // Check if the element exists
+        if (!tableBody) {
+            console.error("Element with ID 'productsTableBody' not found!");
+            return;
+        }
+        
+        if (products.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="empty-state"><p>No products found. Add your first product!</p></td></tr>`;
+            return;
+        }
+        
+        // Process each product and build HTML
+        const productRows = products.map((product, index) => {
+            console.log(`Processing product ${index}:`, product);
+            
+            // Sanitize the name and description to handle emojis and special characters
+            const sanitizeText = (text) => {
+                if (!text) return '';
+                return String(text)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#x27;');
+            };
+            
+            const productName = sanitizeText(product.name);
+            const productDescription = sanitizeText(product.description);
+            const firstImage = product.images ? 
+                (Array.isArray(product.images) ? product.images[0] : product.images) : 
+                (product.image || '/uploads/default-product.jpg');
+            
+            return `<tr>
+                <td><img src="${firstImage}" alt="${productName}" class="product-image-thumb"></td>
+                <td>${productName}</td>
+                <td>${formatNaira(product.price)}</td>
+                <td>${productDescription.substring(0, 60)}...</td>
+                <td>
+                    <div class="product-actions">
+                        <button class="btn-edit" onclick="editProduct(${product.id})">Edit</button>
+                        <button class="btn-delete" onclick="deleteProduct(${product.id})">Delete</button>
+                    </div>
+                </td>
+            </tr>`;
+        });
+        
+        console.log("Generated HTML rows:", productRows);
+        tableBody.innerHTML = productRows.join("");
+        
+    } catch (error) {
+        console.error("Error loading products:", error);
+        const tableBody = document.getElementById("productsTableBody");
+        if (tableBody) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="error-message"><p>Error loading products: ${error.message}</p></td></tr>`;
+        } else {
+            console.error("Could not display error message - table element not found");
+        }
+    } finally {
+        hideLoader();
+    }
+}
+
+// For admin panel - loads all products (active and inactive)
+async function loadAllProducts() {
+    try {
+        showLoader("Loading products...");
+        const response = await fetch('/api/products/all'); // All products including inactive
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const products = await response.json();
+        
+        console.log("Raw API Response:", products);
+        
+        const tableBody = document.getElementById("productsTableBody");
+        
         if (!tableBody) {
             console.error("Element with ID 'productsTableBody' not found!");
             return;
@@ -294,7 +368,7 @@ async function loadProducts() {
     }
 }
 
-// Add this function for reactivating products
+// Add the reactivate function
 async function reactivateProduct(productId) {
     const confirmed = await showAdminConfirm("Are you sure you want to reactivate this product?", "Reactivate Product");
     if (confirmed) {
@@ -314,7 +388,7 @@ async function reactivateProduct(productId) {
             
             const result = await response.json();
             if (result.success) {
-                loadProducts(); // Reload the product list
+                loadAllProducts(); // Reload the product list
                 await showAdminAlert("Product reactivated successfully!", "Success");
             } else {
                 throw new Error(result.error || "Failed to reactivate product.");
@@ -327,6 +401,7 @@ async function reactivateProduct(productId) {
         }
     }
 }
+
 // Show product form
 function showProductForm(isEdit = false) {
     const formContainer = document.getElementById("productFormContainer");

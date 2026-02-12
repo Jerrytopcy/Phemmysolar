@@ -332,7 +332,6 @@ app.delete('/api/cart', authMiddleware, async (req, res) => {
 });
 
 
-
 // --- PRODUCTS ROUTES ---
 app.get('/api/products/:id', async (req, res) => {
     try {
@@ -425,13 +424,21 @@ app.get('/api/products', async (req, res) => {
 });
 
 // NEW: Get ALL products (including inactive)
+// NEW: Get ALL products (including inactive)
 app.get('/api/products/all', async (req, res) => {
     try {
+        console.log("Fetching all products from database..."); // Debug log
         const result = await pool.query('SELECT * FROM products ORDER BY id');
+        console.log(`Found ${result.rows.length} products`); // Debug log
         res.json(result.rows);
     } catch (err) {
         console.error('Error fetching all products:', err);
-        res.status(500).json({ error: 'Failed to fetch products' });
+        console.error('Error details:', {
+            message: err.message,
+            stack: err.stack,
+            code: err.code
+        }); // More detailed error logging
+        res.status(500).json({ error: 'Failed to fetch products', details: err.message });
     }
 });
 

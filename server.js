@@ -335,75 +335,37 @@ app.delete('/api/cart', authMiddleware, async (req, res) => {
 
 // --- PRODUCTS ROUTES ---
 app.get('/api/products/:id', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Error fetching product:', err);
-    res.status(500).json({ error: 'Failed to fetch product' });
-  }
-});
-
-app.get('/api/products', async (req, res) => {
     try {
-        // Only return products where active = TRUE
-        const result = await pool.query(
-            'SELECT * FROM products WHERE active = TRUE ORDER BY id'
-        );
-        res.json(result.rows);
+        const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        res.json(result.rows[0]);
     } catch (err) {
-        console.error('Error fetching products:', err);
-        res.status(500).json({ error: 'Failed to fetch products' });
+        console.error('Error fetching product:', err);
+        res.status(500).json({ error: 'Failed to fetch product' });
     }
 });
 
-// Get all products (including inactive ones)
-app.get('/api/products/all', async (req, res) => {
-    try {
-        // Return all products regardless of active status
-        const result = await pool.query('SELECT * FROM products ORDER BY id');
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error fetching all products:', err);
-        res.status(500).json({ error: 'Failed to fetch products' });
-    }
-});
-
-app.post('/api/products', async (req, res) => {
-  const { name, price, description, images, category } = req.body;
-  try {
-    const result = await pool.query(
-      'INSERT INTO products (name, price, description, images, category) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [name, price, description, images, category]
-    );
-    res.json({ success: true, product: result.rows[0] });
-  } catch (err) {
-    console.error('Error creating product:', err);
-    res.status(500).json({ error: 'Failed to create product' });
-  }
-});
-
+// PUT route for updating products (specific route)
 app.put('/api/products/:id', async (req, res) => {
-  const { name, price, description, images, category } = req.body;
-  try {
-    const result = await pool.query(
-      'UPDATE products SET name = $1, price = $2, description = $3, images = $4, category = $5 WHERE id = $6 RETURNING *',
-      [name, price, description, images, category, req.params.id]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
+    const { name, price, description, images, category } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE products SET name = $1, price = $2, description = $3, images = $4, category = $5 WHERE id = $6 RETURNING *',
+            [name, price, description, images, category, req.params.id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        res.json({ success: true, product: result.rows[0] });
+    } catch (err) {
+        console.error('Error updating product:', err);
+        res.status(500).json({ error: 'Failed to update product' });
     }
-    res.json({ success: true, product: result.rows[0] });
-  } catch (err) {
-    console.error('Error updating product:', err);
-    res.status(500).json({ error: 'Failed to update product' });
-  }
 });
 
-
+// DELETE route for soft deleting products (specific route)
 app.delete('/api/products/:id', async (req, res) => {
     try {
         // Perform a soft delete by setting active to FALSE
@@ -426,8 +388,7 @@ app.delete('/api/products/:id', async (req, res) => {
     }
 });
 
-
-// Reactivate a product
+// PATCH route for reactivating products (specific route)
 app.patch('/api/products/:id/reactivate', async (req, res) => {
     try {
         const result = await pool.query(
@@ -446,6 +407,47 @@ app.patch('/api/products/:id/reactivate', async (req, res) => {
     } catch (err) {
         console.error('Error reactivating product:', err);
         res.status(500).json({ error: 'Failed to reactivate product' });
+    }
+});
+
+// GENERAL routes go AFTER specific routes
+
+// Get all ACTIVE products
+app.get('/api/products', async (req, res) => {
+    try {
+        // Only return products where active is TRUE or NULL (for backward compatibility)
+        const result = await pool.query('SELECT * FROM products WHERE COALESCE(active, TRUE) = TRUE ORDER BY id');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching products:', err);
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+
+// NEW: Get ALL products (including inactive)
+app.get('/api/products/all', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM products ORDER BY id');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching all products:', err);
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+
+// POST route for creating products (no parameter, so order doesn't matter)
+app.post('/api/products', async (req, res) => {
+    const { name, price, description, images, category } = req.body;
+    try {
+        // Add active column with default value of TRUE for new products
+        const result = await pool.query(
+            'INSERT INTO products (name, price, description, images, category, active) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING *',
+            [name, price, description, images, category]
+        );
+        res.json({ success: true, product: result.rows[0] });
+    } catch (err) {
+        console.error('Error creating product:', err);
+        res.status(500).json({ error: 'Failed to create product' });
     }
 });
 

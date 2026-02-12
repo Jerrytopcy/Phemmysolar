@@ -334,6 +334,19 @@ app.delete('/api/cart', authMiddleware, async (req, res) => {
 
 
 // --- PRODUCTS ROUTES ---
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching product:', err);
+    res.status(500).json({ error: 'Failed to fetch product' });
+  }
+});
+
 app.get('/api/products', async (req, res) => {
     try {
         // Only return products where active = TRUE
@@ -347,17 +360,16 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-app.get('/api/products/:id', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
+// Get all products (including inactive ones)
+app.get('/api/products/all', async (req, res) => {
+    try {
+        // Return all products regardless of active status
+        const result = await pool.query('SELECT * FROM products ORDER BY id');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching all products:', err);
+        res.status(500).json({ error: 'Failed to fetch products' });
     }
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Error fetching product:', err);
-    res.status(500).json({ error: 'Failed to fetch product' });
-  }
 });
 
 app.post('/api/products', async (req, res) => {
@@ -414,17 +426,6 @@ app.delete('/api/products/:id', async (req, res) => {
     }
 });
 
-// Get all products (including inactive ones)
-app.get('/api/products/all', async (req, res) => {
-    try {
-        // Return all products regardless of active status
-        const result = await pool.query('SELECT * FROM products ORDER BY id');
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error fetching all products:', err);
-        res.status(500).json({ error: 'Failed to fetch products' });
-    }
-});
 
 // Reactivate a product
 app.patch('/api/products/:id/reactivate', async (req, res) => {
@@ -448,17 +449,6 @@ app.patch('/api/products/:id/reactivate', async (req, res) => {
     }
 });
 
-
-// Add this temporary route to initialize active status for existing products
-app.get('/api/products/init-active', async (req, res) => {
-    try {
-        await pool.query('UPDATE products SET active = TRUE WHERE active IS NULL');
-        res.json({ success: true, message: 'All existing products set to active' });
-    } catch (err) {
-        console.error('Error initializing active status:', err);
-        res.status(500).json({ error: 'Failed to initialize active status' });
-    }
-});
 
 // --- TESTIMONIALS ROUTES ---
 app.get('/api/testimonials', async (req, res) => {

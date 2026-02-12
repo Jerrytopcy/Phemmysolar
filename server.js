@@ -332,6 +332,18 @@ app.delete('/api/cart', authMiddleware, async (req, res) => {
 });
 
 // PRODUCTS ROUTES - SPECIFIC ROUTES MUST COME BEFORE GENERAL ROUTES
+// NEW: GET ALL products (including inactive ones) - for admin panel
+// THIS MUST BE DEFINED AFTER THE /:id ROUTE
+app.get('/api/products/all', async (req, res) => {
+  try {
+    console.log("Getting all products (including inactive)"); // Debug log
+    const result = await pool.query('SELECT * FROM products ORDER BY id');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching all products:', err);
+    res.status(500).json({ error: 'Failed to fetch products' });
+  }
+});
 
 // Get a single product by ID (SPECIFIC route - comes FIRST)
 app.get('/api/products/:id', async (req, res) => {
@@ -425,18 +437,7 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// NEW: GET ALL products (including inactive ones) - for admin panel
-// THIS MUST BE DEFINED AFTER THE /:id ROUTE
-app.get('/api/products/all', async (req, res) => {
-  try {
-    console.log("Getting all products (including inactive)"); // Debug log
-    const result = await pool.query('SELECT * FROM products ORDER BY id');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching all products:', err);
-    res.status(500).json({ error: 'Failed to fetch products' });
-  }
-});
+
 
 // POST route for creating products
 app.post('/api/products', async (req, res) => {

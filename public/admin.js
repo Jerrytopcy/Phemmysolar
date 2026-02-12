@@ -208,7 +208,8 @@ function formatNaira(price) {
 async function loadProducts() {
     try {
         showLoader("Loading products...");
-        const response = await fetch('/api/products');
+        // Use the new endpoint that returns all products (including inactive)
+        const response = await fetch('/api/products/all');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -216,10 +217,8 @@ async function loadProducts() {
         
         console.log("Raw API Response:", products);
         
-        // Correct selector - target the tbody element directly by its ID
         const tableBody = document.getElementById("productsTableBody");
         
-        // Check if the element exists
         if (!tableBody) {
             console.error("Element with ID 'productsTableBody' not found!");
             return;
@@ -230,7 +229,7 @@ async function loadProducts() {
             return;
         }
         
-        // Process each product and build HTML
+        // Process each product and build HTML with status indicators
         const productRows = products.map((product, index) => {
             console.log(`Processing product ${index}:`, product);
             
@@ -251,15 +250,27 @@ async function loadProducts() {
                 (Array.isArray(product.images) ? product.images[0] : product.images) : 
                 (product.image || '/uploads/default-product.jpg');
             
+            // Determine if product is active and set appropriate status and actions
+            const isActive = product.active !== false; // Handle NULL values
+            const statusText = isActive ? 'Active' : 'Inactive';
+            const statusClass = isActive ? 'status-active' : 'status-inactive';
+            const statusBadge = `<span class="status-badge ${statusClass}">${statusText}</span>`;
+            
             return `<tr>
                 <td><img src="${firstImage}" alt="${productName}" class="product-image-thumb"></td>
                 <td>${productName}</td>
                 <td>${formatNaira(product.price)}</td>
                 <td>${productDescription.substring(0, 60)}...</td>
                 <td>
+                    ${statusBadge}
+                </td>
+                <td>
                     <div class="product-actions">
                         <button class="btn-edit" onclick="editProduct(${product.id})">Edit</button>
-                        <button class="btn-delete" onclick="deleteProduct(${product.id})">Delete</button>
+                        ${isActive 
+                            ? `<button class="btn-delete" onclick="deleteProduct(${product.id})">Deactivate</button>` 
+                            : `<button class="btn-reactivate" onclick="reactivateProduct(${product.id})">Reactivate</button>`
+                        }
                     </div>
                 </td>
             </tr>`;
@@ -272,7 +283,7 @@ async function loadProducts() {
         console.error("Error loading products:", error);
         const tableBody = document.getElementById("productsTableBody");
         if (tableBody) {
-            tableBody.innerHTML = `<tr><td colspan="5" class="error-message"><p>Error loading products: ${error.message}</p></td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="6" class="error-message"><p>Error loading products: ${error.message}</p></td></tr>`;
         } else {
             console.error("Could not display error message - table element not found");
         }
@@ -281,6 +292,39 @@ async function loadProducts() {
     }
 }
 
+// Add this function for reactivating products
+async function reactivateProduct(productId) {
+    const confirmed = await showAdminConfirm("Are you sure you want to reactivate this product?", "Reactivate Product");
+    if (confirmed) {
+        try {
+            showLoader("Reactivating product...");
+            const response = await fetch(`/api/products/${productId}/reactivate`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            if (result.success) {
+                loadProducts(); // Reload the product list
+                await showAdminAlert("Product reactivated successfully!", "Success");
+            } else {
+                throw new Error(result.error || "Failed to reactivate product.");
+            }
+        } catch (error) {
+            console.error("Error reactivating product:", error);
+            await showAdminAlert(`Error reactivating product: ${error.message}`, "Error");
+        } finally {
+            hideLoader();
+        }
+    }
+}
 // Show product form
 function showProductForm(isEdit = false) {
     const formContainer = document.getElementById("productFormContainer");

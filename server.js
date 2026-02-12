@@ -332,73 +332,120 @@ app.delete('/api/cart', authMiddleware, async (req, res) => {
 });
 
 
-
-// --- PRODUCTS ROUTES ---
-app.get('/api/products', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM products ORDER BY id');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching products:', err);
-    res.status(500).json({ error: 'Failed to fetch products' });
-  }
-});
-
+// PRODUCTS ROUTES
+// Get a single product by ID (SPECIFIC route comes first)
 app.get('/api/products/:id', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
+    try {
+        const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Error fetching product:', err);
+        res.status(500).json({ error: 'Failed to fetch product' });
     }
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Error fetching product:', err);
-    res.status(500).json({ error: 'Failed to fetch product' });
-  }
 });
 
+// GET all ACTIVE products (for customer-facing views)
+app.get('/api/products', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM products WHERE COALESCE(active, TRUE) = TRUE ORDER BY id');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching products:', err);
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+
+// NEW: GET ALL products (including inactive ones) - for admin panel
+app.get('/api/products/all', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM products ORDER BY id');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching all products:', err);
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+
+// POST route for creating products
 app.post('/api/products', async (req, res) => {
-  const { name, price, description, images, category } = req.body;
-  try {
-    const result = await pool.query(
-      'INSERT INTO products (name, price, description, images, category) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [name, price, description, images, category]
-    );
-    res.json({ success: true, product: result.rows[0] });
-  } catch (err) {
-    console.error('Error creating product:', err);
-    res.status(500).json({ error: 'Failed to create product' });
-  }
+    const { name, price, description, images, category } = req.body;
+    try {
+        // New products will be active by default
+        const result = await pool.query(
+            'INSERT INTO products (name, price, description, images, category, active) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING *',
+            [name, price, description, images, category]
+        );
+        res.json({ success: true, product: result.rows[0] });
+    } catch (err) {
+        console.error('Error creating product:', err);
+        res.status(500).json({ error: 'Failed to create product' });
+    }
 });
 
+// PUT route for updating products
 app.put('/api/products/:id', async (req, res) => {
-  const { name, price, description, images, category } = req.body;
-  try {
-    const result = await pool.query(
-      'UPDATE products SET name = $1, price = $2, description = $3, images = $4, category = $5 WHERE id = $6 RETURNING *',
-      [name, price, description, images, category, req.params.id]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
+    const { name, price, description, images, category } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE products SET name = $1, price = $2, description = $3, images = $4, category = $5 WHERE id = $6 RETURNING *',
+            [name, price, description, images, category, req.params.id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        res.json({ success: true, product: result.rows[0] });
+    } catch (err) {
+        console.error('Error updating product:', err);
+        res.status(500).json({ error: 'Failed to update product' });
     }
-    res.json({ success: true, product: result.rows[0] });
-  } catch (err) {
-    console.error('Error updating product:', err);
-    res.status(500).json({ error: 'Failed to update product' });
-  }
 });
 
+// DELETE route for soft deleting products (deactivate)
 app.delete('/api/products/:id', async (req, res) => {
-  try {
-    const result = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [req.params.id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
+    try {
+        // Perform a soft delete by setting active to FALSE
+        const result = await pool.query(
+            'UPDATE products SET active = FALSE WHERE id = $1 RETURNING *', 
+            [req.params.id]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Product deactivated successfully' 
+        });
+    } catch (err) {
+        console.error('Error deactivating product:', err);
+        res.status(500).json({ error: 'Failed to deactivate product' });
     }
-    res.json({ success: true, message: 'Product deleted' });
-  } catch (err) {
-    console.error('Error deleting product:', err);
-    res.status(500).json({ error: 'Failed to delete product' });
-  }
+});
+
+// PATCH route for reactivating products
+app.patch('/api/products/:id/reactivate', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'UPDATE products SET active = TRUE WHERE id = $1 RETURNING *', 
+            [req.params.id]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Product reactivated successfully' 
+        });
+    } catch (err) {
+        console.error('Error reactivating product:', err);
+        res.status(500).json({ error: 'Failed to reactivate product' });
+    }
 });
 
 // --- TESTIMONIALS ROUTES ---

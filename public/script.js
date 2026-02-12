@@ -188,7 +188,7 @@ function removeFromCart(productId) {
 
 
 // Proceed to checkout
-// Proceed to checkout
+
 async function proceedToCheckout() {
     if (!cart || cart.length === 0) {
         showCustomAlert("Your cart is empty.", "Cart Empty");

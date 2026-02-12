@@ -214,19 +214,27 @@ async function loadProducts() {
         }
         const products = await response.json();
         
-        console.log("Raw API Response:", products); // Debug: Log raw response
+        console.log("Raw API Response:", products);
         
-        const tableBody = document.querySelector("#productsTable tbody");
+        // Correct selector - target the tbody element directly by its ID
+        const tableBody = document.getElementById("productsTableBody");
+        
+        // Check if the element exists
+        if (!tableBody) {
+            console.error("Element with ID 'productsTableBody' not found!");
+            return;
+        }
+        
         if (products.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="5" class="empty-state"><p>No products found. Add your first product!</p></td></tr>`;
             return;
         }
         
-        // Process each product and log any issues
+        // Process each product and build HTML
         const productRows = products.map((product, index) => {
-            console.log(`Processing product ${index}:`, product); // Debug: log each product
+            console.log(`Processing product ${index}:`, product);
             
-            // Sanitize the name and description to prevent XSS and handle emojis
+            // Sanitize the name and description to handle emojis and special characters
             const sanitizeText = (text) => {
                 if (!text) return '';
                 return String(text)
@@ -243,34 +251,31 @@ async function loadProducts() {
                 (Array.isArray(product.images) ? product.images[0] : product.images) : 
                 (product.image || '/uploads/default-product.jpg');
             
-            // Create the HTML safely
-            try {
-                return `<tr>
-                    <td><img src="${firstImage}" alt="${productName}" class="product-image-thumb"></td>
-                    <td>${productName}</td>
-                    <td>${formatNaira(product.price)}</td>
-                    <td>${productDescription.substring(0, 60)}...</td>
-                    <td>
-                        <div class="product-actions">
-                            <button class="btn-edit" onclick="editProduct(${product.id})">Edit</button>
-                            <button class="btn-delete" onclick="deleteProduct(${product.id})">Delete</button>
-                        </div>
-                    </td>
-                </tr>`;
-            } catch (error) {
-                console.error(`Error creating HTML for product ${product.id}:`, error);
-                return `<tr><td colspan="5">Error displaying product ${product.id}</td></tr>`;
-            }
+            return `<tr>
+                <td><img src="${firstImage}" alt="${productName}" class="product-image-thumb"></td>
+                <td>${productName}</td>
+                <td>${formatNaira(product.price)}</td>
+                <td>${productDescription.substring(0, 60)}...</td>
+                <td>
+                    <div class="product-actions">
+                        <button class="btn-edit" onclick="editProduct(${product.id})">Edit</button>
+                        <button class="btn-delete" onclick="deleteProduct(${product.id})">Delete</button>
+                    </div>
+                </td>
+            </tr>`;
         });
         
-        console.log("Generated HTML rows:", productRows); // Debug: log generated HTML
-        
+        console.log("Generated HTML rows:", productRows);
         tableBody.innerHTML = productRows.join("");
         
     } catch (error) {
         console.error("Error loading products:", error);
-        const tableBody = document.querySelector("#productsTable tbody");
-        tableBody.innerHTML = `<tr><td colspan="5" class="error-message"><p>Error loading products: ${error.message}</p></td></tr>`;
+        const tableBody = document.getElementById("productsTableBody");
+        if (tableBody) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="error-message"><p>Error loading products: ${error.message}</p></td></tr>`;
+        } else {
+            console.error("Could not display error message - table element not found");
+        }
     } finally {
         hideLoader();
     }

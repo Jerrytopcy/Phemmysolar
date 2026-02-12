@@ -424,20 +424,36 @@ app.get('/api/products', async (req, res) => {
 });
 
 // NEW: Get ALL products (including inactive)
-// NEW: Get ALL products (including inactive)
+// NEW: Get ALL products (including inactive) - simplified version
 app.get('/api/products/all', async (req, res) => {
     try {
-        console.log("Fetching all products from database..."); // Debug log
-        const result = await pool.query('SELECT * FROM products ORDER BY id');
-        console.log(`Found ${result.rows.length} products`); // Debug log
-        res.json(result.rows);
+        const result = await pool.query(`
+            SELECT 
+                id, 
+                name, 
+                price, 
+                description, 
+                COALESCE(images, '[]'::jsonb) as images, 
+                image,
+                category,
+                COALESCE(active, true) as active,
+                created_at
+            FROM products 
+            ORDER BY id
+        `);
+        
+        // Convert PostgreSQL jsonb to JS array and handle null values
+        const processedProducts = result.rows.map(product => ({
+            ...product,
+            images: Array.isArray(product.images) ? product.images : 
+                   typeof product.images === 'string' ? JSON.parse(product.images) : 
+                   product.image ? [product.image] : [],
+            active: Boolean(product.active) // Convert to proper boolean
+        }));
+        
+        res.json(processedProducts);
     } catch (err) {
         console.error('Error fetching all products:', err);
-        console.error('Error details:', {
-            message: err.message,
-            stack: err.stack,
-            code: err.code
-        }); // More detailed error logging
         res.status(500).json({ error: 'Failed to fetch products', details: err.message });
     }
 });

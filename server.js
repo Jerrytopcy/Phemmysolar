@@ -448,6 +448,18 @@ app.patch('/api/products/:id/reactivate', async (req, res) => {
     }
 });
 
+
+// Add this temporary route to initialize active status for existing products
+app.get('/api/products/init-active', async (req, res) => {
+    try {
+        await pool.query('UPDATE products SET active = TRUE WHERE active IS NULL');
+        res.json({ success: true, message: 'All existing products set to active' });
+    } catch (err) {
+        console.error('Error initializing active status:', err);
+        res.status(500).json({ error: 'Failed to initialize active status' });
+    }
+});
+
 // --- TESTIMONIALS ROUTES ---
 app.get('/api/testimonials', async (req, res) => {
   try {

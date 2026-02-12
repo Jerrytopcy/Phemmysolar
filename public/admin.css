@@ -905,8 +905,7 @@ body {
   }
 }
 
-.order-filters,
-.product-filter-controls {
+.order-filters {
   display: flex;
   gap: 14px;
   margin-bottom: 18px;
@@ -914,9 +913,7 @@ body {
 }
 
 .order-filters input,
-.order-filters select,
-.product-filter-controls input,
-.product-filter-controls select{
+.order-filters select {
   padding: 10px 12px;
   border-radius: 6px;
   border: 1px solid #ddd;

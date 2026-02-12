@@ -206,49 +206,73 @@ function formatNaira(price) {
 
 // Load products into table
 async function loadProducts() {
-    const tableBody = document.getElementById("productsTableBody");
-    showLoader("Loading products..."); // Show loader while loading products
-
     try {
+        showLoader("Loading products...");
         const response = await fetch('/api/products');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const products = await response.json();
+        
+        console.log("Raw API Response:", products); // Debug: Log raw response
+        
+        const tableBody = document.querySelector("#productsTable tbody");
         if (products.length === 0) {
-            tableBody.innerHTML = `
-<tr>
-<td colspan="5" class="empty-state">
-<p>No products found. Add your first product!</p>
-</td>
-</tr>
-`;
+            tableBody.innerHTML = `<tr><td colspan="5" class="empty-state"><p>No products found. Add your first product!</p></td></tr>`;
             return;
         }
-        tableBody.innerHTML = products
-            .map((product) => {
-                const firstImage = product.images ? product.images[0] : product.image;
-                return `
-<tr>
-<td><img src="${firstImage}" alt="${product.name}" class="product-image-thumb"></td>
-<td>${product.name}</td>
-<td>${formatNaira(product.price)}</td>
-<td>${product.description.substring(0, 60)}...</td>
-<td>
-<div class="product-actions">
-<button class="btn-edit" onclick="editProduct(${product.id})">Edit</button>
-<button class="btn-delete" onclick="deleteProduct(${product.id})">Delete</button>
-</div>
-</td>
-</tr>
-`
-            })
-            .join("");
+        
+        // Process each product and log any issues
+        const productRows = products.map((product, index) => {
+            console.log(`Processing product ${index}:`, product); // Debug: log each product
+            
+            // Sanitize the name and description to prevent XSS and handle emojis
+            const sanitizeText = (text) => {
+                if (!text) return '';
+                return String(text)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#x27;');
+            };
+            
+            const productName = sanitizeText(product.name);
+            const productDescription = sanitizeText(product.description);
+            const firstImage = product.images ? 
+                (Array.isArray(product.images) ? product.images[0] : product.images) : 
+                (product.image || '/uploads/default-product.jpg');
+            
+            // Create the HTML safely
+            try {
+                return `<tr>
+                    <td><img src="${firstImage}" alt="${productName}" class="product-image-thumb"></td>
+                    <td>${productName}</td>
+                    <td>${formatNaira(product.price)}</td>
+                    <td>${productDescription.substring(0, 60)}...</td>
+                    <td>
+                        <div class="product-actions">
+                            <button class="btn-edit" onclick="editProduct(${product.id})">Edit</button>
+                            <button class="btn-delete" onclick="deleteProduct(${product.id})">Delete</button>
+                        </div>
+                    </td>
+                </tr>`;
+            } catch (error) {
+                console.error(`Error creating HTML for product ${product.id}:`, error);
+                return `<tr><td colspan="5">Error displaying product ${product.id}</td></tr>`;
+            }
+        });
+        
+        console.log("Generated HTML rows:", productRows); // Debug: log generated HTML
+        
+        tableBody.innerHTML = productRows.join("");
+        
     } catch (error) {
         console.error("Error loading products:", error);
+        const tableBody = document.querySelector("#productsTable tbody");
         tableBody.innerHTML = `<tr><td colspan="5" class="error-message"><p>Error loading products: ${error.message}</p></td></tr>`;
     } finally {
-        hideLoader(); // Hide loader after loading is complete
+        hideLoader();
     }
 }
 

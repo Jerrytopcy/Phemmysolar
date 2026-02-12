@@ -217,15 +217,17 @@ async function loadProducts() {
         
         console.log("Raw API Response:", products);
         
+        // Correct selector - target the tbody element directly by its ID
         const tableBody = document.getElementById("productsTableBody");
         
+        // Check if the element exists
         if (!tableBody) {
             console.error("Element with ID 'productsTableBody' not found!");
             return;
         }
         
         if (products.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="5" class="empty-state"><p>No products found. Add your first product!</p></td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="6" class="empty-state"><p>No products found. Add your first product!</p></td></tr>`;
             return;
         }
         

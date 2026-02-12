@@ -207,15 +207,25 @@ function formatNaira(price) {
 
 
 // Load all products (active and inactive) for admin panel
+// Load all products (active and inactive) for admin panel
 async function loadProducts() {
     try {
         showLoader("Loading products...");
-        const response = await fetch('/api/products/all'); // Get all products including inactive
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const products = await response.json();
         
+        // Try to fetch all products
+        const response = await fetch('/api/products/all');
+        
+        // Log the response status to help debug
+        console.log("Response status:", response.status);
+        console.log("Response ok:", response.ok);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("API Error Response:", errorText);
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+        
+        const products = await response.json();
         console.log("Raw API Response:", products);
         
         const tableBody = document.getElementById("productsTableBody");

@@ -385,7 +385,9 @@ function handleImageSelect(e) {
 }
 
 
-// Function to update preview container
+// admin.js (Replace the existing updateImagePreview function)
+
+// Function to update preview container - Updated to handle both existing and new images
 function updateImagePreview() {
   const container = document.getElementById("imagePreviewContainer");
   if (!container) {
@@ -396,11 +398,12 @@ function updateImagePreview() {
   container.innerHTML = ''; // Clear previous previews
 
   // --- Display Existing Cloudinary Images (URLs) ---
+  // These are the images already saved for the product (loaded from the database/Cloudinary)
   existingImages.forEach((url, index) => {
     // Validate URL format if necessary (optional)
     if (typeof url === 'string' && url.trim() !== '') {
       const imgWrapper = document.createElement('div');
-      // Apply the exact class name from your CSS
+      // Apply the exact class name from your CSS to ensure styling
       imgWrapper.classList.add('image-preview-item');
       imgWrapper.innerHTML = `
         <img src="${url}" alt="Existing product image ${index + 1}" class="existing-image-preview">
@@ -412,12 +415,13 @@ function updateImagePreview() {
   });
 
   // --- Display New Uploaded Files (using object URLs) ---
+  // These are the files selected by the user in the current session but not yet saved
   productImages.forEach((file, index) => { // Assumes 'file' is a File object
     if (file instanceof File) { // Validate that it's a File object
       const imgWrapper = document.createElement('div');
-      // Apply the exact class name from your CSS
-      imgWrapper.classList.add('image-preview-item');
-      const objectUrl = URL.createObjectURL(file); // Create object URL for the file
+      // Apply the exact class name from your CSS to ensure styling
+      imgWrapper.classList.add('image-preview-item'); // This class applies the grid layout, size, border, etc.
+      const objectUrl = URL.createObjectURL(file); // Create object URL for the local file
       imgWrapper.innerHTML = `
         <img src="${objectUrl}" alt="Newly selected image ${index + 1}" class="new-image-preview">
         <!-- Use the exact class name for the remove button from your CSS -->
@@ -428,38 +432,46 @@ function updateImagePreview() {
   });
 }
 
-
-// Update functions to ensure they trigger the fixed preview function
+// Helper functions to remove images from their respective arrays and refresh the preview
 function removeExistingImage(index) {
+  // Remove item from the existingImages array
   existingImages.splice(index, 1);
+  // Re-render the preview
   updateImagePreview();
 }
 
 function removeNewImage(index) {
+  // Remove item from the productImages array
   productImages.splice(index, 1);
+  // Re-render the preview
   updateImagePreview();
 }
 
-// Ensure the image selection handler also updates the preview correctly
+// Ensure the image selection handler adds to the correct array and updates the preview
 function handleImageSelect(e) {
   const files = e.target.files;
+  // Check total count against limit (5)
   if (files.length + productImages.length > 5) {
     showAdminAlert("You can only upload up to 5 images per product.", "Upload Limit");
     return;
   }
   Array.from(files).forEach((file) => {
     if (file.type.startsWith("image/")) {
-      // Add the File object directly to the array
+      // Push the File object directly to the productImages array
       productImages.push(file);
-      // Update the preview after adding the new file
+      // Update the preview immediately after adding
       updateImagePreview();
     } else {
       console.warn(`File ${file.name} is not an image and was skipped.`);
     }
   });
-  // Reset file input so the same file can be selected again if needed
+  // Reset the file input to allow selecting the same file again if needed
   e.target.value = "";
 }
+
+// Ensure the URL input handler also calls updateImagePreview if needed
+// (Assuming URL inputs are handled separately or maybe just stored in existingImages before saving)
+// The main preview now depends on the two arrays: existingImages and productImages
 
 function getImageUrlsFromInputs() {
     const inputs = document.querySelectorAll(".image-url-input");
@@ -523,34 +535,6 @@ async function editProduct(productId) {
     }
 }
 
-// Update preview container
-function updateImagePreview() {
-    const container = document.getElementById("imagePreviewContainer");
-    container.innerHTML = '';
-
-    // Existing images (Cloudinary URLs)
-    existingImages.forEach((url, index) => {
-        const imgWrapper = document.createElement('div');
-        imgWrapper.classList.add('image-wrapper');
-        imgWrapper.innerHTML = `
-            <img src="${url}" class="existing-image">
-            <button type="button" class="btn-remove" onclick="removeExistingImage(${index})">×</button>
-        `;
-        container.appendChild(imgWrapper);
-    });
-
-    // New uploaded images
-    productImages.forEach((file, index) => {
-        const imgWrapper = document.createElement('div');
-        imgWrapper.classList.add('image-wrapper');
-        imgWrapper.innerHTML = `
-            <img src="${URL.createObjectURL(file)}" class="new-image">
-            <button type="button" class="btn-remove" onclick="removeNewImage(${index})">×</button>
-        `;
-        container.appendChild(imgWrapper);
-    });
-}
-
 function removeExistingImage(index) {
     existingImages.splice(index, 1);
     updateImagePreview();
@@ -562,7 +546,6 @@ function removeNewImage(index) {
 }
 
 // Handle Add/Edit Product submit
-// admin.js (Inside handleProductSubmit)
 
 async function handleProductSubmit(e) {
   e.preventDefault();

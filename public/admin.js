@@ -213,73 +213,65 @@ function formatNaira(price) {
 
 
 // Load all products (active and inactive) for admin panel
+// Helper function to get a safe image URL
+function getImageUrl(image) {
+    if (!image) return '/uploads/default-product.jpg';
+    if (typeof image === "string") return image;
+    if (image.secure_url) return image.secure_url;
+    return '/uploads/default-product.jpg';
+}
+
+// Load all products (active and inactive) for admin panel
 async function loadProducts() {
     try {
         showLoader("Loading products...");
         
-        // Try to fetch all products
+        // Fetch all products
         const response = await fetch('/api/products/all');
-        
-        // Log the response status to help debug
-        // console.log("Response status:", response.status);
-        // console.log("Response ok:", response.ok);
-        
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("API Error Response:", errorText);
             throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
         
         const products = await response.json();
-        // console.log("Raw API Response:", products);
-        
         const tableBody = document.getElementById("productsTableBody");
-        
-        if (!tableBody) {
-            console.error("Element with ID 'productsTableBody' not found!");
-            return;
-        }
-        
+        if (!tableBody) return console.error("Element with ID 'productsTableBody' not found!");
+
         if (products.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="6" class="empty-state"><p>No products found. Add your first product!</p></td></tr>`;
             return;
         }
-        
-        // Process each product and build HTML with status indicators
+
+        // Build HTML for each product
         const productRows = products.map((product) => {
-            // console.log(`Processing product ${index}:`, product);
-            
-            // Sanitize the name and description to handle emojis and special characters
-            const sanitizeText = (text) => {
-                if (!text) return '';
-                return String(text)
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#x27;');
-            };
-            
+            // Sanitize name & description
+            const sanitizeText = (text) => text ? String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#x27;') : '';
+
             const productName = sanitizeText(product.name);
             const productDescription = sanitizeText(product.description);
-            const firstImage = product.images ? 
-                (Array.isArray(product.images) ? product.images[0] : product.images) : 
-                (product.image || '/uploads/default-product.jpg');
-            
-            // Determine if product is active and set appropriate status and actions
-            const isActive = product.active !== false; // Handle NULL values
+
+            // Get first image safely
+            const firstImage = product.images
+                ? (Array.isArray(product.images) ? getImageUrl(product.images[0]) : getImageUrl(product.images))
+                : getImageUrl(product.image);
+
+            // Determine status
+            const isActive = product.active !== false;
             const statusText = isActive ? 'Active' : 'Inactive';
             const statusClass = isActive ? 'status-active' : 'status-inactive';
             const statusBadge = `<span class="status-badge ${statusClass}">${statusText}</span>`;
-            
+
             return `<tr>
                 <td><img src="${firstImage}" alt="${productName}" class="product-image-thumb"></td>
                 <td>${productName}</td>
                 <td>${formatNaira(product.price)}</td>
                 <td>${productDescription.substring(0, 60)}...</td>
-                <td>
-                    ${statusBadge}
-                </td>
+                <td>${statusBadge}</td>
                 <td>
                     <div class="product-actions">
                         <button class="btn-edit" onclick="editProduct('${product.id}')">Edit</button>
@@ -291,22 +283,20 @@ async function loadProducts() {
                 </td>
             </tr>`;
         });
-        
-        // console.log("Generated HTML rows:", productRows);
+
         tableBody.innerHTML = productRows.join("");
-        
+
     } catch (error) {
         console.error("Error loading products:", error);
         const tableBody = document.getElementById("productsTableBody");
         if (tableBody) {
             tableBody.innerHTML = `<tr><td colspan="6" class="error-message"><p>Error loading products: ${error.message}</p></td></tr>`;
-        } else {
-            console.error("Could not display error message - table element not found");
         }
     } finally {
         hideLoader();
     }
 }
+
 
 // Function to reactivate products (needed for admin panel)
 async function reactivateProduct(productId) {

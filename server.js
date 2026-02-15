@@ -508,12 +508,13 @@ app.get('/api/products', async (req, res) => {
 // Upload max 5 images at once
 // POST route for creating products (Cloudinary + multer safe)
 app.post('/api/products', (req, res) => {
-  // Wrap multer upload in a callback to catch errors
   upload.array('images', 5)(req, res, async function (err) {
     if (err) {
-      console.error("Multer error:", err);
-      return res.status(500).json({ error: "Image upload failed: " + err.message });
+      console.error("Multer error object:", err);
+      return res.status(500).json({ error: "Image upload failed: " + (err.message || JSON.stringify(err)) });
     }
+
+    console.log("Multer passed, files:", req.files);
 
     try {
       const { name, price, description, category } = req.body;
@@ -526,20 +527,14 @@ app.post('/api/products', (req, res) => {
         ? req.files.map(file => file.secure_url || file.path)
         : [];
 
-      console.log("SAVING IMAGES:", imageUrls); // 🔥 Debug log
+      console.log("Saving images:", imageUrls);
 
       const result = await pool.query(
         `INSERT INTO products 
          (name, price, description, images, category, active) 
          VALUES ($1, $2, $3, $4::jsonb, $5, TRUE) 
          RETURNING *`,
-        [
-          name,
-          price,
-          description,
-          JSON.stringify(imageUrls),
-          category
-        ]
+        [name, price, description, JSON.stringify(imageUrls), category]
       );
 
       res.json({ success: true, product: result.rows[0] });
@@ -550,6 +545,7 @@ app.post('/api/products', (req, res) => {
     }
   });
 });
+
 
 
 

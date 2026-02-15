@@ -385,50 +385,31 @@ app.get('/api/products/:id', async (req, res) => {
   }
 });
 
-// PUT route for updating products (SPECIFIC route - comes second)
+
 // PUT route for updating products (with Cloudinary support)
+// PUT route for updating products (Cloudinary + existing images)
 app.put('/api/products/:id', upload.array('newImages', 5), async (req, res) => {
   try {
     const { name, price, description, category, existingImages } = req.body;
 
-    // Parse existingImages JSON (sent as string from admin.js)
+    // Parse existingImages safely
     let existing = [];
-    try {
-      existing = existingImages ? JSON.parse(existingImages) : [];
-    } catch (err) {
-      console.warn("Failed to parse existingImages, using empty array", err);
-      existing = [];
-    }
-
-    // Upload new images to Cloudinary
-    let newUploadedUrls = [];
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const result = await cloudinary.uploader.upload_stream({ 
-          folder: "products" 
-        }, (error, uploaded) => {
-          if (error) throw error;
-          return uploaded;
-        });
-
-        // Using promise wrapper for upload_stream
-        const uploadPromise = new Promise((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream({ folder: "products" }, (err, uploaded) => {
-            if (err) reject(err);
-            else resolve(uploaded.secure_url);
-          });
-          stream.end(file.buffer);
-        });
-
-        const uploadedUrl = await uploadPromise;
-        newUploadedUrls.push(uploadedUrl);
+    if (existingImages) {
+      try {
+        existing = JSON.parse(existingImages);
+      } catch (err) {
+        console.warn("Failed to parse existingImages, using empty array", err);
+        existing = [];
       }
     }
 
-    // Merge existing + new images
+    // Get new uploaded images URLs
+    const newUploadedUrls = req.files ? req.files.map(file => file.path) : [];
+
+    // Merge existing + new
     const finalImages = [...existing, ...newUploadedUrls];
 
-    // Update product in Postgres
+    // Update DB — finalImages is a proper JS array
     const result = await pool.query(
       'UPDATE products SET name=$1, price=$2, description=$3, images=$4, category=$5 WHERE id=$6 RETURNING *',
       [name, price, description, finalImages, category, req.params.id]
@@ -444,6 +425,7 @@ app.put('/api/products/:id', upload.array('newImages', 5), async (req, res) => {
     res.status(500).json({ error: 'Failed to update product' });
   }
 });
+
 
 
 // DELETE route for soft deleting products (SPECIFIC route - comes third)
@@ -595,7 +577,6 @@ app.delete('/api/testimonials/:id', async (req, res) => {
   }
 });
 
-// --- NEWS ROUTES ---
 // --- NEWS ROUTES ---
 
 app.get('/api/news', async (req, res) => {
@@ -1928,9 +1909,6 @@ app.post('/api/webhook/remita', async (req, res) => {
     res.status(500).json({ error: 'Failed to update order status' });
   }
 });
-
-
-
 
 // --- HEALTH CHECK ---
 app.get('/health', (req, res) => {

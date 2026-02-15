@@ -400,9 +400,11 @@ function updateImagePreview() {
     // Validate URL format if necessary (optional)
     if (typeof url === 'string' && url.trim() !== '') {
       const imgWrapper = document.createElement('div');
-      imgWrapper.classList.add('image-preview-item'); // Add consistent class for styling
+      // Apply the exact class name from your CSS
+      imgWrapper.classList.add('image-preview-item');
       imgWrapper.innerHTML = `
         <img src="${url}" alt="Existing product image ${index + 1}" class="existing-image-preview">
+        <!-- Use the exact class name for the remove button from your CSS -->
         <button type="button" class="image-preview-remove" onclick="removeExistingImage(${index})">×</button>
       `;
       container.appendChild(imgWrapper);
@@ -413,10 +415,12 @@ function updateImagePreview() {
   productImages.forEach((file, index) => { // Assumes 'file' is a File object
     if (file instanceof File) { // Validate that it's a File object
       const imgWrapper = document.createElement('div');
-      imgWrapper.classList.add('image-preview-item'); // Add consistent class for styling
+      // Apply the exact class name from your CSS
+      imgWrapper.classList.add('image-preview-item');
       const objectUrl = URL.createObjectURL(file); // Create object URL for the file
       imgWrapper.innerHTML = `
         <img src="${objectUrl}" alt="Newly selected image ${index + 1}" class="new-image-preview">
+        <!-- Use the exact class name for the remove button from your CSS -->
         <button type="button" class="image-preview-remove" onclick="removeNewImage(${index})">×</button>
       `;
       container.appendChild(imgWrapper);

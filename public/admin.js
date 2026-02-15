@@ -221,8 +221,8 @@ async function loadProducts() {
         const response = await fetch('/api/products/all');
         
         // Log the response status to help debug
-        console.log("Response status:", response.status);
-        console.log("Response ok:", response.ok);
+        // console.log("Response status:", response.status);
+        // console.log("Response ok:", response.ok);
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -231,7 +231,7 @@ async function loadProducts() {
         }
         
         const products = await response.json();
-        console.log("Raw API Response:", products);
+        // console.log("Raw API Response:", products);
         
         const tableBody = document.getElementById("productsTableBody");
         
@@ -292,7 +292,7 @@ async function loadProducts() {
             </tr>`;
         });
         
-        console.log("Generated HTML rows:", productRows);
+        // console.log("Generated HTML rows:", productRows);
         tableBody.innerHTML = productRows.join("");
         
     } catch (error) {

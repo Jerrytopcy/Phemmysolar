@@ -563,7 +563,7 @@ async function handleProductModalSubmit(e) {
 
   productImages.forEach((file, index) => {
     if (file instanceof File) {
-      formData.append("newImages", file);
+      formData.append("images", file);
     }
   });
 

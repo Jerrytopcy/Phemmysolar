@@ -388,43 +388,36 @@ app.get('/api/products/:id', async (req, res) => {
 
 // PUT route for updating products (with Cloudinary support)
 // PUT route for updating products (Cloudinary + existing images)
-app.put('/api/products/:id', upload.array('newImages', 5), async (req, res) => {
+app.put('/api/products/:id', upload.array('images', 5), async (req, res) => {
   try {
     const { name, price, description, category, existingImages } = req.body;
 
-    // Parse existingImages safely
     let existing = [];
     if (existingImages) {
       try {
         existing = JSON.parse(existingImages);
-      } catch (err) {
-        console.warn("Failed to parse existingImages, using empty array", err);
+      } catch {
         existing = [];
       }
     }
 
-    // Get new uploaded images URLs
     const newUploadedUrls = req.files ? req.files.map(file => file.path) : [];
 
-    // Merge existing + new
     const finalImages = [...existing, ...newUploadedUrls];
 
-    // Update DB — finalImages is a proper JS array
     const result = await pool.query(
       'UPDATE products SET name=$1, price=$2, description=$3, images=$4, category=$5 WHERE id=$6 RETURNING *',
       [name, price, description, finalImages, category, req.params.id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-
     res.json({ success: true, product: result.rows[0] });
+
   } catch (err) {
     console.error('Error updating product:', err);
     res.status(500).json({ error: 'Failed to update product' });
   }
 });
+
 
 
 
@@ -493,8 +486,7 @@ app.post('/api/products', upload.array('images', 5), async (req, res) => {
   try {
     const { name, price, description, category } = req.body;
 
-    // Cloudinary URLs
-    const imageUrls = req.files.map(file => file.path);
+    const imageUrls = req.files ? req.files.map(file => file.path) : [];
 
     const result = await pool.query(
       'INSERT INTO products (name, price, description, images, category, active) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING *',
@@ -507,6 +499,7 @@ app.post('/api/products', upload.array('images', 5), async (req, res) => {
     res.status(500).json({ error: 'Failed to create product' });
   }
 });
+
 
 
 // --- TESTIMONIALS ROUTES ---

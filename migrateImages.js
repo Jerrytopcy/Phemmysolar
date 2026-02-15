@@ -26,43 +26,41 @@ async function migrate() {
   try {
     console.log("Starting image migration...");
 
-    // Fetch all products
     const res = await pool.query('SELECT id, images FROM products');
     console.log(`Found ${res.rows.length} products.`);
 
     for (const product of res.rows) {
       const { id, images } = product;
+      if (!images) continue;
 
-      if (!images || images.length === 0) continue;
-
+      // Parse images if stored as JSON string
+      const rawImages = typeof images === 'string' ? JSON.parse(images) : images;
       const newImages = [];
 
-      for (const img of images) {
+      for (const img of rawImages) {
         if (!img.startsWith('data:image')) {
-          // Already a URL, keep it
           newImages.push(img);
           continue;
         }
 
-        // Upload base64 image to Cloudinary
         const uploadResult = await cloudinary.uploader.upload(img, {
-          folder: 'products'
+          folder: 'products',
         });
 
         newImages.push(uploadResult.secure_url);
-        console.log(`Product ${id} → image uploaded: ${uploadResult.secure_url}`);
+        console.log(`Product ${id} → uploaded: ${uploadResult.secure_url}`);
       }
 
-      // Update product images in DB
-      await pool.query(
-        'UPDATE products SET images = $1 WHERE id = $2',
-        [newImages, id]
-      );
+      // Update DB, store as JSON array
+      await pool.query('UPDATE products SET images = $1 WHERE id = $2', [
+        newImages,
+        id,
+      ]);
 
-      console.log(`Product ${id} images updated successfully.`);
+      console.log(`Product ${id} images updated.`);
     }
 
-    console.log("✅ All products migrated successfully!");
+    console.log("✅ All products migrated!");
     process.exit(0);
 
   } catch (err) {

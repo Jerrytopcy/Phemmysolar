@@ -1,27 +1,21 @@
-/**
- * migrateImages.js
- * 
- * Railway-ready migration script:
- * Converts all base64 images in your products table
- * to Cloudinary URLs and updates the database.
- */
-
 const { Pool } = require('pg');
 const cloudinary = require('cloudinary').v2;
 
-// Configure Cloudinary from Railway environment variables
+// Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.CLOUD_API_KEY,
   api_secret: process.env.CLOUD_API_SECRET,
+  secure: true,
 });
 
-// Configure PostgreSQL pool from Railway DATABASE_URL
+// PostgreSQL pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // Required for Railway Postgres
+  ssl: { rejectUnauthorized: false },
 });
 
+// Migration function
 async function migrate() {
   try {
     console.log("Starting image migration...");
@@ -33,7 +27,6 @@ async function migrate() {
       const { id, images } = product;
       if (!images) continue;
 
-      // Parse images if stored as JSON string
       const rawImages = typeof images === 'string' ? JSON.parse(images) : images;
       const newImages = [];
 
@@ -43,31 +36,30 @@ async function migrate() {
           continue;
         }
 
-        const uploadResult = await cloudinary.uploader.upload(img, {
-          folder: 'products',
-        });
-
+        const uploadResult = await cloudinary.uploader.upload(img, { folder: 'products' });
         newImages.push(uploadResult.secure_url);
         console.log(`Product ${id} → uploaded: ${uploadResult.secure_url}`);
       }
 
-      // Update DB, store as JSON array
       await pool.query('UPDATE products SET images = $1 WHERE id = $2', [
-        newImages,
+        JSON.stringify(newImages),
         id,
       ]);
 
       console.log(`Product ${id} images updated.`);
     }
 
-    console.log("✅ All products migrated!");
-    process.exit(0);
-
+    console.log("✅ All products migrated successfully!");
   } catch (err) {
     console.error("Migration error:", err);
-    process.exit(1);
+    throw err; // important so your route can catch it
   }
 }
 
-// Run the migration
-migrate();
+// Export the function for your temporary route
+module.exports = migrate;
+
+// Optional: run directly if called with node
+if (require.main === module) {
+  migrate().then(() => process.exit(0)).catch(() => process.exit(1));
+}

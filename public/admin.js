@@ -547,6 +547,7 @@ function removeNewImage(index) {
 
 // Handle Add/Edit Product submit
 
+
 async function handleProductSubmit(e) {
   e.preventDefault();
 

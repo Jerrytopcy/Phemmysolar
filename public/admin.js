@@ -15,6 +15,9 @@ let currentPage = 1;
 const usersPerPage = 10;
 let totalUsers = 0;
 let allUsers = []; // Store all users for pagination
+
+window.removeExistingImageModal = removeExistingImageModal;
+window.removeNewImageModal = removeNewImageModal;
 // ===== Global Loader Helpers =====
 function showLoader(text = "Loading, please wait...") {
     const loader = document.getElementById("globalLoader");
@@ -339,30 +342,30 @@ async function reactivateProduct(productId) {
     }
 }
 // Show product form
-function showProductForm(isEdit = false) {
-    const formContainer = document.getElementById("productFormContainer");
-    const formTitle = document.getElementById("formTitle");
-    formTitle.textContent = isEdit ? "Edit Product" : "Add New Product";
-    formContainer.style.display = "block";
-    if (!isEdit) {
-        document.getElementById("productForm").reset();
-        document.getElementById("productId").value = "";
-        currentEditingProductId = null;
-        productImages = [];
-        updateImagePreview();
-        clearImageUrlInputs();
-    }
-}
+// function showProductForm(isEdit = false) {
+//     const formContainer = document.getElementById("productFormContainer");
+//     const formTitle = document.getElementById("formTitle");
+//     formTitle.textContent = isEdit ? "Edit Product" : "Add New Product";
+//     formContainer.style.display = "block";
+//     if (!isEdit) {
+//         document.getElementById("productForm").reset();
+//         document.getElementById("productId").value = "";
+//         currentEditingProductId = null;
+//         productImages = [];
+//         updateImagePreview();
+//         clearImageUrlInputs();
+//     }
+// }
 
 // Hide product form
-function hideProductForm() {
-    document.getElementById("productFormContainer").style.display = "none";
-    document.getElementById("productForm").reset();
-    currentEditingProductId = null;
-    productImages = [];
-    updateImagePreview();
-    clearImageUrlInputs();
-}
+// function hideProductForm() {
+//     document.getElementById("productFormContainer").style.display = "none";
+//     document.getElementById("productForm").reset();
+//     currentEditingProductId = null;
+//     productImages = [];
+//     updateImagePreview();
+//     clearImageUrlInputs();
+// }
 
 function handleImageSelect(e) {
     const files = e.target.files;
@@ -502,37 +505,96 @@ function populateImageUrlInputs(images) {
 
 
 // Edit product 
-async function editProduct(productId) { 
-    try {
-        showLoader("Loading product details...");
-        const response = await fetch(`/api/products/${productId}`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const product = await response.json();
+async function editProductModal(productId) {
+  try {
+    showLoader("Loading product details...");
+    const response = await fetch(`/api/products/${productId}`);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const product = await response.json();
 
-        document.getElementById("productId").value = product.id;
-        document.getElementById("productName").value = product.name;
-        document.getElementById("productPrice").value = product.price;
-        document.getElementById("productDescription").value = product.description;
-        document.getElementById("productCategory").value = product.category || "";
+    document.getElementById("productIdModal").value = product.id;
+    document.getElementById("productNameModal").value = product.name;
+    document.getElementById("productPriceModal").value = product.price;
+    document.getElementById("productDescriptionModal").value = product.description;
+    document.getElementById("productCategoryModal").value = product.category || "";
 
-        // Reset images
-        productImages = [];
-        existingImages = [];
-
-        if (product.images && product.images.length > 0) {
-            existingImages = Array.isArray(product.images) ? [...product.images] : [product.images];
-        } else if (product.image) {
-            existingImages = [product.image];
-        }
-
-        updateImagePreview(); // Show both existing & new images in preview
-        showProductForm(true);
-    } catch (error) {
-        console.error("Error fetching product for edit:", error);
-        await showAdminAlert(`Error loading product: ${error.message}`, "Error");
-    } finally {
-        hideLoader();
+    // Reset image arrays
+    productImages = [];
+    existingImages = [];
+    if (product.images && product.images.length > 0) {
+      existingImages = Array.isArray(product.images) ? [...product.images] : [product.images];
+    } else if (product.image) {
+      existingImages = [product.image];
     }
+    updateImagePreviewModal();
+
+  } catch (error) {
+    console.error("Error fetching product for edit:", error);
+    await showAdminAlert(`Error loading product: ${error.message}`, "Error");
+  } finally {
+    hideLoader();
+  }
+}
+async function handleProductModalSubmit(e) {
+  e.preventDefault();
+  const productId = document.getElementById("productIdModal").value;
+  const name = document.getElementById("productNameModal").value.trim();
+  const price = document.getElementById("productPriceModal").value.trim();
+  const description = document.getElementById("productDescriptionModal").value.trim();
+  const category = document.getElementById("productCategoryModal").value.trim();
+
+  if (!name || !price || !description || !category) {
+    await showAdminAlert("Please fill in all required fields.", "Validation Error");
+    return;
+  }
+
+  if (existingImages.length === 0 && productImages.length === 0) {
+    await showAdminAlert("Please add at least one product image.", "Missing Image");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("name", name);
+  formData.append("price", price);
+  formData.append("description", description);
+  formData.append("category", category);
+  formData.append("existingImageUrls", JSON.stringify(existingImages));
+
+  productImages.forEach((file, index) => {
+    if (file instanceof File) {
+      formData.append("images", file);
+    }
+  });
+
+  const method = productId ? 'PUT' : 'POST';
+  const url = productId ? `/api/products/${productId}` : '/api/products';
+
+  try {
+    showLoader(productId ? "Updating product..." : "Adding product...");
+    const response = await fetch(url, {
+      method,
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success");
+      hideProductModal();
+      loadProducts();
+    } else {
+      throw new Error(result.error || "Failed to save product.");
+    }
+  } catch (error) {
+    console.error("Error saving product:", error);
+    await showAdminAlert(`Error saving product: ${error.message}`, "Error");
+  } finally {
+    hideLoader();
+  }
 }
 
 function removeExistingImage(index) {
@@ -548,89 +610,89 @@ function removeNewImage(index) {
 // Handle Add/Edit Product submit
 
 
-async function handleProductSubmit(e) {
-  e.preventDefault();
+// async function handleProductSubmit(e) {
+//   e.preventDefault();
 
-  const productId = document.getElementById("productId").value; // Get ID for edit
-  const name = document.getElementById("productName").value.trim();
-  const price = document.getElementById("productPrice").value.trim();
-  const description = document.getElementById("productDescription").value.trim();
-  const category = document.getElementById("productCategory").value.trim();
+//   const productId = document.getElementById("productId").value; // Get ID for edit
+//   const name = document.getElementById("productName").value.trim();
+//   const price = document.getElementById("productPrice").value.trim();
+//   const description = document.getElementById("productDescription").value.trim();
+//   const category = document.getElementById("productCategory").value.trim();
 
-  // Basic validation
-  if (!name || !price || !description || !category) {
-    await showAdminAlert("Please fill in all required fields (Name, Price, Description, Category).", "Validation Error");
-    return;
-  }
+//   // Basic validation
+//   if (!name || !price || !description || !category) {
+//     await showAdminAlert("Please fill in all required fields (Name, Price, Description, Category).", "Validation Error");
+//     return;
+//   }
 
-  // Validate images: either existing images or new uploads are required
-  if (existingImages.length === 0 && productImages.length === 0) {
-     await showAdminAlert("Please add at least one product image.", "Missing Image");
-     return;
-  }
+//   // Validate images: either existing images or new uploads are required
+//   if (existingImages.length === 0 && productImages.length === 0) {
+//      await showAdminAlert("Please add at least one product image.", "Missing Image");
+//      return;
+//   }
 
-  // Use FormData for multipart/form-data submission (required for file uploads)
-  const formData = new FormData();
-  formData.append("name", name);
-  formData.append("price", price);
-  formData.append("description", description);
-  formData.append("category", category);
+//   // Use FormData for multipart/form-data submission (required for file uploads)
+//   const formData = new FormData();
+//   formData.append("name", name);
+//   formData.append("price", price);
+//   formData.append("description", description);
+//   formData.append("category", category);
 
-  // Append existing Cloudinary URLs as a JSON string
-  // Backend will parse this and combine with newly uploaded URLs
-  formData.append("existingImageUrls", JSON.stringify(existingImages));
+//   // Append existing Cloudinary URLs as a JSON string
+//   // Backend will parse this and combine with newly uploaded URLs
+//   formData.append("existingImageUrls", JSON.stringify(existingImages));
 
-  // Append new files (only if any were selected)
-  productImages.forEach((file, index) => {
-    if (file instanceof File) {
-      formData.append("images", file); // Use the field name matching your multer config ('images')
-    }
-  });
+//   // Append new files (only if any were selected)
+//   productImages.forEach((file, index) => {
+//     if (file instanceof File) {
+//       formData.append("images", file); // Use the field name matching your multer config ('images')
+//     }
+//   });
 
-  // Determine URL and method based on whether it's an edit or add
-  const method = productId ? 'PUT' : 'POST';
-  const url = productId ? `/api/products/${productId}` : '/api/products';
+//   // Determine URL and method based on whether it's an edit or add
+//   const method = productId ? 'PUT' : 'POST';
+//   const url = productId ? `/api/products/${productId}` : '/api/products';
 
-  try {
-    showLoader(productId ? "Updating product..." : "Adding product...");
+//   try {
+//     showLoader(productId ? "Updating product..." : "Adding product...");
 
-    const response = await fetch(url, {
-      method: method,
-      body: formData // Send FormData object
-      // Do NOT set Content-Type header manually - let the browser set it with the boundary
-    });
+//     const response = await fetch(url, {
+//       method: method,
+//       body: formData // Send FormData object
+//       // Do NOT set Content-Type header manually - let the browser set it with the boundary
+//     });
 
-    if (!response.ok) {
-      // Try to get error details from the response
-      let errorMessage = `HTTP error! status: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } catch (e) {
-        console.warn("Could not parse error response as JSON:", e);
-        // errorMessage remains the HTTP status message
-      }
-      throw new Error(errorMessage);
-    }
+//     if (!response.ok) {
+//       // Try to get error details from the response
+//       let errorMessage = `HTTP error! status: ${response.status}`;
+//       try {
+//         const errorData = await response.json();
+//         errorMessage = errorData.error || errorMessage;
+//       } catch (e) {
+//         console.warn("Could not parse error response as JSON:", e);
+//         // errorMessage remains the HTTP status message
+//       }
+//       throw new Error(errorMessage);
+//     }
 
-    const result = await response.json();
-    if (result.success) {
-      await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success");
-      // Reset form state and data after successful save
-      hideProductForm();
-      productImages = []; // Clear new files
-      existingImages = []; // Clear existing URLs if necessary (depends on if you stay on the form)
-      loadProducts(); // Refresh the product list
-    } else {
-      throw new Error(result.error || "Failed to save product (server returned failure).");
-    }
-  } catch (error) {
-    console.error("Error saving product:", error);
-    await showAdminAlert(`Error saving product: ${error.message}`, "Error");
-  } finally {
-    hideLoader();
-  }
-}
+//     const result = await response.json();
+//     if (result.success) {
+//       await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success");
+//       // Reset form state and data after successful save
+//       hideProductForm();
+//       productImages = []; // Clear new files
+//       existingImages = []; // Clear existing URLs if necessary (depends on if you stay on the form)
+//       loadProducts(); // Refresh the product list
+//     } else {
+//       throw new Error(result.error || "Failed to save product (server returned failure).");
+//     }
+//   } catch (error) {
+//     console.error("Error saving product:", error);
+//     await showAdminAlert(`Error saving product: ${error.message}`, "Error");
+//   } finally {
+//     hideLoader();
+//   }
+// }
 
 
 let allOrders = [];
@@ -1660,6 +1722,74 @@ modal.style.display = 'flex';
   }
 }
 
+
+function showProductModal(isEdit = false, productId = null) {
+  const modal = document.getElementById("productEditModal");
+  const titleEl = document.getElementById("productModalTitle");
+  titleEl.textContent = isEdit ? "Edit Product" : "Add New Product";
+
+  // Reset form state
+  document.getElementById("productEditForm").reset();
+  document.getElementById("productIdModal").value = "";
+  productImages = [];
+  existingImages = [];
+  updateImagePreviewModal();
+
+  if (isEdit && productId) {
+    editProductModal(productId);
+  }
+
+  modal.style.display = "flex";
+}
+
+function updateImagePreviewModal() {
+  const container = document.getElementById("imagePreviewContainerModal");
+  if (!container) return;
+  container.innerHTML = '';
+
+  // Existing images (URLs)
+  existingImages.forEach((url, index) => {
+    if (typeof url === 'string' && url.trim() !== '') {
+      const imgWrapper = document.createElement('div');
+      imgWrapper.classList.add('image-preview-item');
+      imgWrapper.innerHTML = `
+        <img src="${url}" alt="Existing product image ${index + 1}" class="existing-image-preview">
+        <button type="button" class="image-preview-remove" onclick="removeExistingImageModal(${index})">×</button>
+      `;
+      container.appendChild(imgWrapper);
+    }
+  });
+
+  // New uploaded files (File objects)
+  productImages.forEach((file, index) => {
+    if (file instanceof File) {
+      const imgWrapper = document.createElement('div');
+      imgWrapper.classList.add('image-preview-item');
+      const objectUrl = URL.createObjectURL(file);
+      imgWrapper.innerHTML = `
+        <img src="${objectUrl}" alt="Newly selected image ${index + 1}" class="new-image-preview">
+        <button type="button" class="image-preview-remove" onclick="removeNewImageModal(${index})">×</button>
+      `;
+      container.appendChild(imgWrapper);
+    }
+  });
+}
+function removeExistingImageModal(index) {
+  existingImages.splice(index, 1);
+  updateImagePreviewModal();
+}
+
+function removeNewImageModal(index) {
+  productImages.splice(index, 1);
+  updateImagePreviewModal();
+}
+function hideProductModal() {
+  document.getElementById("productEditModal").style.display = "none";
+  document.getElementById("productEditForm").reset();
+  productImages = [];
+  existingImages = [];
+  updateImagePreviewModal();
+}
 // Initialize event listeners for the messages section
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -1988,7 +2118,43 @@ document.getElementById("replyForm")?.addEventListener("submit", async (e) => {
 
 // Initialize admin panel
 document.addEventListener("DOMContentLoaded", () => {
+
+    // --- Product Modal Event Listeners ---
+document.getElementById("addProductBtn")?.addEventListener("click", () => showProductModal(false));
+
+document.getElementById("closeProductModalBtn")?.addEventListener("click", hideProductModal);
+document.getElementById("cancelProductModalBtn")?.addEventListener("click", hideProductModal);
+
+const productEditForm = document.getElementById("productEditForm");
+if (productEditForm) {
+  productEditForm.addEventListener("submit", handleProductModalSubmit);
+}
+
+// Replace original editProduct call with modal version
+window.editProduct = function(productId) {
+  showProductModal(true, productId);
+};
+
+// Image selection for modal
+document.getElementById("selectImagesBtnModal")?.addEventListener("click", () => {
+  document.getElementById("imageInputModal").click();
+});
+document.getElementById("imageInputModal")?.addEventListener("change", function(e) {
+  const files = e.target.files;
+  if (files.length + productImages.length > 5) {
+    showAdminAlert("You can only upload up to 5 images per product.", "Upload Limit");
+    return;
+  }
+  Array.from(files).forEach(file => {
+    if (file.type.startsWith("image/")) {
+      productImages.push(file);
+      updateImagePreviewModal();
+    }
+  });
+  e.target.value = "";
+});
     checkAuth();
+
     document.getElementById("exportCsvBtn")?.addEventListener("click", exportToCSV);
     // Login form
     const loginForm = document.getElementById("loginForm");

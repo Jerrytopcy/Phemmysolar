@@ -506,37 +506,51 @@ app.get('/api/products', async (req, res) => {
 
 // POST route for creating products
 // Upload max 5 images at once
-app.post('/api/products', upload.array('images', 5), async (req, res) => {
-  try {
-    const { name, price, description, category } = req.body;
+// POST route for creating products (Cloudinary + multer safe)
+app.post('/api/products', (req, res) => {
+  // Wrap multer upload in a callback to catch errors
+  upload.array('images', 5)(req, res, async function (err) {
+    if (err) {
+      console.error("Multer error:", err);
+      return res.status(500).json({ error: "Image upload failed: " + err.message });
+    }
 
-    const imageUrls = req.files
-      ? req.files.map(file => file.secure_url || file.path)
-      : [];
+    try {
+      const { name, price, description, category } = req.body;
 
-    console.log("SAVING IMAGES:", imageUrls); // 🔥 debug
+      if (!name || !price || !description || !category) {
+        return res.status(400).json({ error: "All fields are required." });
+      }
 
-    const result = await pool.query(
-      `INSERT INTO products 
-       (name, price, description, images, category, active) 
-       VALUES ($1, $2, $3, $4::jsonb, $5, TRUE) 
-       RETURNING *`,
-      [
-        name,
-        price,
-        description,
-        JSON.stringify(imageUrls),
-        category
-      ]
-    );
+      const imageUrls = req.files
+        ? req.files.map(file => file.secure_url || file.path)
+        : [];
 
-    res.json({ success: true, product: result.rows[0] });
+      console.log("SAVING IMAGES:", imageUrls); // 🔥 Debug log
 
-  } catch (err) {
-    console.error('FULL ERROR:', err);
-    res.status(500).json({ error: err.message });
-  }
+      const result = await pool.query(
+        `INSERT INTO products 
+         (name, price, description, images, category, active) 
+         VALUES ($1, $2, $3, $4::jsonb, $5, TRUE) 
+         RETURNING *`,
+        [
+          name,
+          price,
+          description,
+          JSON.stringify(imageUrls),
+          category
+        ]
+      );
+
+      res.json({ success: true, product: result.rows[0] });
+
+    } catch (error) {
+      console.error('FULL ERROR:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 });
+
 
 
 

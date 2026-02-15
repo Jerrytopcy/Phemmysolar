@@ -384,27 +384,77 @@ function handleImageSelect(e) {
     e.target.value = "";
 }
 
-function removeImage(index) {
-    productImages.splice(index, 1);
-    updateImagePreview();
+
+// Function to update preview container
+function updateImagePreview() {
+  const container = document.getElementById("imagePreviewContainer");
+  if (!container) {
+    console.error("Image preview container element not found.");
+    return;
+  }
+
+  container.innerHTML = ''; // Clear previous previews
+
+  // --- Display Existing Cloudinary Images (URLs) ---
+  existingImages.forEach((url, index) => {
+    // Validate URL format if necessary (optional)
+    if (typeof url === 'string' && url.trim() !== '') {
+      const imgWrapper = document.createElement('div');
+      imgWrapper.classList.add('image-preview-item'); // Add consistent class for styling
+      imgWrapper.innerHTML = `
+        <img src="${url}" alt="Existing product image ${index + 1}" class="existing-image-preview">
+        <button type="button" class="image-preview-remove" onclick="removeExistingImage(${index})">×</button>
+      `;
+      container.appendChild(imgWrapper);
+    }
+  });
+
+  // --- Display New Uploaded Files (using object URLs) ---
+  productImages.forEach((file, index) => { // Assumes 'file' is a File object
+    if (file instanceof File) { // Validate that it's a File object
+      const imgWrapper = document.createElement('div');
+      imgWrapper.classList.add('image-preview-item'); // Add consistent class for styling
+      const objectUrl = URL.createObjectURL(file); // Create object URL for the file
+      imgWrapper.innerHTML = `
+        <img src="${objectUrl}" alt="Newly selected image ${index + 1}" class="new-image-preview">
+        <button type="button" class="image-preview-remove" onclick="removeNewImage(${index})">×</button>
+      `;
+      container.appendChild(imgWrapper);
+    }
+  });
 }
 
-function updateImagePreview() {
-    const container = document.getElementById("imagePreviewContainer");
-    if (productImages.length === 0) {
-        container.innerHTML = "";
-        return;
+
+// Update functions to ensure they trigger the fixed preview function
+function removeExistingImage(index) {
+  existingImages.splice(index, 1);
+  updateImagePreview();
+}
+
+function removeNewImage(index) {
+  productImages.splice(index, 1);
+  updateImagePreview();
+}
+
+// Ensure the image selection handler also updates the preview correctly
+function handleImageSelect(e) {
+  const files = e.target.files;
+  if (files.length + productImages.length > 5) {
+    showAdminAlert("You can only upload up to 5 images per product.", "Upload Limit");
+    return;
+  }
+  Array.from(files).forEach((file) => {
+    if (file.type.startsWith("image/")) {
+      // Add the File object directly to the array
+      productImages.push(file);
+      // Update the preview after adding the new file
+      updateImagePreview();
+    } else {
+      console.warn(`File ${file.name} is not an image and was skipped.`);
     }
-    container.innerHTML = productImages
-        .map(
-            (img, index) => `
-<div class="image-preview-item">
-<img src="${img}" alt="Product image ${index + 1}">
-<button type="button" class="image-preview-remove" onclick="removeImage(${index})">×</button>
-</div>
-`,
-        )
-        .join("");
+  });
+  // Reset file input so the same file can be selected again if needed
+  e.target.value = "";
 }
 
 function getImageUrlsFromInputs() {
@@ -508,53 +558,90 @@ function removeNewImage(index) {
 }
 
 // Handle Add/Edit Product submit
+// admin.js (Inside handleProductSubmit)
+
 async function handleProductSubmit(e) {
-    e.preventDefault();
-    if (existingImages.length === 0 && productImages.length === 0) {
-        await showAdminAlert("Please add at least one product image.", "Missing Image");
-        return;
+  e.preventDefault();
+
+  const productId = document.getElementById("productId").value; // Get ID for edit
+  const name = document.getElementById("productName").value.trim();
+  const price = document.getElementById("productPrice").value.trim();
+  const description = document.getElementById("productDescription").value.trim();
+  const category = document.getElementById("productCategory").value.trim();
+
+  // Basic validation
+  if (!name || !price || !description || !category) {
+    await showAdminAlert("Please fill in all required fields (Name, Price, Description, Category).", "Validation Error");
+    return;
+  }
+
+  // Validate images: either existing images or new uploads are required
+  if (existingImages.length === 0 && productImages.length === 0) {
+     await showAdminAlert("Please add at least one product image.", "Missing Image");
+     return;
+  }
+
+  // Use FormData for multipart/form-data submission (required for file uploads)
+  const formData = new FormData();
+  formData.append("name", name);
+  formData.append("price", price);
+  formData.append("description", description);
+  formData.append("category", category);
+
+  // Append existing Cloudinary URLs as a JSON string
+  // Backend will parse this and combine with newly uploaded URLs
+  formData.append("existingImageUrls", JSON.stringify(existingImages));
+
+  // Append new files (only if any were selected)
+  productImages.forEach((file, index) => {
+    if (file instanceof File) {
+      formData.append("images", file); // Use the field name matching your multer config ('images')
+    }
+  });
+
+  // Determine URL and method based on whether it's an edit or add
+  const method = productId ? 'PUT' : 'POST';
+  const url = productId ? `/api/products/${productId}` : '/api/products';
+
+  try {
+    showLoader(productId ? "Updating product..." : "Adding product...");
+
+    const response = await fetch(url, {
+      method: method,
+      body: formData // Send FormData object
+      // Do NOT set Content-Type header manually - let the browser set it with the boundary
+    });
+
+    if (!response.ok) {
+      // Try to get error details from the response
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        console.warn("Could not parse error response as JSON:", e);
+        // errorMessage remains the HTTP status message
+      }
+      throw new Error(errorMessage);
     }
 
-    const productId = document.getElementById("productId").value;
-    const formData = new FormData();
-
-    // Add form fields
-    formData.append('name', document.getElementById("productName").value);
-    formData.append('price', document.getElementById("productPrice").value);
-    formData.append('description', document.getElementById("productDescription").value);
-    formData.append('category', document.getElementById("productCategory").value);
-    formData.append('existingImages', JSON.stringify(existingImages));
-
-    // Add new images
-    productImages.forEach(file => formData.append('newImages', file));
-
-    try {
-        showLoader(productId ? "Updating product..." : "Adding product...");
-        const method = productId ? 'PUT' : 'POST';
-        const url = productId ? `/api/products/${productId}` : '/api/products';
-        const response = await fetch(url, { method, body: formData });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (result.success) {
-            loadProducts();
-            hideProductForm();
-            await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success");
-            productImages = [];
-            existingImages = [];
-        } else {
-            throw new Error(result.error || "Failed to save product.");
-        }
-    } catch (error) {
-        console.error("Error saving product:", error);
-        await showAdminAlert(`Error saving product: ${error.message}`, "Error");
-    } finally {
-        hideLoader();
+    const result = await response.json();
+    if (result.success) {
+      await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success");
+      // Reset form state and data after successful save
+      hideProductForm();
+      productImages = []; // Clear new files
+      existingImages = []; // Clear existing URLs if necessary (depends on if you stay on the form)
+      loadProducts(); // Refresh the product list
+    } else {
+      throw new Error(result.error || "Failed to save product (server returned failure).");
     }
+  } catch (error) {
+    console.error("Error saving product:", error);
+    await showAdminAlert(`Error saving product: ${error.message}`, "Error");
+  } finally {
+    hideLoader();
+  }
 }
 
 

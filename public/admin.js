@@ -1726,10 +1726,14 @@ modal.style.display = 'flex';
 function showProductModal(isEdit = false, productId = null) {
   const modal = document.getElementById("productEditModal");
   const titleEl = document.getElementById("productModalTitle");
+  const form = document.getElementById("productEditForm");
+  const firstInput = document.getElementById("productNameModal");
+
+  // Update title
   titleEl.textContent = isEdit ? "Edit Product" : "Add New Product";
 
   // Reset form state
-  document.getElementById("productEditForm").reset();
+  form.reset();
   document.getElementById("productIdModal").value = "";
   productImages = [];
   existingImages = [];
@@ -1739,7 +1743,87 @@ function showProductModal(isEdit = false, productId = null) {
     editProductModal(productId);
   }
 
+  // Show modal
   modal.style.display = "flex";
+
+  // === Optional Enhancements ===
+
+  // 1. Prevent background scroll
+  document.body.style.overflow = "hidden";
+
+  // 2. Auto-focus first input (after DOM is painted)
+  requestAnimationFrame(() => {
+    if (firstInput && document.activeElement !== firstInput) {
+      firstInput.focus();
+      // Optional: select text if editing (helpful for quick replacement)
+      if (isEdit) firstInput.select();
+    }
+  });
+
+  // 3. Close on Esc key
+  const handleEscape = (e) => {
+    if (e.key === "Escape") {
+      hideProductModal();
+    }
+  };
+  document.addEventListener("keydown", handleEscape);
+
+  // 4. Focus trap (basic version: cycle within modal on Tab/Shift+Tab)
+  const focusableElements = modal.querySelectorAll(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+
+  const handleTab = (e) => {
+    if (e.key !== "Tab") return;
+    if (e.shiftKey) {
+      if (document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      }
+    } else {
+      if (document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
+      }
+    }
+  };
+
+  modal.addEventListener("keydown", handleTab);
+
+  // Cleanup on close (attach to hideProductModal or use a closure)
+  const cleanup = () => {
+    document.body.style.overflow = "";
+    document.removeEventListener("keydown", handleEscape);
+    modal.removeEventListener("keydown", handleTab);
+  };
+
+  // Attach cleanup to close handlers
+  const closeBtns = [
+    document.getElementById("closeProductModalBtn"),
+    document.getElementById("cancelProductModalBtn"),
+    modal // click outside
+  ];
+
+  closeBtns.forEach(btn => {
+    if (btn) {
+      const handler = () => {
+        hideProductModal();
+        cleanup();
+      };
+      if (btn === modal) {
+        btn.addEventListener("click", e => {
+          if (e.target === modal) handler();
+        });
+      } else {
+        btn.addEventListener("click", handler);
+      }
+    }
+  });
+
+  // Also clean up if modal is hidden programmatically (e.g., via save/cancel)
+  // → We’ll ensure `hideProductModal` calls `cleanup()` (see next section)
 }
 
 function updateImagePreviewModal() {

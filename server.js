@@ -356,9 +356,8 @@ app.delete('/api/cart', authMiddleware, async (req, res) => {
   }
 });
 
-// PRODUCTS ROUTES - SPECIFIC ROUTES MUST COME BEFORE GENERAL ROUTES
+
 // NEW: GET ALL products (including inactive ones) - for admin panel
-// THIS MUST BE DEFINED AFTER THE /:id ROUTE
 app.get('/api/products/all', async (req, res) => {
   try {
     console.log("Getting all products (including inactive)"); // Debug log
@@ -386,7 +385,6 @@ app.get('/api/products/:id', async (req, res) => {
 });
 
 
-// PUT route for updating products (with Cloudinary support)
 // PUT route for updating products (Cloudinary + existing images)
 app.put('/api/products/:id', upload.array('images', 5), async (req, res) => {
   try {
@@ -407,7 +405,15 @@ app.put('/api/products/:id', upload.array('images', 5), async (req, res) => {
 
     const result = await pool.query(
       'UPDATE products SET name=$1, price=$2, description=$3, images=$4, category=$5 WHERE id=$6 RETURNING *',
-      [name, price, description, finalImages, category, req.params.id]
+      [
+  name,
+  price,
+  description,
+  JSON.stringify(finalImages),   // ✅ convert to JSON
+  category,
+  req.params.id
+]
+
     );
 
     res.json({ success: true, product: result.rows[0] });
@@ -417,8 +423,6 @@ app.put('/api/products/:id', upload.array('images', 5), async (req, res) => {
     res.status(500).json({ error: 'Failed to update product' });
   }
 });
-
-
 
 
 // DELETE route for soft deleting products (SPECIFIC route - comes third)
@@ -489,16 +493,27 @@ app.post('/api/products', upload.array('images', 5), async (req, res) => {
     const imageUrls = req.files ? req.files.map(file => file.path) : [];
 
     const result = await pool.query(
-      'INSERT INTO products (name, price, description, images, category, active) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING *',
-      [name, price, description, imageUrls, category]
+      `INSERT INTO products 
+       (name, price, description, images, category, active) 
+       VALUES ($1, $2, $3, $4::jsonb, $5, TRUE) 
+       RETURNING *`,
+      [
+        name,
+        price,
+        description,
+        JSON.stringify(imageUrls),  // ✅ THIS IS IMPORTANT
+        category
+      ]
     );
 
     res.json({ success: true, product: result.rows[0] });
+
   } catch (err) {
-    console.error('Error creating product:', err);
-    res.status(500).json({ error: 'Failed to create product' });
+    console.error('FULL ERROR:', err);
+    res.status(500).json({ error: err.message });
   }
 });
+
 
 
 

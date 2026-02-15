@@ -246,8 +246,8 @@ async function loadProducts() {
         }
         
         // Process each product and build HTML with status indicators
-        const productRows = products.map((product, index) => {
-            console.log(`Processing product ${index}:`, product);
+        const productRows = products.map((product) => {
+            // console.log(`Processing product ${index}:`, product);
             
             // Sanitize the name and description to handle emojis and special characters
             const sanitizeText = (text) => {
@@ -282,7 +282,7 @@ async function loadProducts() {
                 </td>
                 <td>
                     <div class="product-actions">
-                        <button class="btn-edit" onclick="editProduct(${product.id})">Edit</button>
+                        <button class="btn-edit" onclick="editProduct('${product.id}')">Edit</button>
                         ${isActive 
                             ? `<button class="btn-delete" onclick="deleteProduct(${product.id})">Deactivate</button>` 
                             : `<button class="btn-reactivate" onclick="reactivateProduct(${product.id})">Reactivate</button>`

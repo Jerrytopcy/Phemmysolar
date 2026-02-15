@@ -1928,17 +1928,7 @@ app.post('/api/webhook/remita', async (req, res) => {
     res.status(500).json({ error: 'Failed to update order status' });
   }
 });
-// Temporary migration route (DELETE after migration!)
-app.get('/admin/migrate-images', async (req, res) => {
-  try {
-    const migrate = require('./migrateImages'); 
-    await migrate(); 
-    res.send('Migration completed successfully!');
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Migration failed');
-  }
-});
+
 
 
 

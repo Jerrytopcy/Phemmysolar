@@ -8,6 +8,9 @@ let newsImage = "";
 let currentEditingUserId = null;
 let cachedMessages = []; 
 
+let existingImages = []; // Already uploaded Cloudinary URLs
+
+
 let currentPage = 1;
 const usersPerPage = 10;
 let totalUsers = 0;
@@ -206,7 +209,6 @@ function formatNaira(price) {
 
 
 
-// Load all products (active and inactive) for admin panel
 // Load all products (active and inactive) for admin panel
 async function loadProducts() {
     try {
@@ -432,66 +434,129 @@ function populateImageUrlInputs(images) {
     });
 }
 
-// Handle product form submission
+
+// Edit product 
+async function editProduct(productId) { 
+    try {
+        showLoader("Loading product details...");
+        const response = await fetch(`/api/products/${productId}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const product = await response.json();
+
+        document.getElementById("productId").value = product.id;
+        document.getElementById("productName").value = product.name;
+        document.getElementById("productPrice").value = product.price;
+        document.getElementById("productDescription").value = product.description;
+        document.getElementById("productCategory").value = product.category || "";
+
+        // Reset images
+        productImages = [];
+        existingImages = [];
+
+        if (product.images && product.images.length > 0) {
+            existingImages = Array.isArray(product.images) ? [...product.images] : [product.images];
+        } else if (product.image) {
+            existingImages = [product.image];
+        }
+
+        updateImagePreview(); // Show both existing & new images in preview
+        showProductForm(true);
+    } catch (error) {
+        console.error("Error fetching product for edit:", error);
+        await showAdminAlert(`Error loading product: ${error.message}`, "Error");
+    } finally {
+        hideLoader();
+    }
+}
+
+// Update preview container
+function updateImagePreview() {
+    const container = document.getElementById("imagePreviewContainer");
+    container.innerHTML = '';
+
+    // Existing images (Cloudinary URLs)
+    existingImages.forEach((url, index) => {
+        const imgWrapper = document.createElement('div');
+        imgWrapper.classList.add('image-wrapper');
+        imgWrapper.innerHTML = `
+            <img src="${url}" class="existing-image">
+            <button type="button" class="btn-remove" onclick="removeExistingImage(${index})">×</button>
+        `;
+        container.appendChild(imgWrapper);
+    });
+
+    // New uploaded images
+    productImages.forEach((file, index) => {
+        const imgWrapper = document.createElement('div');
+        imgWrapper.classList.add('image-wrapper');
+        imgWrapper.innerHTML = `
+            <img src="${URL.createObjectURL(file)}" class="new-image">
+            <button type="button" class="btn-remove" onclick="removeNewImage(${index})">×</button>
+        `;
+        container.appendChild(imgWrapper);
+    });
+}
+
+function removeExistingImage(index) {
+    existingImages.splice(index, 1);
+    updateImagePreview();
+}
+
+function removeNewImage(index) {
+    productImages.splice(index, 1);
+    updateImagePreview();
+}
+
+// Handle Add/Edit Product submit
 async function handleProductSubmit(e) {
     e.preventDefault();
-    let finalImages = [];
-    if (productImages.length > 0) {
-        finalImages = productImages;
-    } else {
-        finalImages = getImageUrlsFromInputs();
-    }
-    if (finalImages.length === 0) {
+    if (existingImages.length === 0 && productImages.length === 0) {
         await showAdminAlert("Please add at least one product image.", "Missing Image");
         return;
     }
-    let priceInput = document.getElementById("productPrice").value;
-    let formattedPrice = priceInput;
+
     const productId = document.getElementById("productId").value;
-    const productData = {
-        name: document.getElementById("productName").value,
-        price: formattedPrice, // Send as string
-        description: document.getElementById("productDescription").value,
-        images: JSON.stringify(finalImages), // Send as stringified JSON array
-        category: document.getElementById("productCategory").value,
-    };
+    const formData = new FormData();
+
+    // Add form fields
+    formData.append('name', document.getElementById("productName").value);
+    formData.append('price', document.getElementById("productPrice").value);
+    formData.append('description', document.getElementById("productDescription").value);
+    formData.append('category', document.getElementById("productCategory").value);
+    formData.append('existingImages', JSON.stringify(existingImages));
+
+    // Add new images
+    productImages.forEach(file => formData.append('newImages', file));
 
     try {
-        showLoader(productId ? "Updating product..." : "Adding product..."); // Show loader during submission
+        showLoader(productId ? "Updating product..." : "Adding product...");
         const method = productId ? 'PUT' : 'POST';
         const url = productId ? `/api/products/${productId}` : '/api/products';
-        const response = await fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(productData),
-        });
+        const response = await fetch(url, { method, body: formData });
+
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` })); // Attempt to read error response
+            const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
+
         const result = await response.json();
         if (result.success) {
             loadProducts();
             hideProductForm();
             await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success");
+            productImages = [];
+            existingImages = [];
         } else {
             throw new Error(result.error || "Failed to save product.");
         }
     } catch (error) {
-        console.error("Error saving product:", error); // Log the raw error for debugging
-        // Check for the specific error indicating server returned HTML (likely due to payload size)
-        if (error.message.includes("DOCTYPE") || error.message.includes("Unexpected token '<'")) {
-            await showAdminAlert("File size too large. Please reduce image size and try again.", "File Size Error");
-        } else {
-            // Handle other potential errors (network issues, server errors returning JSON, etc.)
-            await showAdminAlert(`Error saving product: ${error.message}`, "Error");
-        }
+        console.error("Error saving product:", error);
+        await showAdminAlert(`Error saving product: ${error.message}`, "Error");
     } finally {
-        hideLoader(); // Always hide loader after submission
+        hideLoader();
     }
 }
+
 
 let allOrders = [];
 
@@ -687,55 +752,7 @@ async function updateOrderStatus(orderId, newStatus) {
     }
 }
 
-// Edit product
-async function editProduct(productId) {
-    try {
-        showLoader("Loading product details..."); // Show loader while loading product details
-        const response = await fetch(`/api/products/${productId}`); // Use route param, not query param
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const product = await response.json();
-        if (!product) {
-            await showAdminAlert("Product not found.", "Error");
-            return;
-        }
-        document.getElementById("productId").value = product.id;
-        document.getElementById("productName").value = product.name;
-        document.getElementById("productPrice").value = product.price; // Set the raw price string
-        document.getElementById("productDescription").value = product.description;
-        document.getElementById("productCategory").value = product.category || "";
-        if (product.images && product.images.length > 0) {
-            // If images are URLs, populate URL inputs
-            if (
-                product.images[0].startsWith("http") ||
-                product.images[0].startsWith("/") ||
-                product.images[0].startsWith("images/")
-            ) {
-                populateImageUrlInputs(product.images);
-                productImages = [];
-                updateImagePreview();
-            } else {
-                // If images are base64 (uploaded files), show in preview
-                productImages = [...product.images];
-                updateImagePreview();
-                clearImageUrlInputs();
-            }
-        } else if (product.image) {
-            // Backward compatibility with single image
-            populateImageUrlInputs([product.image]);
-            productImages = [];
-            updateImagePreview();
-        }
-        currentEditingProductId = productId;
-        showProductForm(true);
-    } catch (error) {
-        console.error("Error fetching product for edit:", error);
-        await showAdminAlert(`Error loading product: ${error.message}`, "Error");
-    } finally {
-        hideLoader(); // Hide loader after loading product details
-    }
-}
+
 
 // Delete product
 async function deleteProduct(productId) {

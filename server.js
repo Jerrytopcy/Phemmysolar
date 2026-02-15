@@ -10,6 +10,31 @@ const PORT = process.env.PORT || 3000;
 const sgMail = require('@sendgrid/mail');
 const jwt = require('jsonwebtoken');
 const rateLimit = require("express-rate-limit");
+const cloudinary = require('cloudinary').v2;
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// Configure Cloudinary with environment variables from Railway
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,   
+  api_key: process.env.CLOUDINARY_API_KEY,       
+  api_secret: process.env.CLOUDINARY_API_SECRET,   
+  secure: true
+});
+
+// Multer storage for Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'products',           // all product images go here
+    allowed_formats: ['jpg','jpeg','png']
+  }
+});
+
+// Multer upload middleware (max 5 images per request)
+const upload = multer({ storage: storage });
+
+
 
 
 // Set your SendGrid API key
@@ -361,22 +386,65 @@ app.get('/api/products/:id', async (req, res) => {
 });
 
 // PUT route for updating products (SPECIFIC route - comes second)
-app.put('/api/products/:id', async (req, res) => {
-  const { name, price, description, images, category } = req.body;
+// PUT route for updating products (with Cloudinary support)
+app.put('/api/products/:id', upload.array('newImages', 5), async (req, res) => {
   try {
+    const { name, price, description, category, existingImages } = req.body;
+
+    // Parse existingImages JSON (sent as string from admin.js)
+    let existing = [];
+    try {
+      existing = existingImages ? JSON.parse(existingImages) : [];
+    } catch (err) {
+      console.warn("Failed to parse existingImages, using empty array", err);
+      existing = [];
+    }
+
+    // Upload new images to Cloudinary
+    let newUploadedUrls = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const result = await cloudinary.uploader.upload_stream({ 
+          folder: "products" 
+        }, (error, uploaded) => {
+          if (error) throw error;
+          return uploaded;
+        });
+
+        // Using promise wrapper for upload_stream
+        const uploadPromise = new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream({ folder: "products" }, (err, uploaded) => {
+            if (err) reject(err);
+            else resolve(uploaded.secure_url);
+          });
+          stream.end(file.buffer);
+        });
+
+        const uploadedUrl = await uploadPromise;
+        newUploadedUrls.push(uploadedUrl);
+      }
+    }
+
+    // Merge existing + new images
+    const finalImages = [...existing, ...newUploadedUrls];
+
+    // Update product in Postgres
     const result = await pool.query(
-      'UPDATE products SET name = $1, price = $2, description = $3, images = $4, category = $5 WHERE id = $6 RETURNING *',
-      [name, price, description, images, category, req.params.id]
+      'UPDATE products SET name=$1, price=$2, description=$3, images=$4, category=$5 WHERE id=$6 RETURNING *',
+      [name, price, description, finalImages, category, req.params.id]
     );
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
     }
+
     res.json({ success: true, product: result.rows[0] });
   } catch (err) {
     console.error('Error updating product:', err);
     res.status(500).json({ error: 'Failed to update product' });
   }
 });
+
 
 // DELETE route for soft deleting products (SPECIFIC route - comes third)
 app.delete('/api/products/:id', async (req, res) => {
@@ -437,23 +505,27 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-
-
 // POST route for creating products
-app.post('/api/products', async (req, res) => {
-  const { name, price, description, images, category } = req.body;
+// Upload max 5 images at once
+app.post('/api/products', upload.array('images', 5), async (req, res) => {
   try {
-    // New products will be active by default
+    const { name, price, description, category } = req.body;
+
+    // Cloudinary URLs
+    const imageUrls = req.files.map(file => file.path);
+
     const result = await pool.query(
       'INSERT INTO products (name, price, description, images, category, active) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING *',
-      [name, price, description, images, category]
+      [name, price, description, imageUrls, category]
     );
+
     res.json({ success: true, product: result.rows[0] });
   } catch (err) {
     console.error('Error creating product:', err);
     res.status(500).json({ error: 'Failed to create product' });
   }
 });
+
 
 // --- TESTIMONIALS ROUTES ---
 app.get('/api/testimonials', async (req, res) => {

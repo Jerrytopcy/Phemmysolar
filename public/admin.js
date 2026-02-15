@@ -2165,20 +2165,20 @@ document.getElementById("imageInputModal")?.addEventListener("change", function(
         logoutBtn.addEventListener("click", handleLogout);
     }
     // Add product button
-    const addProductBtn = document.getElementById("addProductBtn");
-    if (addProductBtn) {
-        addProductBtn.addEventListener("click", () => showProductForm(false));
-    }
+    // const addProductBtn = document.getElementById("addProductBtn");
+    // if (addProductBtn) {
+    //     addProductBtn.addEventListener("click", () => showProductForm(false));
+    // }
     // Close form button
-    const closeFormBtn = document.getElementById("closeFormBtn");
-    if (closeFormBtn) {
-        closeFormBtn.addEventListener("click", hideProductForm);
-    }
-    // Cancel form button
-    const cancelFormBtn = document.getElementById("cancelFormBtn");
-    if (cancelFormBtn) {
-        cancelFormBtn.addEventListener("click", hideProductForm);
-    }
+    // const closeFormBtn = document.getElementById("closeFormBtn");
+    // if (closeFormBtn) {
+    //     closeFormBtn.addEventListener("click", hideProductForm);
+    // }
+    // // Cancel form button
+    // const cancelFormBtn = document.getElementById("cancelFormBtn");
+    // if (cancelFormBtn) {
+    //     cancelFormBtn.addEventListener("click", hideProductForm);
+    // }
     const closeOrderDetailsBtn = document.getElementById("closeOrderDetailsBtn");
     const orderDetailsModal = document.getElementById("orderDetailsModal");
     if (closeOrderDetailsBtn && orderDetailsModal) {

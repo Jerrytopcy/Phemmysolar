@@ -386,43 +386,63 @@ app.get('/api/products/:id', async (req, res) => {
 
 
 // PUT route for updating products (Cloudinary + existing images)
+// PUT route for updating products (Cloudinary + existing images)
 app.put('/api/products/:id', upload.array('images', 5), async (req, res) => {
   try {
     const { name, price, description, category, existingImages } = req.body;
 
+    // Parse existing images safely
     let existing = [];
     if (existingImages) {
       try {
         existing = JSON.parse(existingImages);
-      } catch {
+      } catch (err) {
         existing = [];
       }
     }
 
-    const newUploadedUrls = req.files ? req.files.map(file => file.path) : [];
+    // Get new uploaded Cloudinary URLs correctly
+    const newUploadedUrls = req.files
+      ? req.files.map(file => file.secure_url || file.path)
+      : [];
 
-    const finalImages = [...existing, ...newUploadedUrls];
+    // Ensure everything is a clean string URL
+    const finalImages = [...existing, ...newUploadedUrls]
+      .filter(url => typeof url === "string" && url.trim() !== "");
+
+    console.log("FINAL IMAGES BEING SAVED:", finalImages);
 
     const result = await pool.query(
-      'UPDATE products SET name=$1, price=$2, description=$3, images=$4, category=$5 WHERE id=$6 RETURNING *',
+      `UPDATE products 
+       SET name = $1,
+           price = $2,
+           description = $3,
+           images = $4::jsonb,
+           category = $5
+       WHERE id = $6
+       RETURNING *`,
       [
-  name,
-  price,
-  description,
-  JSON.stringify(finalImages),   // ✅ convert to JSON
-  category,
-  req.params.id
-]
-
+        name,
+        price,
+        description,
+        JSON.stringify(finalImages),
+        category,
+        req.params.id
+      ]
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Product not found" });
+    }
 
     res.json({ success: true, product: result.rows[0] });
 
   } catch (err) {
-    console.error('Error updating product:', err);
-    res.status(500).json({ error: 'Failed to update product' });
+    console.error("FULL UPDATE ERROR:", err);
+    res.status(500).json({ error: err.message });
   }
 });
+
 
 
 // DELETE route for soft deleting products (SPECIFIC route - comes third)
@@ -490,7 +510,11 @@ app.post('/api/products', upload.array('images', 5), async (req, res) => {
   try {
     const { name, price, description, category } = req.body;
 
-    const imageUrls = req.files ? req.files.map(file => file.path) : [];
+    const imageUrls = req.files
+      ? req.files.map(file => file.secure_url || file.path)
+      : [];
+
+    console.log("SAVING IMAGES:", imageUrls); // 🔥 debug
 
     const result = await pool.query(
       `INSERT INTO products 
@@ -501,7 +525,7 @@ app.post('/api/products', upload.array('images', 5), async (req, res) => {
         name,
         price,
         description,
-        JSON.stringify(imageUrls),  // ✅ THIS IS IMPORTANT
+        JSON.stringify(imageUrls),
         category
       ]
     );
@@ -513,6 +537,7 @@ app.post('/api/products', upload.array('images', 5), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 
 

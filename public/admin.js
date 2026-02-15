@@ -558,11 +558,12 @@ async function handleProductModalSubmit(e) {
   formData.append("price", price);
   formData.append("description", description);
   formData.append("category", category);
-  formData.append("existingImageUrls", JSON.stringify(existingImages));
+  formData.append("existingImages", JSON.stringify(existingImages));
+
 
   productImages.forEach((file, index) => {
     if (file instanceof File) {
-      formData.append("images", file);
+      formData.append("newImages", file);
     }
   });
 
@@ -606,93 +607,6 @@ function removeNewImage(index) {
     productImages.splice(index, 1);
     updateImagePreview();
 }
-
-// Handle Add/Edit Product submit
-
-
-// async function handleProductSubmit(e) {
-//   e.preventDefault();
-
-//   const productId = document.getElementById("productId").value; // Get ID for edit
-//   const name = document.getElementById("productName").value.trim();
-//   const price = document.getElementById("productPrice").value.trim();
-//   const description = document.getElementById("productDescription").value.trim();
-//   const category = document.getElementById("productCategory").value.trim();
-
-//   // Basic validation
-//   if (!name || !price || !description || !category) {
-//     await showAdminAlert("Please fill in all required fields (Name, Price, Description, Category).", "Validation Error");
-//     return;
-//   }
-
-//   // Validate images: either existing images or new uploads are required
-//   if (existingImages.length === 0 && productImages.length === 0) {
-//      await showAdminAlert("Please add at least one product image.", "Missing Image");
-//      return;
-//   }
-
-//   // Use FormData for multipart/form-data submission (required for file uploads)
-//   const formData = new FormData();
-//   formData.append("name", name);
-//   formData.append("price", price);
-//   formData.append("description", description);
-//   formData.append("category", category);
-
-//   // Append existing Cloudinary URLs as a JSON string
-//   // Backend will parse this and combine with newly uploaded URLs
-//   formData.append("existingImageUrls", JSON.stringify(existingImages));
-
-//   // Append new files (only if any were selected)
-//   productImages.forEach((file, index) => {
-//     if (file instanceof File) {
-//       formData.append("images", file); // Use the field name matching your multer config ('images')
-//     }
-//   });
-
-//   // Determine URL and method based on whether it's an edit or add
-//   const method = productId ? 'PUT' : 'POST';
-//   const url = productId ? `/api/products/${productId}` : '/api/products';
-
-//   try {
-//     showLoader(productId ? "Updating product..." : "Adding product...");
-
-//     const response = await fetch(url, {
-//       method: method,
-//       body: formData // Send FormData object
-//       // Do NOT set Content-Type header manually - let the browser set it with the boundary
-//     });
-
-//     if (!response.ok) {
-//       // Try to get error details from the response
-//       let errorMessage = `HTTP error! status: ${response.status}`;
-//       try {
-//         const errorData = await response.json();
-//         errorMessage = errorData.error || errorMessage;
-//       } catch (e) {
-//         console.warn("Could not parse error response as JSON:", e);
-//         // errorMessage remains the HTTP status message
-//       }
-//       throw new Error(errorMessage);
-//     }
-
-//     const result = await response.json();
-//     if (result.success) {
-//       await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success");
-//       // Reset form state and data after successful save
-//       hideProductForm();
-//       productImages = []; // Clear new files
-//       existingImages = []; // Clear existing URLs if necessary (depends on if you stay on the form)
-//       loadProducts(); // Refresh the product list
-//     } else {
-//       throw new Error(result.error || "Failed to save product (server returned failure).");
-//     }
-//   } catch (error) {
-//     console.error("Error saving product:", error);
-//     await showAdminAlert(`Error saving product: ${error.message}`, "Error");
-//   } finally {
-//     hideLoader();
-//   }
-// }
 
 
 let allOrders = [];

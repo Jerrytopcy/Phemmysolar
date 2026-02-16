@@ -1221,7 +1221,8 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         const userId = req.user.id;
         const { items, total, deliveryAddress } = req.body;
 
-        if (!items || !total) {
+        // Validate order
+        if (!items || items.length === 0 || !total) {
             return res.status(400).json({ success: false, error: 'Invalid order data' });
         }
 
@@ -1231,7 +1232,6 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
              VALUES ($1, $2, $3, 'pending', 'pending') RETURNING id`,
             [userId, total, deliveryAddress]
         );
-
         const orderId = orderResult.rows[0].id;
 
         // Insert order items
@@ -1243,20 +1243,27 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             );
         }
 
-        // Remita payload
+        // Prepare Remita payload
         const payload = {
             serviceTypeId: Number(process.env.REMITA_SERVICE_TYPE_ID),
             amount: Number(total),
             orderId: orderId.toString(),
             payerName: req.user.username,
             payerEmail: req.user.email,
-            payerPhone: req.user.phone,
+            // Ensure proper Nigerian format without + or spaces
+            payerPhone: req.user.phone.replace(/\D/g,''),
             description: 'Order Payment'
         };
 
         // Auth header
         const auth = Buffer.from(`${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_SECRET_KEY}`).toString('base64');
 
+        // Determine URL dynamically based on test mode
+        const REMITA_BASE_URL = process.env.REMITA_TEST_MODE === true
+            ? 'https://demo.remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit'
+            : 'https://api.remita.net/echannelsvc/merchant/api/paymentinit';
+
+        // Send to Remita
         const remitaRes = await fetch(REMITA_BASE_URL, {
             method: 'POST',
             headers: {
@@ -1267,13 +1274,13 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         });
 
         const raw = await remitaRes.text();
-        console.log('Remita raw response:', raw);
+        console.log('✅ Remita raw response:', raw);
 
         let data;
         try {
             data = JSON.parse(raw);
         } catch (e) {
-            console.error('Failed to parse Remita response', e);
+            console.error('❌ Failed to parse Remita response', e);
             return res.status(500).json({
                 success: false,
                 error: 'Remita returned an invalid response'
@@ -1281,35 +1288,41 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         }
 
         if (data.statuscode !== '00') {
-            return res.status(400).json({ success: false, error: data.status || 'Remita initiation failed' });
+            return res.status(400).json({
+                success: false,
+                error: data.status || 'Remita initiation failed'
+            });
         }
 
+        // Update order with RRR
         await pool.query(
             'UPDATE orders SET transaction_id = $1 WHERE id = $2',
             [data.RRR, orderId]
         );
 
+        // Return response to frontend
         res.json({
             success: true,
             orderId,
             rrr: data.RRR,
-            amount: total,
+            amount: Number(total),
             merchantId: process.env.REMITA_MERCHANT_ID,
-            serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID,
+            serviceTypeId: Number(process.env.REMITA_SERVICE_TYPE_ID),
             payerName: req.user.username,
             payerEmail: req.user.email,
-            payerPhone: req.user.phone,
+            payerPhone: req.user.phone.replace(/\D/g,''),
             returnUrl: `${process.env.FRONTEND_URL}/account`
         });
 
     } catch (err) {
-        console.error('Remita initiation error:', err);
+        console.error('❌ Remita initiation error:', err);
         res.status(500).json({
             success: false,
             error: err.message
         });
     }
 });
+
 
 
 // --- REAL REMITA WEBHOOK ENDPOINT (v3 Compatible) ---

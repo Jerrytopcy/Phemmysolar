@@ -211,10 +211,10 @@ async function proceedToCheckout() {
 
         for (const cartItem of cart) {
             const productRes = await fetch(`https://www.phemmysolar.com/api/products/${cartItem.productId}`);
-            if (!productRes.ok) continue; // skip failed fetch
+            if (!productRes.ok) continue;
             const product = await productRes.json();
 
-            const price = parseInt(product.price.replace(/\D/g, ''));
+            const price = Number(product.price.replace(/\D/g, ''));
             const itemTotal = price * cartItem.quantity;
             total += itemTotal;
 
@@ -251,7 +251,7 @@ async function proceedToCheckout() {
             deliveryAddress
         };
 
-        // Send order to backend for Remita payment initiation
+        // Send order to backend for Remita initiation
         const orderRes = await fetch('https://www.phemmysolar.com/api/orders/remita-initiate', {
             method: 'POST',
             headers: {
@@ -261,15 +261,16 @@ async function proceedToCheckout() {
             body: JSON.stringify(orderData)
         });
 
-        if (!orderRes.ok) {
-            const text = await orderRes.text();
-            throw new Error(`Failed to initiate payment: ${text}`);
+        const resultText = await orderRes.text();
+        let result;
+        try {
+            result = JSON.parse(resultText);
+        } catch {
+            throw new Error(`Failed to parse backend response: ${resultText}`);
         }
 
-        const result = await orderRes.json();
-
         if (!result.success || !result.rrr) {
-            throw new Error("Payment initiation failed");
+            throw new Error(`Payment initiation failed: ${result.error || 'Unknown error'}`);
         }
 
         // Clear cart
@@ -278,15 +279,16 @@ async function proceedToCheckout() {
         updateUIBasedOnUser();
         closeCartModal();
 
-        // Initialize Remita payment modal
+        // Initialize Remita modal
         const paymentEngine = RmPaymentEngine.init({
-            key: 'pk_test_15P5ka7mdPxzHdp4hvLT84+iNhArU/Xvna9NpJIJBpIBXJFl5FtCuQP574mdPMrq', // test public key
+            key: 'pk_test_15P5ka7mdPxzHdp4hvLT84+iNhArU/Xvna9NpJIJBpIBXJFl5FtCuQP574mdPMrq', // test key
             customerId: result.orderId.toString(),
             firstName: result.payerName,
             email: result.payerEmail,
-            amount: result.amount,
+            amount: Number(result.amount),
             narration: 'Order Payment',
             transactionId: result.rrr,
+            phoneNumber: result.payerPhone.replace(/\D/g, ''), // Ensure numeric
             onSuccess: function(response) {
                 console.log('Payment successful:', response);
                 window.location.href = result.returnUrl;
@@ -304,7 +306,7 @@ async function proceedToCheckout() {
 
     } catch (err) {
         console.error("Error during checkout:", err);
-        showCustomAlert("Failed to place order. Please try again.", "Error");
+        showCustomAlert(`Failed to place order: ${err.message}`, "Error");
     } finally {
         hideLoader();
     }

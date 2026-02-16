@@ -411,37 +411,40 @@ app.get('/api/products/:id', async (req, res) => {
 // PUT route for updating products (Cloudinary + existing images)
 app.put('/api/products/:id', upload.array('images', 5), async (req, res) => {
   try {
-    const { name, price, description, category, existingImages, existingPublicIds } = req.body;
+    const { name, price, description, category, existingImages, removedImages } = req.body;
 
-    // Parse safely
     const existing = existingImages ? JSON.parse(existingImages) : [];
-    const existingIds = existingPublicIds ? JSON.parse(existingPublicIds) : [];
+    const toRemove = removedImages ? JSON.parse(removedImages) : [];
 
-    // New uploaded files
-    const newFiles = req.files || [];
-    const newUrls = newFiles.map(f => f.secure_url || f.path);
-    const newIds = newFiles.map(f => f.filename);
-
-    // Identify removed images (those that existed before but not in new selection)
-    const removedIds = existingIds.filter(id => !newIds.includes(id));
-
-    // Delete only removed images from Cloudinary
-    for (const publicId of removedIds) {
-      if (publicId) await cloudinary.uploader.destroy(publicId);
+    // Delete removed images from Cloudinary
+    for (const publicId of toRemove) {
+      if (publicId) {
+        await cloudinary.uploader.destroy(publicId);
+      }
     }
 
-    // Merge final arrays
-    const finalImages = [...existing.filter((_, i) => !removedIds.includes(existingIds[i])), ...newUrls];
-    const finalIds = [...existingIds.filter(id => !removedIds.includes(id)), ...newIds];
+    // Upload new images
+    const newFiles = req.files || [];
+    const newPublicIds = newFiles.map(file => file.filename);
+
+    // Final images = existing + new
+    const finalImages = [...existing, ...newPublicIds];
 
     const result = await pool.query(
-      `UPDATE products 
-       SET name=$1, price=$2, description=$3, images=$4::jsonb, public_ids=$5::jsonb, category=$6
-       WHERE id=$7 RETURNING *`,
-      [name, price, description, JSON.stringify(finalImages), JSON.stringify(finalIds), category, req.params.id]
+      `UPDATE products
+       SET name=$1,
+           price=$2,
+           description=$3,
+           images=$4::jsonb,
+           category=$5
+       WHERE id=$6
+       RETURNING *`,
+      [name, price, description, JSON.stringify(finalImages), category, req.params.id]
     );
 
-    if (!result.rows.length) return res.status(404).json({ error: 'Product not found' });
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Product not found" });
+    }
 
     res.json({ success: true, product: result.rows[0] });
 
@@ -450,7 +453,6 @@ app.put('/api/products/:id', upload.array('images', 5), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 
 // DELETE route for soft deleting products (SPECIFIC route - comes third)

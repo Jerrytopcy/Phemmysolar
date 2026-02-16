@@ -9,7 +9,7 @@ let currentEditingUserId = null;
 let cachedMessages = []; 
 
 let existingImages = []; // Already uploaded Cloudinary URLs
-
+let removedProductImages = []; // NEW: track images removed in the modal
 
 let currentPage = 1;
 const usersPerPage = 10;
@@ -330,31 +330,7 @@ async function reactivateProduct(productId) {
         }
     }
 }
-// Show product form
-// function showProductForm(isEdit = false) {
-//     const formContainer = document.getElementById("productFormContainer");
-//     const formTitle = document.getElementById("formTitle");
-//     formTitle.textContent = isEdit ? "Edit Product" : "Add New Product";
-//     formContainer.style.display = "block";
-//     if (!isEdit) {
-//         document.getElementById("productForm").reset();
-//         document.getElementById("productId").value = "";
-//         currentEditingProductId = null;
-//         productImages = [];
-//         updateImagePreview();
-//         clearImageUrlInputs();
-//     }
-// }
 
-// Hide product form
-// function hideProductForm() {
-//     document.getElementById("productFormContainer").style.display = "none";
-//     document.getElementById("productForm").reset();
-//     currentEditingProductId = null;
-//     productImages = [];
-//     updateImagePreview();
-//     clearImageUrlInputs();
-// }
 
 function handleImageSelect(e) {
     const files = e.target.files;
@@ -376,8 +352,6 @@ function handleImageSelect(e) {
     e.target.value = "";
 }
 
-
-// admin.js (Replace the existing updateImagePreview function)
 
 // Function to update preview container - Updated to handle both existing and new images
 function updateImagePreview() {
@@ -526,6 +500,7 @@ async function editProductModal(productId) {
 }
 async function handleProductModalSubmit(e) {
   e.preventDefault();
+
   const productId = document.getElementById("productIdModal").value;
   const name = document.getElementById("productNameModal").value.trim();
   const price = document.getElementById("productPriceModal").value.trim();
@@ -547,20 +522,20 @@ async function handleProductModalSubmit(e) {
   formData.append("price", price);
   formData.append("description", description);
   formData.append("category", category);
+
   formData.append("existingImages", JSON.stringify(existingImages));
+  formData.append("removedImages", JSON.stringify(removedProductImages));
 
-
-  productImages.forEach((file, index) => {
-    if (file instanceof File) {
-      formData.append("images", file);
-    }
+  productImages.forEach(file => {
+    formData.append("images", file);
   });
 
-  const method = productId ? 'PUT' : 'POST';
-  const url = productId ? `/api/products/${productId}` : '/api/products';
+  const method = productId ? "PUT" : "POST";
+  const url = productId ? `/api/products/${productId}` : `/api/products`;
 
   try {
     showLoader(productId ? "Updating product..." : "Adding product...");
+
     const response = await fetch(url, {
       method,
       body: formData
@@ -568,24 +543,25 @@ async function handleProductModalSubmit(e) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      throw new Error(errorData.error || "Failed to save product.");
     }
 
     const result = await response.json();
+
     if (result.success) {
-      await showAdminAlert(productId ? "Product updated successfully!" : "Product added successfully!", "Success");
+      await showAdminAlert("Product saved successfully!", "Success");
       hideProductModal();
       loadProducts();
-    } else {
-      throw new Error(result.error || "Failed to save product.");
     }
+
   } catch (error) {
-    console.error("Error saving product:", error);
-    await showAdminAlert(`Error saving product: ${error.message}`, "Error");
+    console.error(error);
+    await showAdminAlert(error.message, "Error");
   } finally {
     hideLoader();
   }
 }
+
 
 function removeExistingImage(index) {
     existingImages.splice(index, 1);
@@ -1766,39 +1742,49 @@ function showProductModal(isEdit = false, productId = null) {
 }
 
 function updateImagePreviewModal() {
-  const container = document.getElementById("imagePreviewContainerModal");
-  if (!container) return;
-  container.innerHTML = '';
+  const container = document.getElementById("imagePreviewContainer");
+  container.innerHTML = "";
 
-  // Existing images (URLs)
-  existingImages.forEach((url, index) => {
-    if (typeof url === 'string' && url.trim() !== '') {
-      const imgWrapper = document.createElement('div');
-      imgWrapper.classList.add('image-preview-item');
-      imgWrapper.innerHTML = `
-        <img src="${url}" alt="Existing product image ${index + 1}" class="existing-image-preview">
-        <button type="button" class="image-preview-remove" onclick="removeExistingImageModal(${index})">×</button>
-      `;
-      container.appendChild(imgWrapper);
-    }
+  // Existing images (Cloudinary URLs)
+  existingImages.forEach((publicId, index) => {
+    const imgWrapper = document.createElement("div");
+    imgWrapper.classList.add("image-preview-item");
+
+    const imageUrl = `https://res.cloudinary.com/YOUR_CLOUD_NAME/image/upload/${publicId}`;
+
+    imgWrapper.innerHTML = `
+      <img src="${imageUrl}" class="existing-image-preview">
+      <button type="button" class="image-preview-remove" onclick="removeExistingImageModal(${index})">×</button>
+    `;
+
+    container.appendChild(imgWrapper);
   });
 
-  // New uploaded files (File objects)
+  // New files
   productImages.forEach((file, index) => {
-    if (file instanceof File) {
-      const imgWrapper = document.createElement('div');
-      imgWrapper.classList.add('image-preview-item');
-      const objectUrl = URL.createObjectURL(file);
-      imgWrapper.innerHTML = `
-        <img src="${objectUrl}" alt="Newly selected image ${index + 1}" class="new-image-preview">
-        <button type="button" class="image-preview-remove" onclick="removeNewImageModal(${index})">×</button>
-      `;
-      container.appendChild(imgWrapper);
-    }
+    const imgWrapper = document.createElement("div");
+    imgWrapper.classList.add("image-preview-item");
+
+    const objectUrl = URL.createObjectURL(file);
+
+    imgWrapper.innerHTML = `
+      <img src="${objectUrl}" class="new-image-preview">
+      <button type="button" class="image-preview-remove" onclick="removeNewImageModal(${index})">×</button>
+    `;
+
+    container.appendChild(imgWrapper);
   });
 }
+
+
+
 function removeExistingImageModal(index) {
-  existingImages.splice(index, 1);
+  const removed = existingImages.splice(index, 1)[0];
+
+  if (removed) {
+    removedProductImages.push(removed);
+  }
+
   updateImagePreviewModal();
 }
 
@@ -1806,13 +1792,35 @@ function removeNewImageModal(index) {
   productImages.splice(index, 1);
   updateImagePreviewModal();
 }
+function handleImageSelectModal(e) {
+  const files = e.target.files;
+
+  if (files.length + productImages.length + existingImages.length > 5) {
+    showAdminAlert("You can only upload up to 5 images per product.", "Upload Limit");
+    return;
+  }
+
+  Array.from(files).forEach((file) => {
+    if (file.type.startsWith("image/")) {
+      productImages.push(file);
+    }
+  });
+
+  updateImagePreviewModal();
+  e.target.value = "";
+}
+
 function hideProductModal() {
   document.getElementById("productEditModal").style.display = "none";
   document.getElementById("productEditForm").reset();
+
   productImages = [];
   existingImages = [];
+  removedProductImages = [];
+
   updateImagePreviewModal();
 }
+
 // Initialize event listeners for the messages section
 document.addEventListener('DOMContentLoaded', () => {
 

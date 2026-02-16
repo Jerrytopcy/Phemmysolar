@@ -1742,7 +1742,7 @@ function showProductModal(isEdit = false, productId = null) {
 }
 
 function updateImagePreviewModal() {
-  const container = document.getElementById("imagePreviewContainer");
+  const container = document.getElementById("imagePreviewContainerModal");
   container.innerHTML = "";
 
   // Existing images (Cloudinary URLs)

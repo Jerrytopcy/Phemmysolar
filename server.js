@@ -411,56 +411,42 @@ app.get('/api/products/:id', async (req, res) => {
 // PUT route for updating products (Cloudinary + existing images)
 app.put('/api/products/:id', upload.array('images', 5), async (req, res) => {
   try {
-    const { name, price, description, category, existingImages } = req.body;
+    const { name, price, description, category, existingImages, existingPublicIds } = req.body;
 
-    // Parse existing images safely
-    let existing = [];
-    if (existingImages) {
-      try {
-        existing = JSON.parse(existingImages);
-      } catch (err) {
-        existing = [];
-      }
+    // Parse safely
+    const existing = existingImages ? JSON.parse(existingImages) : [];
+    const existingIds = existingPublicIds ? JSON.parse(existingPublicIds) : [];
+
+    // New uploaded files
+    const newFiles = req.files || [];
+    const newUrls = newFiles.map(f => f.secure_url || f.path);
+    const newIds = newFiles.map(f => f.filename);
+
+    // Identify removed images (those that existed before but not in new selection)
+    const removedIds = existingIds.filter(id => !newIds.includes(id));
+
+    // Delete only removed images from Cloudinary
+    for (const publicId of removedIds) {
+      if (publicId) await cloudinary.uploader.destroy(publicId);
     }
 
-    // Get new uploaded Cloudinary URLs correctly
-    const newUploadedUrls = req.files
-      ? req.files.map(file => file.secure_url || file.path)
-      : [];
-
-    // Ensure everything is a clean string URL
-    const finalImages = [...existing, ...newUploadedUrls]
-      .filter(url => typeof url === "string" && url.trim() !== "");
-
-    console.log("FINAL IMAGES BEING SAVED:", finalImages);
+    // Merge final arrays
+    const finalImages = [...existing.filter((_, i) => !removedIds.includes(existingIds[i])), ...newUrls];
+    const finalIds = [...existingIds.filter(id => !removedIds.includes(id)), ...newIds];
 
     const result = await pool.query(
       `UPDATE products 
-       SET name = $1,
-           price = $2,
-           description = $3,
-           images = $4::jsonb,
-           category = $5
-       WHERE id = $6
-       RETURNING *`,
-      [
-        name,
-        price,
-        description,
-        JSON.stringify(finalImages),
-        category,
-        req.params.id
-      ]
+       SET name=$1, price=$2, description=$3, images=$4::jsonb, public_ids=$5::jsonb, category=$6
+       WHERE id=$7 RETURNING *`,
+      [name, price, description, JSON.stringify(finalImages), JSON.stringify(finalIds), category, req.params.id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Product not found" });
-    }
+    if (!result.rows.length) return res.status(404).json({ error: 'Product not found' });
 
     res.json({ success: true, product: result.rows[0] });
 
   } catch (err) {
-    console.error("FULL UPDATE ERROR:", err);
+    console.error("Error updating product:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -470,25 +456,21 @@ app.put('/api/products/:id', upload.array('images', 5), async (req, res) => {
 // DELETE route for soft deleting products (SPECIFIC route - comes third)
 app.delete('/api/products/:id', async (req, res) => {
   try {
-    // Perform a soft delete by setting active to FALSE
     const result = await pool.query(
       'UPDATE products SET active = FALSE WHERE id = $1 RETURNING *', 
       [req.params.id]
     );
     
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
+    if (!result.rows.length) return res.status(404).json({ error: 'Product not found' });
     
-    res.json({ 
-      success: true, 
-      message: 'Product deactivated successfully' 
-    });
+    res.json({ success: true, message: 'Product deactivated successfully' });
   } catch (err) {
     console.error('Error deactivating product:', err);
     res.status(500).json({ error: 'Failed to deactivate product' });
   }
 });
+
+
 
 // PATCH route for reactivating products (SPECIFIC route - comes fourth)
 app.patch('/api/products/:id/reactivate', async (req, res) => {
@@ -536,27 +518,19 @@ app.post('/api/products', (req, res) => {
       return res.status(500).json({ error: "Image upload failed: " + (err.message || JSON.stringify(err)) });
     }
 
-    console.log("Multer passed, files:", req.files);
-
     try {
       const { name, price, description, category } = req.body;
-
       if (!name || !price || !description || !category) {
         return res.status(400).json({ error: "All fields are required." });
       }
 
-      const imageUrls = req.files
-        ? req.files.map(file => file.secure_url || file.path)
-        : [];
-
-      console.log("Saving images:", imageUrls);
+      const imageUrls = req.files ? req.files.map(file => file.secure_url || file.path) : [];
+      const publicIds = req.files ? req.files.map(file => file.filename) : [];
 
       const result = await pool.query(
-        `INSERT INTO products 
-         (name, price, description, images, category, active) 
-         VALUES ($1, $2, $3, $4::jsonb, $5, TRUE) 
-         RETURNING *`,
-        [name, price, description, JSON.stringify(imageUrls), category]
+        `INSERT INTO products (name, price, description, images, public_ids, category, active) 
+         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, TRUE) RETURNING *`,
+        [name, price, description, JSON.stringify(imageUrls), JSON.stringify(publicIds), category]
       );
 
       res.json({ success: true, product: result.rows[0] });
@@ -567,6 +541,7 @@ app.post('/api/products', (req, res) => {
     }
   });
 });
+
 
 
 
@@ -606,10 +581,10 @@ app.post('/api/testimonials', uploadTestimonial.single('image'), async (req, res
     const imagePublicId = req.file ? req.file.filename : null;
 
 
-    const result = await pool.query(
-      'INSERT INTO testimonials (name, role, text, rating, image) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [name, role, text, rating, imageUrl]
-    );
+   const result = await pool.query(
+  'INSERT INTO testimonials (name, role, text, rating, image, image_public_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+  [name, role, text, rating, imageUrl, imagePublicId]
+  );
 
     res.json({ success: true, testimonial: result.rows[0] });
   } catch (err) {
@@ -619,30 +594,34 @@ app.post('/api/testimonials', uploadTestimonial.single('image'), async (req, res
 });
 
 
-
 app.put('/api/testimonials/:id', uploadTestimonial.single('image'), async (req, res) => {
   try {
     const { name, role, text, rating } = req.body;
-    let imageUrl;
 
+    const existing = await pool.query(
+      'SELECT image, image_public_id FROM testimonials WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Testimonial not found' });
+    }
+
+    let imageUrl = existing.rows[0].image;
+    let imagePublicId = existing.rows[0].image_public_id;
+
+    // If new image uploaded, delete old one
     if (req.file) {
-      imageUrl = req.file.path;   // ✅ THIS IS THE FIX
-    } else {
-      const existing = await pool.query(
-        'SELECT image FROM testimonials WHERE id = $1',
-        [req.params.id]
-      );
-
-      if (existing.rows.length === 0) {
-        return res.status(404).json({ error: 'Testimonial not found' });
+      if (imagePublicId) {
+        await cloudinary.uploader.destroy(imagePublicId);
       }
-
-      imageUrl = existing.rows[0].image;
+      imageUrl = req.file.path;
+      imagePublicId = req.file.filename;
     }
 
     const result = await pool.query(
-      'UPDATE testimonials SET name = $1, role = $2, text = $3, rating = $4, image = $5 WHERE id = $6 RETURNING *',
-      [name, role, text, rating, imageUrl, req.params.id]
+      'UPDATE testimonials SET name = $1, role = $2, text = $3, rating = $4, image = $5, image_public_id = $6 WHERE id = $7 RETURNING *',
+      [name, role, text, rating, imageUrl, imagePublicId, req.params.id]
     );
 
     res.json({ success: true, testimonial: result.rows[0] });
@@ -653,20 +632,32 @@ app.put('/api/testimonials/:id', uploadTestimonial.single('image'), async (req, 
   }
 });
 
-
-
 app.delete('/api/testimonials/:id', async (req, res) => {
   try {
-    const result = await pool.query('DELETE FROM testimonials WHERE id = $1 RETURNING *', [req.params.id]);
-    if (result.rows.length === 0) {
+    const existing = await pool.query(
+      'SELECT image_public_id FROM testimonials WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Testimonial not found' });
     }
+
+    const publicId = existing.rows[0].image_public_id;
+    if (publicId) {
+      await cloudinary.uploader.destroy(publicId);
+    }
+
+    await pool.query('DELETE FROM testimonials WHERE id = $1', [req.params.id]);
+
     res.json({ success: true, message: 'Testimonial deleted' });
+
   } catch (err) {
     console.error('Error deleting testimonial:', err);
     res.status(500).json({ error: 'Failed to delete testimonial' });
   }
 });
+
 
 // --- NEWS ROUTES ---
 

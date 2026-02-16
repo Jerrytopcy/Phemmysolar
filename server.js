@@ -1252,10 +1252,10 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             `${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_SECRET_KEY}`
         ).toString('base64');
 
-        const url =
-            process.env.REMITA_TEST_MODE === 'true'
-                ? 'https://api-demo.remita.net/echannelsvc/merchant/api/paymentinit'
-                : 'https://api.remita.net/echannelsvc/merchant/api/paymentinit';
+        const url = process.env.REMITA_TEST_MODE === 'true'
+    ? 'https://demo.remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit'
+    : 'https://api.remita.net/echannelsvc/merchant/api/paymentinit';
+
 
         const remitaRes = await fetch(url, {
             method: 'POST',
@@ -1306,8 +1306,6 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         });
     }
 });
-
-
 
 // --- REAL REMITA WEBHOOK ENDPOINT (v3 Compatible) ---
 app.post('/api/webhook/remita', async (req, res) => {

@@ -194,49 +194,45 @@ async function proceedToCheckout() {
         showCustomAlert("Your cart is empty.", "Cart Empty");
         return;
     }
+
     const token = localStorage.getItem('token');
     if (!token) {
         showCustomAlert("Please log in to proceed to checkout.", "Login Required");
         showAuthModal();
         return;
     }
+
     showLoader("Processing your order...");
+
     try {
-        const orderItems = [];
+        // Prepare order items and calculate total
         let total = 0;
-        // Loop through each item in the cart and fetch its details
+        const orderItems = [];
+
         for (const cartItem of cart) {
             const response = await fetch(`/api/products/${cartItem.productId}`);
-            if (!response.ok) {
-                console.error(`Failed to fetch product ${cartItem.productId}:`, response.statusText);
-                continue; // Skip this item if fetching fails
-            }
+            if (!response.ok) continue; // skip failed fetch
             const product = await response.json();
-            if (product) {
-                const price = parseInt(product.price.replace(/\D/g, ''));
-                const itemTotal = price * cartItem.quantity;
-                total += itemTotal;
-                orderItems.push({
-                    productId: product.id,
-                    name: product.name,
-                    price: product.price,
-                    quantity: cartItem.quantity,
-                    itemTotal: itemTotal
-                });
-            }
+
+            const price = parseInt(product.price.replace(/\D/g, ''));
+            const itemTotal = price * cartItem.quantity;
+            total += itemTotal;
+
+            orderItems.push({
+                productId: product.id,
+                quantity: cartItem.quantity,
+                price: price
+            });
         }
 
-        // Get the current address from the user's profile (via API)
-        const userResponse = await fetch('/api/user', {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
+        // Get user's current address
+        const userRes = await fetch('/api/user', {
+            headers: { Authorization: `Bearer ${token}` }
         });
-        if (!userResponse.ok) {
-            throw new Error('Failed to load user profile');
-        }
-        const user = await userResponse.json();
-        const currentAddress = user.address || {
+        if (!userRes.ok) throw new Error("Failed to load user profile");
+        const user = await userRes.json();
+
+        const deliveryAddress = user.address || {
             street: "",
             city: "",
             state: "",
@@ -244,19 +240,15 @@ async function proceedToCheckout() {
             country: "Nigeria"
         };
 
-        // Create the order object with the calculated items and address
+        // Create order payload
         const orderData = {
-            items: orderItems.map(i => ({
-                productId: i.productId,
-                quantity: i.quantity,
-                price: parseInt(i.price.replace(/\D/g, ''))
-            })),
+            items: orderItems,
             total: total,
-            deliveryAddress: currentAddress
+            deliveryAddress
         };
 
-        // SEND ORDER TO BACKEND FOR REMITA PAYMENT INITIATION
-        const response = await fetch('/api/orders/remita-initiate', {
+        // Send order to backend for Remita payment initiation
+        const orderRes = await fetch('/api/orders/remita-initiate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -265,80 +257,49 @@ async function proceedToCheckout() {
             body: JSON.stringify(orderData)
         });
 
-        if (!response.ok) {
-            throw new Error('Failed to initiate payment');
-        }
+        if (!orderRes.ok) throw new Error("Failed to initiate payment");
+        const result = await orderRes.json();
 
-        const result = await response.json();
+        if (!result.success || !result.rrr) throw new Error("Payment initiation failed");
 
-        if (result.success && result.orderId && result.rrr) {
-            // Clear cart
-            cart = [];
-            sessionStorage.removeItem('cart');
-            updateUIBasedOnUser();
-            closeCartModal();
+        // Clear cart
+        cart = [];
+        sessionStorage.removeItem('cart');
+        updateUIBasedOnUser();
+        closeCartModal();
 
-            // Open Remita payment modal
-            const remitaConfig = {
-                publicKey: 'pk_test_15P5ka7mdPxzHdp4hvLT84+iNhArU/Xvna9NpJIJBpIBXJFl5FtCuQP574mdPMrq', // Test public key
-                merchantId: result.merchantId,
-                serviceTypeId: result.serviceTypeId,
-                amount: result.amount,
-                orderId: result.orderId.toString(),
-                transactionId: result.rrr,
-                responseUrl: result.responseUrl,
-                returnUrl: result.returnUrl,
-                payerName: result.payerName,
-                payerEmail: result.payerEmail,
-                payerPhone: result.payerPhone,
-                onSuccess: function(response) {
-                    console.log('Payment successful:', response);
-                    // Redirect or update UI
-                    window.location.href = result.returnUrl;
-                },
-                onError: function(response) {
-                    console.error('Payment failed:', response);
-                    alert('Payment failed. Please try again.');
-                },
-                onClose: function() {
-                    console.log('Modal closed');
-                }
-            };
-
-            // Open Remita payment modal
-            const paymentEngine = RmPaymentEngine.init({
-            key: 'pk_test_15P5ka7mdPxzHdp4hvLT84+iNhArU/Xvna9NpJIJBpIBXJFl5FtCuQP574mdPMrq', // public key
+        // Initialize Remita payment modal
+        const paymentEngine = RmPaymentEngine.init({
+            key: 'pk_test_15P5ka7mdPxzHdp4hvLT84+iNhArU/Xvna9NpJIJBpIBXJFl5FtCuQP574mdPMrq', // test public key
             customerId: result.orderId.toString(),
             firstName: result.payerName,
             email: result.payerEmail,
             amount: result.amount,
             narration: 'Order Payment',
             transactionId: result.rrr,
-            onSuccess: function (response) {
+            onSuccess: function(response) {
                 console.log('Payment successful:', response);
                 window.location.href = result.returnUrl;
             },
-            onError: function (response) {
+            onError: function(response) {
                 console.error('Payment failed:', response);
-                alert('Payment failed. Please try again.');
+                showCustomAlert("Payment failed. Please try again.", "Payment Error");
             },
-            onClose: function () {
+            onClose: function() {
                 console.log('Remita modal closed');
             }
         });
 
-            paymentEngine.showPaymentWidget();
+        paymentEngine.showPaymentWidget();
 
-        } else {
-            throw new Error('Payment initiation failed');
-        }
-    } catch (error) {
-        console.error("Error placing order:", error);
+    } catch (err) {
+        console.error("Error during checkout:", err);
         showCustomAlert("Failed to place order. Please try again.", "Error");
     } finally {
         hideLoader();
     }
 }
+
 
 // Close Cart Modal
 function closeCartModal() {

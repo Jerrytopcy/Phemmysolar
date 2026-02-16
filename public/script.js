@@ -288,7 +288,7 @@ async function proceedToCheckout() {
             amount: Number(result.amount),
             narration: 'Order Payment',
             transactionId: result.rrr,
-            phoneNumber: result.payerPhone.replace(/\D/g, ''), // Ensure numeric
+            phoneNumber: (result.payerPhone || '2348000000000').replace(/\D/g, ''),
             onSuccess: function(response) {
                 console.log('Payment successful:', response);
                 window.location.href = result.returnUrl;

@@ -1301,18 +1301,19 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         );
 
         // Return response to frontend
-        res.json({
-            success: true,
-            orderId,
-            rrr: data.RRR,
-            amount: Number(total),
-            merchantId: process.env.REMITA_MERCHANT_ID,
-            serviceTypeId: Number(process.env.REMITA_SERVICE_TYPE_ID),
-            payerName: req.user.username,
-            payerEmail: req.user.email,
-            payerPhone: req.user.phone.replace(/\D/g,''),
-            returnUrl: `${process.env.FRONTEND_URL}/account`
-        });
+          res.json({
+        success: true,
+        orderId,
+        rrr: data.RRR,
+        amount: total,
+        merchantId: process.env.REMITA_MERCHANT_ID,
+        serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID,
+        payerName: req.user.username,
+        payerEmail: req.user.email,
+        payerPhone: req.user.phone || "2348000000000", // fallback phone
+        returnUrl: `${process.env.FRONTEND_URL}/account`
+    });
+
 
     } catch (err) {
         console.error('❌ Remita initiation error:', err);

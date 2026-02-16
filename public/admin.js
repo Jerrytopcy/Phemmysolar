@@ -332,124 +332,22 @@ async function reactivateProduct(productId) {
 }
 
 
-function handleImageSelect(e) {
-    const files = e.target.files;
-    if (files.length + productImages.length > 5) {
-        showAdminAlert("You can only upload up to 5 images per product.", "Upload Limit");
-        return;
-    }
-    Array.from(files).forEach((file) => {
-        if (file.type.startsWith("image/")) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                productImages.push(event.target.result);
-                updateImagePreview();
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-    // Reset file input
-    e.target.value = "";
-}
-
-
-// Function to update preview container - Updated to handle both existing and new images
-function updateImagePreview() {
-  const container = document.getElementById("imagePreviewContainer");
-  if (!container) {
-    console.error("Image preview container element not found.");
-    return;
-  }
-
-  container.innerHTML = ''; // Clear previous previews
-
-  // --- Display Existing Cloudinary Images (URLs) ---
-  // These are the images already saved for the product (loaded from the database/Cloudinary)
-  existingImages.forEach((url, index) => {
-    // Validate URL format if necessary (optional)
-    if (typeof url === 'string' && url.trim() !== '') {
-      const imgWrapper = document.createElement('div');
-      // Apply the exact class name from your CSS to ensure styling
-      imgWrapper.classList.add('image-preview-item');
-      imgWrapper.innerHTML = `
-        <img src="${url}" alt="Existing product image ${index + 1}" class="existing-image-preview">
-        <!-- Use the exact class name for the remove button from your CSS -->
-        <button type="button" class="image-preview-remove" onclick="removeExistingImage(${index})">×</button>
-      `;
-      container.appendChild(imgWrapper);
-    }
-  });
-
-  // --- Display New Uploaded Files (using object URLs) ---
-  // These are the files selected by the user in the current session but not yet saved
-  productImages.forEach((file, index) => { // Assumes 'file' is a File object
-    if (file instanceof File) { // Validate that it's a File object
-      const imgWrapper = document.createElement('div');
-      // Apply the exact class name from your CSS to ensure styling
-      imgWrapper.classList.add('image-preview-item'); // This class applies the grid layout, size, border, etc.
-      const objectUrl = URL.createObjectURL(file); // Create object URL for the local file
-      imgWrapper.innerHTML = `
-        <img src="${objectUrl}" alt="Newly selected image ${index + 1}" class="new-image-preview">
-        <!-- Use the exact class name for the remove button from your CSS -->
-        <button type="button" class="image-preview-remove" onclick="removeNewImage(${index})">×</button>
-      `;
-      container.appendChild(imgWrapper);
-    }
-  });
-}
-
-// Helper functions to remove images from their respective arrays and refresh the preview
-function removeExistingImage(index) {
-  // Remove item from the existingImages array
-  existingImages.splice(index, 1);
-  // Re-render the preview
-  updateImagePreview();
-}
-
-function removeNewImage(index) {
-  // Remove item from the productImages array
-  productImages.splice(index, 1);
-  // Re-render the preview
-  updateImagePreview();
-}
-
-// Ensure the image selection handler adds to the correct array and updates the preview
-function handleImageSelect(e) {
-  const files = e.target.files;
-  // Check total count against limit (5)
-  if (files.length + productImages.length > 5) {
-    showAdminAlert("You can only upload up to 5 images per product.", "Upload Limit");
-    return;
-  }
-  Array.from(files).forEach((file) => {
-    if (file.type.startsWith("image/")) {
-      // Push the File object directly to the productImages array
-      productImages.push(file);
-      // Update the preview immediately after adding
-      updateImagePreview();
-    } else {
-      console.warn(`File ${file.name} is not an image and was skipped.`);
-    }
-  });
-  // Reset the file input to allow selecting the same file again if needed
-  e.target.value = "";
-}
-
 // Ensure the URL input handler also calls updateImagePreview if needed
 // (Assuming URL inputs are handled separately or maybe just stored in existingImages before saving)
 // The main preview now depends on the two arrays: existingImages and productImages
 
 function getImageUrlsFromInputs() {
-    const inputs = document.querySelectorAll(".image-url-input");
-    const urls = [];
-    inputs.forEach((input) => {
-        const value = input.value.trim();
-        if (value) {
-            urls.push(value);
-        }
-    });
-    return urls;
+  const inputs = document.querySelectorAll(".image-url-input");
+  const urls = [];
+
+  inputs.forEach(input => {
+    const value = input.value.trim();
+    if (value) urls.push(value);
+  });
+
+  return urls;
 }
+
 
 function clearImageUrlInputs() {
     document.querySelectorAll(".image-url-input").forEach((input) => {
@@ -512,7 +410,13 @@ async function handleProductModalSubmit(e) {
     return;
   }
 
-  if (existingImages.length === 0 && productImages.length === 0) {
+  const manualUrls = getImageUrlsFromInputs();
+
+  if (
+    existingImages.length === 0 &&
+    productImages.length === 0 &&
+    manualUrls.length === 0
+  ) {
     await showAdminAlert("Please add at least one product image.", "Missing Image");
     return;
   }
@@ -525,13 +429,16 @@ async function handleProductModalSubmit(e) {
 
   formData.append("existingImages", JSON.stringify(existingImages));
   formData.append("removedImages", JSON.stringify(removedProductImages));
+  formData.append("manualUrls", JSON.stringify(manualUrls));
 
   productImages.forEach(file => {
     formData.append("images", file);
   });
 
   const method = productId ? "PUT" : "POST";
-  const url = productId ? `/api/products/${productId}` : `/api/products`;
+  const url = productId
+    ? `/api/products/${productId}`
+    : `/api/products`;
 
   try {
     showLoader(productId ? "Updating product..." : "Adding product...");
@@ -561,6 +468,7 @@ async function handleProductModalSubmit(e) {
     hideLoader();
   }
 }
+
 
 
 function removeExistingImage(index) {
@@ -1745,36 +1653,38 @@ function updateImagePreviewModal() {
   const container = document.getElementById("imagePreviewContainerModal");
   container.innerHTML = "";
 
-  // Existing images (Cloudinary URLs)
+  // Existing Cloudinary images
   existingImages.forEach((publicId, index) => {
-    const imgWrapper = document.createElement("div");
-    imgWrapper.classList.add("image-preview-item");
+    const wrapper = document.createElement("div");
+    wrapper.classList.add("image-preview-item");
 
-    const imageUrl = `https://res.cloudinary.com/YOUR_CLOUD_NAME/image/upload/${publicId}`;
+    const imageUrl = `https://res.cloudinary.com/
+dknjnjh7n/image/upload/${publicId}`;
 
-    imgWrapper.innerHTML = `
+    wrapper.innerHTML = `
       <img src="${imageUrl}" class="existing-image-preview">
       <button type="button" class="image-preview-remove" onclick="removeExistingImageModal(${index})">×</button>
     `;
 
-    container.appendChild(imgWrapper);
+    container.appendChild(wrapper);
   });
 
-  // New files
+  // New uploaded files
   productImages.forEach((file, index) => {
-    const imgWrapper = document.createElement("div");
-    imgWrapper.classList.add("image-preview-item");
+    const wrapper = document.createElement("div");
+    wrapper.classList.add("image-preview-item");
 
     const objectUrl = URL.createObjectURL(file);
 
-    imgWrapper.innerHTML = `
+    wrapper.innerHTML = `
       <img src="${objectUrl}" class="new-image-preview">
       <button type="button" class="image-preview-remove" onclick="removeNewImageModal(${index})">×</button>
     `;
 
-    container.appendChild(imgWrapper);
+    container.appendChild(wrapper);
   });
 }
+
 
 
 
@@ -1795,7 +1705,12 @@ function removeNewImageModal(index) {
 function handleImageSelectModal(e) {
   const files = e.target.files;
 
-  if (files.length + productImages.length + existingImages.length > 5) {
+  const totalCount =
+    existingImages.length +
+    productImages.length +
+    getImageUrlsFromInputs().length;
+
+  if (files.length + totalCount > 5) {
     showAdminAlert("You can only upload up to 5 images per product.", "Upload Limit");
     return;
   }
@@ -1810,6 +1725,8 @@ function handleImageSelectModal(e) {
   e.target.value = "";
 }
 
+
+
 function hideProductModal() {
   document.getElementById("productEditModal").style.display = "none";
   document.getElementById("productEditForm").reset();
@@ -1818,8 +1735,12 @@ function hideProductModal() {
   existingImages = [];
   removedProductImages = [];
 
-  updateImagePreviewModal();
+  document.getElementById("imagePreviewContainerModal").innerHTML = "";
+
+  // Clear URL inputs
+  document.querySelectorAll(".image-url-input").forEach(input => input.value = "");
 }
+
 
 // Initialize event listeners for the messages section
 document.addEventListener('DOMContentLoaded', () => {

@@ -602,7 +602,9 @@ app.post('/api/testimonials', uploadTestimonial.single('image'), async (req, res
   try {
     const { name, role, text, rating } = req.body;
 
-    const imageUrl = req.file ? req.file.path : null;
+      const imageUrl = req.file ? req.file.path : null;
+    const imagePublicId = req.file ? req.file.filename : null;
+
 
     const result = await pool.query(
       'INSERT INTO testimonials (name, role, text, rating, image) VALUES ($1, $2, $3, $4, $5) RETURNING *',
@@ -695,11 +697,14 @@ app.post('/api/news', uploadNewsImage.single('image'), async (req, res) => {
   try {
     const { title, description, fullContent, date } = req.body;
 
-    const imageUrl = req.file ? req.file.path : null;  // ✅ FIXED
+    const imageUrl = req.file ? req.file.path : null;
+const imagePublicId = req.file ? req.file.filename : null;
+
 
     const result = await pool.query(
-      'INSERT INTO news ("title", "description", "fullContent", "image", "date") VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [title, description, fullContent, imageUrl, date]
+      'INSERT INTO news ("title", "description", "fullContent", "image", "image_public_id", "date") VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [title, description, fullContent, imageUrl, imagePublicId, date]
+
     );
 
     res.json({ success: true, news: result.rows[0] });
@@ -711,30 +716,37 @@ app.post('/api/news', uploadNewsImage.single('image'), async (req, res) => {
 });
 
 
-
 app.put('/api/news/:id', uploadNewsImage.single('image'), async (req, res) => {
   try {
     const { title, description, fullContent, date } = req.body;
-    let imageUrl;
 
+    const existing = await pool.query(
+      'SELECT image, image_public_id FROM news WHERE "id" = $1',
+      [req.params.id]
+    );
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'News article not found' });
+    }
+
+    let imageUrl = existing.rows[0].image;
+    let imagePublicId = existing.rows[0].image_public_id;
+
+    // If new image uploaded
     if (req.file) {
-      imageUrl = req.file.path;   // ✅ FIXED
-    } else {
-      const existing = await pool.query(
-        'SELECT image FROM news WHERE "id" = $1',
-        [req.params.id]
-      );
 
-      if (existing.rows.length === 0) {
-        return res.status(404).json({ error: 'News article not found' });
+      // 🔥 DELETE OLD IMAGE FROM CLOUDINARY
+      if (imagePublicId) {
+        await cloudinary.uploader.destroy(imagePublicId);
       }
 
-      imageUrl = existing.rows[0].image;
+      imageUrl = req.file.path;
+      imagePublicId = req.file.filename;
     }
 
     const result = await pool.query(
-      'UPDATE news SET "title" = $1, "description" = $2, "fullContent" = $3, "image" = $4, "date" = $5 WHERE "id" = $6 RETURNING *',
-      [title, description, fullContent, imageUrl, date, req.params.id]
+      'UPDATE news SET "title" = $1, "description" = $2, "fullContent" = $3, "image" = $4, "image_public_id" = $5, "date" = $6 WHERE "id" = $7 RETURNING *',
+      [title, description, fullContent, imageUrl, imagePublicId, date, req.params.id]
     );
 
     res.json({ success: true, news: result.rows[0] });
@@ -746,19 +758,34 @@ app.put('/api/news/:id', uploadNewsImage.single('image'), async (req, res) => {
 });
 
 
-
 app.delete('/api/news/:id', async (req, res) => {
   try {
-    const result = await pool.query('DELETE FROM news WHERE "id" = $1 RETURNING *', [req.params.id]);
-    if (result.rows.length === 0) {
+
+    const existing = await pool.query(
+      'SELECT image_public_id FROM news WHERE "id" = $1',
+      [req.params.id]
+    );
+
+    if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'News article not found' });
     }
+
+    const publicId = existing.rows[0].image_public_id;
+
+    if (publicId) {
+      await cloudinary.uploader.destroy(publicId);
+    }
+
+    await pool.query('DELETE FROM news WHERE "id" = $1', [req.params.id]);
+
     res.json({ success: true, message: 'News article deleted' });
+
   } catch (err) {
     console.error('Error deleting news:', err);
     res.status(500).json({ error: 'Failed to delete news' });
   }
 });
+
 
 // --- USERS ROUTES ---
 app.get('/api/users', async (req, res) => {

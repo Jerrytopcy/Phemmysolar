@@ -1206,15 +1206,17 @@ function editNews(newsId) {
             document.getElementById("newsDate").value = reverseDateFormat(news.date);
             document.getElementById("newsFormTitle").textContent = "Edit Article";
             document.getElementById("newsFormContainer").style.display = "block";
-            if (news.image) {
-                if (news.image.startsWith("http") || news.image.startsWith("/")) {
-                    document.getElementById("newsImage").value = news.image;
-                    newsImage = "";
-                } else {
-                    newsImage = news.image;
-                    updateNewsImagePreview();
-                }
+           if (news.image) {
+            const container = document.getElementById("newsImagePreview");
+
+                container.innerHTML = `
+                    <div class="image-preview-item">
+                        <img src="${news.image}" alt="News image">
+                        <button type="button" class="image-preview-remove" onclick="removeNewsImage()">×</button>
+                    </div>
+                `;
             }
+
         })
         .catch(error => {
             console.error("Error fetching news for edit:", error);
@@ -1268,17 +1270,25 @@ function showNewsForm() {
 }
 
 function handleNewsImageSelect(e) {
-    const files = e.target.files;
-    if (files.length > 0 && files[0].type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            newsImage = event.target.result;
-            updateNewsImagePreview();
-        };
-        reader.readAsDataURL(files[0]);
-    }
-    e.target.value = "";
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith("image/")) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function (event) {
+        const container = document.getElementById("newsImagePreview");
+
+        container.innerHTML = `
+            <div class="image-preview-item">
+                <img src="${event.target.result}" alt="News image">
+                <button type="button" class="image-preview-remove" onclick="removeNewsImage()">×</button>
+            </div>
+        `;
+    };
+
+    reader.readAsDataURL(file);
 }
+
 
 function updateNewsImagePreview() {
     const container = document.getElementById("newsImagePreview");
@@ -1295,10 +1305,10 @@ function updateNewsImagePreview() {
 }
 
 function removeNewsImage() {
-    newsImage = "";
-    updateNewsImagePreview();
-    document.getElementById("newsImage").value = "";
+    document.getElementById("newsImageInput").value = "";
+    document.getElementById("newsImagePreview").innerHTML = "";
 }
+
 
 // Date formatting utilities
 function formatDate(dateString) {

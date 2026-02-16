@@ -694,7 +694,8 @@ app.get('/api/news/:id', async (req, res) => {
 app.post('/api/news', uploadNewsImage.single('image'), async (req, res) => {
   try {
     const { title, description, fullContent, date } = req.body;
-    const imageUrl = req.file ? req.file.secure_url : null;
+
+    const imageUrl = req.file ? req.file.path : null;  // ✅ FIXED
 
     const result = await pool.query(
       'INSERT INTO news ("title", "description", "fullContent", "image", "date") VALUES ($1, $2, $3, $4, $5) RETURNING *',
@@ -702,6 +703,7 @@ app.post('/api/news', uploadNewsImage.single('image'), async (req, res) => {
     );
 
     res.json({ success: true, news: result.rows[0] });
+
   } catch (err) {
     console.error('Error creating news:', err);
     res.status(500).json({ error: err.message });
@@ -709,17 +711,24 @@ app.post('/api/news', uploadNewsImage.single('image'), async (req, res) => {
 });
 
 
+
 app.put('/api/news/:id', uploadNewsImage.single('image'), async (req, res) => {
   try {
     const { title, description, fullContent, date } = req.body;
     let imageUrl;
 
-    // If a new image is uploaded, use it; otherwise keep the existing one
-    if (req.file && req.file.secure_url) {
-      imageUrl = req.file.secure_url;
+    if (req.file) {
+      imageUrl = req.file.path;   // ✅ FIXED
     } else {
-      const existing = await pool.query('SELECT image FROM news WHERE "id" = $1', [req.params.id]);
-      if (existing.rows.length === 0) return res.status(404).json({ error: 'News article not found' });
+      const existing = await pool.query(
+        'SELECT image FROM news WHERE "id" = $1',
+        [req.params.id]
+      );
+
+      if (existing.rows.length === 0) {
+        return res.status(404).json({ error: 'News article not found' });
+      }
+
       imageUrl = existing.rows[0].image;
     }
 
@@ -729,11 +738,13 @@ app.put('/api/news/:id', uploadNewsImage.single('image'), async (req, res) => {
     );
 
     res.json({ success: true, news: result.rows[0] });
+
   } catch (err) {
     console.error('Error updating news:', err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 
 app.delete('/api/news/:id', async (req, res) => {

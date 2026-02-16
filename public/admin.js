@@ -1099,32 +1099,34 @@ function removeTestimonialImage() {
 // Handle news form submission
 async function handleNewsSubmit(e) {
     e.preventDefault();
-    let finalImage = newsImage || document.getElementById("newsImage").value || "";
-    const newsData = {
-        title: document.getElementById("newsTitle").value,
-        description: document.getElementById("newsDescription").value,
-        fullContent: document.getElementById("newsContent").value, // Save full content
-        image: finalImage,
-        date: formatDate(document.getElementById("newsDate").value),
-    };
+
+    const newsId = document.getElementById("newsId").value;
+
+    const formData = new FormData();
+    formData.append("title", document.getElementById("newsTitle").value);
+    formData.append("description", document.getElementById("newsDescription").value);
+    formData.append("fullContent", document.getElementById("newsContent").value);
+    formData.append("date", formatDate(document.getElementById("newsDate").value));
+
+    const fileInput = document.getElementById("newsImageInput");
+
+    if (fileInput.files.length > 0) {
+        formData.append("image", fileInput.files[0]);  // ✅ This is important
+    }
 
     try {
-        showLoader("Saving article..."); // Show loader during submission
-        const newsId = document.getElementById("newsId").value;
+        showLoader("Saving article...");
+
         const method = newsId ? 'PUT' : 'POST';
         const url = newsId ? `/api/news/${newsId}` : '/api/news';
+
         const response = await fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(newsData),
+            method,
+            body: formData  // ✅ NO JSON, NO headers
         });
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` })); // Attempt to read error response
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        }
+
         const result = await response.json();
+
         if (result.success) {
             loadNews();
             hideNewsForm();
@@ -1132,19 +1134,15 @@ async function handleNewsSubmit(e) {
         } else {
             throw new Error(result.error || "Failed to save article.");
         }
+
     } catch (error) {
-        console.error("Error saving article:", error); // Log the raw error for debugging
-        // Check for the specific error indicating server returned HTML (likely due to payload size)
-        if (error.message.includes("DOCTYPE") || error.message.includes("Unexpected token '<'")) {
-            await showAdminAlert("File size too large. Please reduce image size and try again.", "File Size Error");
-        } else {
-            // Handle other potential errors
-            await showAdminAlert(`Error saving article: ${error.message}`, "Error");
-        }
+        console.error("Error saving article:", error);
+        await showAdminAlert(`Error saving article: ${error.message}`, "Error");
     } finally {
-        hideLoader(); // Always hide loader after submission
+        hideLoader();
     }
 }
+
 
 // Load news
 async function loadNews() {

@@ -398,20 +398,7 @@ function updateImagePreview() {
   });
 }
 
-// Helper functions to remove images from their respective arrays and refresh the preview
-function removeExistingImage(index) {
-  // Remove item from the existingImages array
-  existingImages.splice(index, 1);
-  // Re-render the preview
-  updateImagePreview();
-}
 
-function removeNewImage(index) {
-  // Remove item from the productImages array
-  productImages.splice(index, 1);
-  // Re-render the preview
-  updateImagePreview();
-}
 
 // Ensure the image selection handler adds to the correct array and updates the preview
 function handleImageSelect(e) {
@@ -482,14 +469,21 @@ async function editProductModal(productId) {
     document.getElementById("productCategoryModal").value = product.category || "";
 
     // Reset image arrays
+    // Reset image arrays
     productImages = [];
     existingImages = [];
+    removedProductImages = []; // 🔥 YOU FORGOT THIS
+
     if (product.images && product.images.length > 0) {
-      existingImages = Array.isArray(product.images) ? [...product.images] : [product.images];
+    existingImages = Array.isArray(product.images)
+        ? [...product.images]
+        : [product.images];
     } else if (product.image) {
-      existingImages = [product.image];
+    existingImages = [product.image];
     }
+
     updateImagePreviewModal();
+
 
   } catch (error) {
     console.error("Error fetching product for edit:", error);

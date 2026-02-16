@@ -425,10 +425,12 @@ app.put('/api/products/:id', upload.array('images', 5), async (req, res) => {
 
     // Upload new images
     const newFiles = req.files || [];
+    // Get the full Cloudinary URLs
+    const newImageUrls = newFiles.map(file => file.secure_url || file.path);
     const newPublicIds = newFiles.map(file => file.filename);
 
     // Final images = existing + new
-    const finalImages = [...existing, ...newPublicIds];
+    const finalImages = [...existing, ...newImageUrls];
 
     const result = await pool.query(
       `UPDATE products
@@ -453,6 +455,7 @@ app.put('/api/products/:id', upload.array('images', 5), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 
 // DELETE route for soft deleting products (SPECIFIC route - comes third)

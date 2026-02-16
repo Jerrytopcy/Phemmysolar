@@ -398,20 +398,6 @@ function updateImagePreview() {
   });
 }
 
-// Helper functions to remove images from their respective arrays and refresh the preview
-function removeExistingImage(index) {
-  // Remove item from the existingImages array
-  existingImages.splice(index, 1);
-  // Re-render the preview
-  updateImagePreview();
-}
-
-function removeNewImage(index) {
-  // Remove item from the productImages array
-  productImages.splice(index, 1);
-  // Re-render the preview
-  updateImagePreview();
-}
 
 // Ensure the image selection handler adds to the correct array and updates the preview
 function handleImageSelect(e) {

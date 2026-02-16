@@ -946,14 +946,14 @@ function editTestimonial(testimonialId) {
             document.getElementById("testimonialText").value = testimonial.text;
             document.getElementById("testimonialRating").value = testimonial.rating;
             if (testimonial.image) {
-                if (testimonial.image.startsWith("http") || testimonial.image.startsWith("/")) {
-                    document.getElementById("testimonialImageUrl").value = testimonial.image;
-                    testimonialImage = "";
-                } else {
-                    testimonialImage = testimonial.image;
-                    updateTestimonialImagePreview();
-                }
+                const previewContainer = document.getElementById("testimonialImagePreview");
+
+                previewContainer.innerHTML = `
+                    <img src="${testimonial.image}" 
+                        style="max-width:120px; border-radius:8px;">
+                `;
             }
+
             document.getElementById("testimonialFormTitle").textContent = "Edit Testimonial";
             document.getElementById("testimonialFormContainer").style.display = "block";
         })
@@ -1049,18 +1049,32 @@ function showTestimonialForm() {
     document.getElementById("testimonialForm").reset();
 }
 
-function handleTestimonialImageSelect(e) {
-    const files = e.target.files;
-    if (files.length > 0 && files[0].type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            testimonialImage = event.target.result;
-            updateTestimonialImagePreview();
-        };
-        reader.readAsDataURL(files[0]);
+function handleTestimonialImageSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const previewContainer = document.getElementById("testimonialImagePreview");
+    const imageUrlInput = document.getElementById("testimonialImageUrl");
+
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+        previewContainer.innerHTML = `
+            <img 
+                src="${e.target.result}" 
+                style="max-width:120px; border-radius:8px;"
+            >
+        `;
+    };
+
+    reader.readAsDataURL(file);
+
+    // Clear URL field if user selected file
+    if (imageUrlInput) {
+        imageUrlInput.value = "";
     }
-    e.target.value = "";
 }
+
 
 function updateTestimonialImagePreview() {
     const container = document.getElementById("testimonialImagePreview");

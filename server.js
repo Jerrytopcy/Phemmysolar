@@ -1212,6 +1212,10 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
 
 
 // --- REMITA PAYMENT INITIATION ROUTE (WORKING VERSION) ---
+const REMITA_BASE_URL = process.env.REMITA_TEST_MODE === 'true'
+    ? 'https://demo.remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit'
+    : 'https://api.remita.net/echannelsvc/merchant/api/paymentinit';
+
 app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
     try {
         const userId = req.user.id;
@@ -1221,15 +1225,16 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid order data' });
         }
 
+        // Insert order
         const orderResult = await pool.query(
             `INSERT INTO orders (user_id, total, delivery_address, payment_status, status)
-             VALUES ($1, $2, $3, 'pending', 'pending')
-             RETURNING id`,
+             VALUES ($1, $2, $3, 'pending', 'pending') RETURNING id`,
             [userId, total, deliveryAddress]
         );
 
         const orderId = orderResult.rows[0].id;
 
+        // Insert order items
         for (const item of items) {
             await pool.query(
                 `INSERT INTO order_items (order_id, product_id, quantity, price)
@@ -1238,9 +1243,10 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             );
         }
 
+        // Remita payload
         const payload = {
-            serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID,
-            amount: total,
+            serviceTypeId: Number(process.env.REMITA_SERVICE_TYPE_ID),
+            amount: Number(total),
             orderId: orderId.toString(),
             payerName: req.user.username,
             payerEmail: req.user.email,
@@ -1248,16 +1254,10 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             description: 'Order Payment'
         };
 
-        const auth = Buffer.from(
-            `${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_SECRET_KEY}`
-        ).toString('base64');
+        // Auth header
+        const auth = Buffer.from(`${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_SECRET_KEY}`).toString('base64');
 
-        const url = process.env.REMITA_TEST_MODE === 'true'
-    ? 'https://demo.remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit'
-    : 'https://api.remita.net/echannelsvc/merchant/api/paymentinit';
-
-
-        const remitaRes = await fetch(url, {
+        const remitaRes = await fetch(REMITA_BASE_URL, {
             method: 'POST',
             headers: {
                 'Authorization': `Basic ${auth}`,
@@ -1272,12 +1272,16 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         let data;
         try {
             data = JSON.parse(raw);
-        } catch {
-            throw new Error('Remita returned HTML instead of JSON');
+        } catch (e) {
+            console.error('Failed to parse Remita response', e);
+            return res.status(500).json({
+                success: false,
+                error: 'Remita returned an invalid response'
+            });
         }
 
         if (data.statuscode !== '00') {
-            throw new Error(data.status || 'Remita initiation failed');
+            return res.status(400).json({ success: false, error: data.status || 'Remita initiation failed' });
         }
 
         await pool.query(
@@ -1289,7 +1293,7 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             success: true,
             orderId,
             rrr: data.RRR,
-            amount: total.toString(),
+            amount: total,
             merchantId: process.env.REMITA_MERCHANT_ID,
             serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID,
             payerName: req.user.username,
@@ -1306,6 +1310,7 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         });
     }
 });
+
 
 // --- REAL REMITA WEBHOOK ENDPOINT (v3 Compatible) ---
 app.post('/api/webhook/remita', async (req, res) => {

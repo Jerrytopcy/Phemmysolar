@@ -210,9 +210,9 @@ async function proceedToCheckout() {
         const orderItems = [];
 
         for (const cartItem of cart) {
-            const response = await fetch(`/api/products/${cartItem.productId}`);
-            if (!response.ok) continue; // skip failed fetch
-            const product = await response.json();
+            const productRes = await fetch(`https://www.phemmysolar.com/api/products/${cartItem.productId}`);
+            if (!productRes.ok) continue; // skip failed fetch
+            const product = await productRes.json();
 
             const price = parseInt(product.price.replace(/\D/g, ''));
             const itemTotal = price * cartItem.quantity;
@@ -225,8 +225,12 @@ async function proceedToCheckout() {
             });
         }
 
+        if (orderItems.length === 0) {
+            throw new Error("No valid products found in cart.");
+        }
+
         // Get user's current address
-        const userRes = await fetch('/api/user', {
+        const userRes = await fetch('https://www.phemmysolar.com/api/user', {
             headers: { Authorization: `Bearer ${token}` }
         });
         if (!userRes.ok) throw new Error("Failed to load user profile");
@@ -248,7 +252,7 @@ async function proceedToCheckout() {
         };
 
         // Send order to backend for Remita payment initiation
-        const orderRes = await fetch('/api/orders/remita-initiate', {
+        const orderRes = await fetch('https://www.phemmysolar.com/api/orders/remita-initiate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -257,10 +261,16 @@ async function proceedToCheckout() {
             body: JSON.stringify(orderData)
         });
 
-        if (!orderRes.ok) throw new Error("Failed to initiate payment");
+        if (!orderRes.ok) {
+            const text = await orderRes.text();
+            throw new Error(`Failed to initiate payment: ${text}`);
+        }
+
         const result = await orderRes.json();
 
-        if (!result.success || !result.rrr) throw new Error("Payment initiation failed");
+        if (!result.success || !result.rrr) {
+            throw new Error("Payment initiation failed");
+        }
 
         // Clear cart
         cart = [];
@@ -299,6 +309,7 @@ async function proceedToCheckout() {
         hideLoader();
     }
 }
+
 
 
 // Close Cart Modal

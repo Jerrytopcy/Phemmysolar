@@ -30,10 +30,32 @@ const storage = new CloudinaryStorage({
     allowed_formats: ['jpg','jpeg','png']
   }
 });
-
 // Multer upload middleware (max 5 images per request)
 const upload = multer({ storage: storage });
 
+// Multer storage for Cloudinary
+const testimonialStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'testimonials',
+    allowed_formats: ['jpg', 'jpeg', 'png']
+  }
+});
+
+// Multer upload middleware (single image per testimonial)
+const uploadTestimonial = multer({ storage: testimonialStorage });
+
+// Multer storage for Cloudinary (folder: news)
+const newsStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'news',
+    allowed_formats: ['jpg', 'jpeg', 'png']
+  }
+});
+
+// Multer middleware (single image per news article)
+const uploadNewsImage = multer({ storage: newsStorage });
 
 
 
@@ -576,36 +598,51 @@ app.get('/api/testimonials/:id', async (req, res) => {
   }
 });
 
-app.post('/api/testimonials', async (req, res) => {
-  const { name, role, text, rating, image } = req.body;
+app.post('/api/testimonials', uploadTestimonial.single('image'), async (req, res) => {
   try {
+    const { name, role, text, rating } = req.body;
+    const imageUrl = req.file ? req.file.secure_url : null;
+
     const result = await pool.query(
       'INSERT INTO testimonials (name, role, text, rating, image) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [name, role, text, rating, image]
+      [name, role, text, rating, imageUrl]
     );
+
     res.json({ success: true, testimonial: result.rows[0] });
   } catch (err) {
     console.error('Error creating testimonial:', err);
-    res.status(500).json({ error: 'Failed to create testimonial' });
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/testimonials/:id', async (req, res) => {
-  const { name, role, text, rating, image } = req.body;
+
+app.put('/api/testimonials/:id', uploadTestimonial.single('image'), async (req, res) => {
   try {
+    const { name, role, text, rating } = req.body;
+    let imageUrl;
+
+    // If a new image is uploaded, use it; else keep existing
+    if (req.file && req.file.secure_url) {
+      imageUrl = req.file.secure_url;
+    } else {
+      // Fetch existing image from DB
+      const existing = await pool.query('SELECT image FROM testimonials WHERE id = $1', [req.params.id]);
+      if (existing.rows.length === 0) return res.status(404).json({ error: 'Testimonial not found' });
+      imageUrl = existing.rows[0].image;
+    }
+
     const result = await pool.query(
       'UPDATE testimonials SET name = $1, role = $2, text = $3, rating = $4, image = $5 WHERE id = $6 RETURNING *',
-      [name, role, text, rating, image, req.params.id]
+      [name, role, text, rating, imageUrl, req.params.id]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Testimonial not found' });
-    }
+
     res.json({ success: true, testimonial: result.rows[0] });
   } catch (err) {
     console.error('Error updating testimonial:', err);
-    res.status(500).json({ error: 'Failed to update testimonial' });
+    res.status(500).json({ error: err.message });
   }
 });
+
 
 app.delete('/api/testimonials/:id', async (req, res) => {
   try {
@@ -645,36 +682,50 @@ app.get('/api/news/:id', async (req, res) => {
   }
 });
 
-app.post('/api/news', async (req, res) => {
-  const { title, description, fullContent, image, date } = req.body;
+app.post('/api/news', uploadNewsImage.single('image'), async (req, res) => {
   try {
+    const { title, description, fullContent, date } = req.body;
+    const imageUrl = req.file ? req.file.secure_url : null;
+
     const result = await pool.query(
       'INSERT INTO news ("title", "description", "fullContent", "image", "date") VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [title, description, fullContent, image, date]
+      [title, description, fullContent, imageUrl, date]
     );
+
     res.json({ success: true, news: result.rows[0] });
   } catch (err) {
     console.error('Error creating news:', err);
-    res.status(500).json({ error: 'Failed to create news' });
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/news/:id', async (req, res) => {
-  const { title, description, fullContent, image, date } = req.body;
+
+app.put('/api/news/:id', uploadNewsImage.single('image'), async (req, res) => {
   try {
+    const { title, description, fullContent, date } = req.body;
+    let imageUrl;
+
+    // If a new image is uploaded, use it; otherwise keep the existing one
+    if (req.file && req.file.secure_url) {
+      imageUrl = req.file.secure_url;
+    } else {
+      const existing = await pool.query('SELECT image FROM news WHERE "id" = $1', [req.params.id]);
+      if (existing.rows.length === 0) return res.status(404).json({ error: 'News article not found' });
+      imageUrl = existing.rows[0].image;
+    }
+
     const result = await pool.query(
       'UPDATE news SET "title" = $1, "description" = $2, "fullContent" = $3, "image" = $4, "date" = $5 WHERE "id" = $6 RETURNING *',
-      [title, description, fullContent, image, date, req.params.id]
+      [title, description, fullContent, imageUrl, date, req.params.id]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'News article not found' });
-    }
+
     res.json({ success: true, news: result.rows[0] });
   } catch (err) {
     console.error('Error updating news:', err);
-    res.status(500).json({ error: 'Failed to update news' });
+    res.status(500).json({ error: err.message });
   }
 });
+
 
 app.delete('/api/news/:id', async (req, res) => {
   try {

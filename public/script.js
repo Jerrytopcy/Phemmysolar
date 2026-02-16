@@ -1600,11 +1600,9 @@ async function loadFeaturedProducts() {
 }
 
 // Load and display testimonials
-// Load and display testimonials
 async function loadTestimonials() {
-    const testimonialContainer = document.getElementById("testimonialContainer");
+    const testimonialContainer = document.getElementById("testimonialsGrid");
     if (!testimonialContainer) return;
-
     showLoader("Loading testimonials...");
     try {
         const response = await fetch('/api/testimonials');
@@ -1618,39 +1616,23 @@ async function loadTestimonials() {
             return;
         }
 
-        // Map testimonials to HTML string
-        testimonialContainer.innerHTML = testimonials.map((testimonial) => {
-            // --- Handle Image ---
-            let imageHtml = '<div class="testimonial-avatar-placeholder">👤</div>'; // Default placeholder
-            if (testimonial.image && typeof testimonial.image === 'string' && testimonial.image.trim() !== '') {
-                // Sanitize the URL if necessary (basic check, consider a more robust sanitizer if needed)
-                const imageUrl = testimonial.image.trim();
-                if (imageUrl.startsWith('https://') || imageUrl.startsWith('http://')) { // Basic validation
-                    imageHtml = `<img src="${imageUrl}" alt="${escapeHtml(testimonial.name || 'Testimonial Author')}" class="testimonial-avatar" onerror="this.onerror=null; this.parentElement.innerHTML='<div class="testimonial-avatar-placeholder">👤</div>';">`;
-                } else {
-                    console.warn("Invalid testimonial image URL:", imageUrl);
-                    // Fallback to placeholder if URL is invalid
-                    imageHtml = '<div class="testimonial-avatar-placeholder">👤</div>';
-                }
-            }
-            // --- End Handle Image ---
-
-            // Using template literals for cleaner HTML generation
-            return `
-                <div class="testimonial-card">
-                    <div class="testimonial-header">
-                        ${imageHtml}
-                        <div class="testimonial-author-info">
-                            <p class="testimonial-author">${escapeHtml(testimonial.name)}</p>
-                            <p class="testimonial-role">${escapeHtml(testimonial.role)}</p>
-                        </div>
-                    </div>
-                    <div class="testimonial-stars">${"⭐".repeat(testimonial.rating || 0)}</div>
-                    <p class="testimonial-text">"${escapeHtml(testimonial.text)}"</p>
-                </div>
-            `;
-        }).join("");
-
+        testimonialContainer.innerHTML = testimonials
+            .map(
+                (testimonial) => `
+<div class="testimonial-card">
+<div class="testimonial-header">
+${testimonial.image ? `<img src="${testimonial.image}" alt="${testimonial.name}" class="testimonial-avatar">` : '<div class="testimonial-avatar-placeholder">👤</div>'}
+<div class="testimonial-author-info">
+<p class="testimonial-author">${testimonial.name}</p>
+<p class="testimonial-role">${testimonial.role}</p>
+</div>
+</div>
+<div class="testimonial-stars">${"⭐".repeat(testimonial.rating)}</div>
+<p class="testimonial-text">"${testimonial.text}"</p>
+</div>
+`,
+            )
+            .join("");
     } catch (error) {
         console.error("Error loading testimonials:", error);
         testimonialContainer.innerHTML = '<p class="error-message">Failed to load testimonials.</p>';
@@ -1659,23 +1641,10 @@ async function loadTestimonials() {
     }
 }
 
-// Helper function to escape HTML characters (prevents XSS)
-function escapeHtml(unsafe) {
-  if (typeof unsafe !== 'string') return '';
-  return unsafe
-     .replace(/&/g, "&amp;")
-     .replace(/</g, "&lt;")
-     .replace(/>/g, "&gt;")
-     .replace(/"/g, "&quot;")
-     .replace(/'/g, "&#039;");
-}
-
-// Load and display latest news
 // Load and display latest news
 async function loadLatestNews() {
     const newsContainer = document.getElementById("latestNews");
     if (!newsContainer) return;
-
     showLoader("Loading news...");
     try {
         const response = await fetch('/api/news');
@@ -1692,40 +1661,21 @@ async function loadLatestNews() {
             return;
         }
 
-        // Map news articles to HTML string
-        newsContainer.innerHTML = latestNews.map((article) => {
-            // --- Handle Image ---
-            let imageSrc = 'path/to/your/default/news-placeholder.jpg'; // Replace with your actual default image path
-            if (article.image && typeof article.image === 'string' && article.image.trim() !== '') {
-                // Sanitize the URL if necessary (basic check)
-                const imageUrl = article.image.trim();
-                if (imageUrl.startsWith('https://') || imageUrl.startsWith('http://')) { // Basic validation
-                     imageSrc = imageUrl;
-                } else {
-                    console.warn("Invalid news image URL:", imageUrl);
-                    // Fallback to default placeholder if URL is invalid
-                    imageSrc = 'path/to/your/default/news-placeholder.jpg'; // Replace with your actual default image path
-                }
-            }
-            // --- End Handle Image ---
-
-            // Format the date (assuming formatDate function exists and handles the input format from the backend)
-            const formattedDate = formatDate(article.date);
-
-            // Using template literals for cleaner HTML generation
-            return `
-                <div class="news-card">
-                    <img src="${imageSrc}" alt="${escapeHtml(article.title)}" class="news-image" onerror="this.onerror=null; this.src='path/to/your/default/news-placeholder.jpg';"> <!-- Fallback image -->
-                    <div class="news-content">
-                        <p class="news-date">${formattedDate}</p>
-                        <h3 class="news-title">${escapeHtml(article.title)}</h3>
-                        <p class="news-description">${escapeHtml(article.description)}</p>
-                        <a href="news" class="news-link" onclick="viewFullArticle(${article.id});">Read More →</a>
-                    </div>
-                </div>
-            `;
-        }).join("");
-
+        newsContainer.innerHTML = latestNews
+            .map(
+                (article) => `
+<div class="news-card">
+<img src="${article.image}" alt="${article.title}" class="news-image">
+<div class="news-content">
+<p class="news-date">${formatDate(article.date)}</p>
+<h3 class="news-title">${article.title}</h3>
+<p class="news-description">${article.description}</p>
+<a href="news" class="news-link" onclick="viewFullArticle(${article.id});">Read More →</a>
+</div>
+</div>
+`,
+            )
+            .join("");
     } catch (error) {
         console.error("Error loading latest news:", error);
         newsContainer.innerHTML = '<p class="error-message">Failed to load news.</p>';

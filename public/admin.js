@@ -864,66 +864,68 @@ function handleNavigation(e) {
 }
 
 // Handle testimonial form submission
-// Handle testimonial form submission
 async function handleTestimonialSubmit(e) {
     e.preventDefault();
 
-    const name = document.getElementById("testimonialName").value.trim();
-    const role = document.getElementById("testimonialRole").value.trim();
-    const text = document.getElementById("testimonialText").value.trim();
-    const rating = parseInt(document.getElementById("testimonialRating").value, 10);
-
-    // Validation
-    if (!name || !role || !text || isNaN(rating) || rating < 1 || rating > 5) {
-        await showAdminAlert("Please fill in all required fields correctly. Rating must be between 1 and 5.", "Validation Error");
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("role", role);
-    formData.append("text", text);
-    formData.append("rating", rating);
-
-    // Append image file if selected
-    const imageInput = document.getElementById("testimonialImageInput"); // Assuming this is the file input ID
-    if (imageInput.files.length > 0) {
-        formData.append("image", imageInput.files[0]); // Append the file under the 'image' key
-    }
-
     try {
-        showLoader("Saving testimonial..."); // Show loader during submission
+        showLoader("Saving testimonial...");
+
         const testimonialId = document.getElementById("testimonialId").value;
-        const method = testimonialId ? 'PUT' : 'POST';
-        const url = testimonialId ? `/api/testimonials/${testimonialId}` : '/api/testimonials';
+        const method = testimonialId ? "PUT" : "POST";
+        const url = testimonialId 
+            ? `/api/testimonials/${testimonialId}` 
+            : "/api/testimonials";
+
+        const formData = new FormData();
+
+        formData.append("name", document.getElementById("testimonialName").value);
+        formData.append("role", document.getElementById("testimonialRole").value);
+        formData.append("text", document.getElementById("testimonialText").value);
+        formData.append(
+            "rating", 
+            Number.parseInt(document.getElementById("testimonialRating").value)
+        );
+
+        const imageInput = document.getElementById("testimonialImageInput");
+
+        if (imageInput && imageInput.files.length > 0) {
+            formData.append("image", imageInput.files[0]); // MUST be "image"
+        }
 
         const response = await fetch(url, {
             method: method,
-            // Do NOT set Content-Type header when using FormData, the browser sets it with the boundary
-            // headers: { 'Content-Type': 'application/json' }, // REMOVE THIS LINE
-            body: formData, // Send FormData
+            body: formData
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            const errorData = await response.json().catch(() => ({
+                error: `HTTP error! status: ${response.status}`
+            }));
+            throw new Error(errorData.error);
         }
 
         const result = await response.json();
+
         if (result.success) {
             loadTestimonials();
             hideTestimonialForm();
-            await showAdminAlert(testimonialId ? "Testimonial updated!" : "Testimonial added!", "Success");
+            await showAdminAlert(
+                testimonialId ? "Testimonial updated!" : "Testimonial added!",
+                "Success"
+            );
         } else {
             throw new Error(result.error || "Failed to save testimonial.");
         }
+
     } catch (error) {
         console.error("Error saving testimonial:", error);
         await showAdminAlert(`Error saving testimonial: ${error.message}`, "Error");
     } finally {
-        hideLoader(); // Always hide loader after submission
+        hideLoader();
     }
 }
+
+
 
 function editTestimonial(testimonialId) {
     fetch(`/api/testimonials/${testimonialId}`) // Use route param, not query param
@@ -943,26 +945,15 @@ function editTestimonial(testimonialId) {
             document.getElementById("testimonialRole").value = testimonial.role;
             document.getElementById("testimonialText").value = testimonial.text;
             document.getElementById("testimonialRating").value = testimonial.rating;
-
-            // Handle existing image URL display (optional, for context)
-            // Clear any old preview first
-            const previewContainer = document.getElementById("testimonialImagePreview");
-            if (previewContainer) {
-                 previewContainer.innerHTML = ''; // Clear previous
-                 if (testimonial.image) {
-                     // Optionally show a placeholder or info text if image exists
-                     // Note: Don't try to set the file input value directly.
-                     // A div showing the existing image might be better if desired.
-                     // For simplicity here, just log or show a message.
-                     console.log("Existing testimonial image URL:", testimonial.image);
-                     // Example: Create an image tag for display only
-                     const existingImgTag = document.createElement('div'); // Or an img tag if preferred
-                     existingImgTag.innerHTML = `<p>Current Image: <a href="${testimonial.image}" target="_blank">View</a></p>`; // Or an <img> tag
-                     previewContainer.appendChild(existingImgTag);
-                 }
+            if (testimonial.image) {
+                if (testimonial.image.startsWith("http") || testimonial.image.startsWith("/")) {
+                    document.getElementById("testimonialImageUrl").value = testimonial.image;
+                    testimonialImage = "";
+                } else {
+                    testimonialImage = testimonial.image;
+                    updateTestimonialImagePreview();
+                }
             }
-
-
             document.getElementById("testimonialFormTitle").textContent = "Edit Testimonial";
             document.getElementById("testimonialFormContainer").style.display = "block";
         })
@@ -1092,52 +1083,33 @@ function removeTestimonialImage() {
 }
 
 // Handle news form submission
-// Handle news form submission
-// Handle news form submission
 async function handleNewsSubmit(e) {
     e.preventDefault();
-
-    const title = document.getElementById("newsTitle").value.trim();
-    const description = document.getElementById("newsDescription").value.trim();
-    const fullContent = document.getElementById("newsContent").value.trim();
-    const dateValue = document.getElementById("newsDate").value;
-
-    // Validation
-    if (!title || !description || !fullContent || !dateValue) {
-         await showAdminAlert("Please fill in all required fields including the date.", "Validation Error");
-         return;
-    }
-
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("fullContent", fullContent);
-    formData.append("date", formatDate(dateValue)); // Use your formatDate helper if needed
-
-    // Append image file if selected
-    const imageInput = document.getElementById("newsImageInput"); // Assuming this is the file input ID
-    if (imageInput.files.length > 0) {
-        formData.append("image", imageInput.files[0]); // Append the file under the 'image' key
-    }
+    let finalImage = newsImage || document.getElementById("newsImage").value || "";
+    const newsData = {
+        title: document.getElementById("newsTitle").value,
+        description: document.getElementById("newsDescription").value,
+        fullContent: document.getElementById("newsContent").value, // Save full content
+        image: finalImage,
+        date: formatDate(document.getElementById("newsDate").value),
+    };
 
     try {
         showLoader("Saving article..."); // Show loader during submission
         const newsId = document.getElementById("newsId").value;
         const method = newsId ? 'PUT' : 'POST';
-        const url = newsId ? `/api/news/${newsId}` : '/api/news'; // CORRECTED LINE
-
+        const url = newsId ? `/api/news/${newsId}` : '/api/news';
         const response = await fetch(url, {
             method: method,
-            // Do NOT set Content-Type header when using FormData
-            // headers: { 'Content-Type': 'application/json' }, // REMOVE THIS LINE
-            body: formData, // Send FormData
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(newsData),
         });
-
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
+            const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` })); // Attempt to read error response
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
-
         const result = await response.json();
         if (result.success) {
             loadNews();
@@ -1147,8 +1119,14 @@ async function handleNewsSubmit(e) {
             throw new Error(result.error || "Failed to save article.");
         }
     } catch (error) {
-        console.error("Error saving article:", error);
-        await showAdminAlert(`Error saving article: ${error.message}`, "Error");
+        console.error("Error saving article:", error); // Log the raw error for debugging
+        // Check for the specific error indicating server returned HTML (likely due to payload size)
+        if (error.message.includes("DOCTYPE") || error.message.includes("Unexpected token '<'")) {
+            await showAdminAlert("File size too large. Please reduce image size and try again.", "File Size Error");
+        } else {
+            // Handle other potential errors
+            await showAdminAlert(`Error saving article: ${error.message}`, "Error");
+        }
     } finally {
         hideLoader(); // Always hide loader after submission
     }
@@ -1195,7 +1173,6 @@ async function loadNews() {
 }
 
 // Edit news
-// Edit news
 function editNews(newsId) {
     fetch(`/api/news/${newsId}`) // Use route param, not query param
         .then(response => {
@@ -1213,34 +1190,19 @@ function editNews(newsId) {
             document.getElementById("newsTitle").value = news.title;
             document.getElementById("newsDescription").value = news.description;
             document.getElementById("newsContent").value = news.fullContent || news.body || news.description;
-            // Assuming the date comes back in MM/DD/YYYY format or similar, convert if needed
-            // If server sends YYYY-MM-DD, reverseDateFormat might be needed
-            // If server sends "Jan 1, 2024", parse it differently if necessary
-            // For now, assuming it's compatible with the input date format (YYYY-MM-DD)
-            // If formatDate returns M/D/YYYY, you might need to parse it back or adjust input format
-            // Let's assume the date input expects YYYY-MM-DD internally
-             const inputDate = new Date(news.date); // Parses "Jan 1, 2024" etc.
-             document.getElementById("newsDate").value = inputDate.toISOString().split('T')[0]; // Sets YYYY-MM-DD
-
-            // Handle existing image URL display (optional, for context)
-            const previewContainer = document.getElementById("newsImagePreview");
-            if (previewContainer) {
-                 previewContainer.innerHTML = ''; // Clear previous
-                 if (news.image) {
-                     // Optionally show a placeholder or info text if image exists
-                     console.log("Existing news image URL:", news.image);
-                     // Example: Create an image tag for display only
-                     const existingImgTag = document.createElement('div'); // Or an <img> tag if preferred
-                     existingImgTag.innerHTML = `<p>Current Image: <a href="${news.image}" target="_blank">View</a></p>`; // Or an <img> tag
-                     previewContainer.appendChild(existingImgTag);
-                 }
-            }
-
+            document.getElementById("newsImage").value = news.image || "";
+            document.getElementById("newsDate").value = reverseDateFormat(news.date);
             document.getElementById("newsFormTitle").textContent = "Edit Article";
             document.getElementById("newsFormContainer").style.display = "block";
-
-            // Note: Do NOT set the value of the file input (#newsImageInput) here.
-            // It's impossible for security reasons.
+            if (news.image) {
+                if (news.image.startsWith("http") || news.image.startsWith("/")) {
+                    document.getElementById("newsImage").value = news.image;
+                    newsImage = "";
+                } else {
+                    newsImage = news.image;
+                    updateNewsImagePreview();
+                }
+            }
         })
         .catch(error => {
             console.error("Error fetching news for edit:", error);

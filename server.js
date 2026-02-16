@@ -601,7 +601,8 @@ app.get('/api/testimonials/:id', async (req, res) => {
 app.post('/api/testimonials', uploadTestimonial.single('image'), async (req, res) => {
   try {
     const { name, role, text, rating } = req.body;
-    const imageUrl = req.file ? req.file.secure_url : null;
+
+    const imageUrl = req.file ? req.file.path : null;
 
     const result = await pool.query(
       'INSERT INTO testimonials (name, role, text, rating, image) VALUES ($1, $2, $3, $4, $5) RETURNING *',
@@ -616,18 +617,24 @@ app.post('/api/testimonials', uploadTestimonial.single('image'), async (req, res
 });
 
 
+
 app.put('/api/testimonials/:id', uploadTestimonial.single('image'), async (req, res) => {
   try {
     const { name, role, text, rating } = req.body;
     let imageUrl;
 
-    // If a new image is uploaded, use it; else keep existing
-    if (req.file && req.file.secure_url) {
-      imageUrl = req.file.secure_url;
+    if (req.file) {
+      imageUrl = req.file.path;   // ✅ THIS IS THE FIX
     } else {
-      // Fetch existing image from DB
-      const existing = await pool.query('SELECT image FROM testimonials WHERE id = $1', [req.params.id]);
-      if (existing.rows.length === 0) return res.status(404).json({ error: 'Testimonial not found' });
+      const existing = await pool.query(
+        'SELECT image FROM testimonials WHERE id = $1',
+        [req.params.id]
+      );
+
+      if (existing.rows.length === 0) {
+        return res.status(404).json({ error: 'Testimonial not found' });
+      }
+
       imageUrl = existing.rows[0].image;
     }
 
@@ -637,11 +644,13 @@ app.put('/api/testimonials/:id', uploadTestimonial.single('image'), async (req, 
     );
 
     res.json({ success: true, testimonial: result.rows[0] });
+
   } catch (err) {
     console.error('Error updating testimonial:', err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 
 app.delete('/api/testimonials/:id', async (req, res) => {

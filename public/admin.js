@@ -1093,6 +1093,7 @@ function removeTestimonialImage() {
 
 // Handle news form submission
 // Handle news form submission
+// Handle news form submission
 async function handleNewsSubmit(e) {
     e.preventDefault();
 
@@ -1123,7 +1124,7 @@ async function handleNewsSubmit(e) {
         showLoader("Saving article..."); // Show loader during submission
         const newsId = document.getElementById("newsId").value;
         const method = newsId ? 'PUT' : 'POST';
-        const url = newsId ? `/api/news/${newsId}` : '/api/news`;
+        const url = newsId ? `/api/news/${newsId}` : '/api/news'; // CORRECTED LINE
 
         const response = await fetch(url, {
             method: method,

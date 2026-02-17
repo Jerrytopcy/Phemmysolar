@@ -1244,19 +1244,25 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         }
 
         // Prepare Remita payload
-        const payload = {
-            serviceTypeId: Number(process.env.REMITA_SERVICE_TYPE_ID),
-            amount: Number(total),
-            orderId: orderId.toString(),
-            payerName: req.user.username,
-            payerEmail: req.user.email,
-            // Ensure proper Nigerian format without + or spaces
-            payerPhone: (req.user.phone || '2348000000000').toString().replace(/\D/g, ''),
-            description: 'Order Payment'
-        };
+      const payload = {
+          serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID, // string
+          amount: total.toString(), // also send as string
+          orderId: orderId.toString(),
+          payerName: req.user.username,
+          payerEmail: req.user.email,
+          payerPhone: (req.user.phone || '2348000000000').toString().replace(/\D/g, ''),
+          description: 'Order Payment'
+      };
+
 
         // Auth header
         const auth = Buffer.from(`${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_API_KEY}`).toString('base64');
+        // 🔎 DEBUG LOGS
+        console.log("===== REMITA DEBUG =====");
+        console.log("Sending payload:", payload);
+        console.log("Auth (raw):", `${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_API_KEY}`);
+        console.log("URL:", REMITA_BASE_URL);
+        console.log("========================");
 
 
         // Send to Remita
@@ -1268,6 +1274,7 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             },
             body: JSON.stringify(payload)
         });
+
 
         const raw = await remitaRes.text();
         console.log('✅ Remita raw response:', raw);
@@ -1309,7 +1316,6 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         payerPhone: req.user.phone || "2348000000000", // fallback phone
         returnUrl: `${process.env.FRONTEND_URL}/account`
     });
-
 
     } catch (err) {
         console.error('❌ Remita initiation error:', err);

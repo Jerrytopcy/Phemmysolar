@@ -1244,15 +1244,15 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         }
 
         // Prepare Remita payload
-      const payload = {
-          serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID, // string
-          amount: total.toString(), // also send as string
+        const payload = {
+          serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID.toString(),
+          amount: total.toFixed(2).toString(), // convert number to string with 2 decimals
           orderId: orderId.toString(),
-          payerName: req.user.username,
-          payerEmail: req.user.email,
-          payerPhone: (req.user.phone || '2348000000000').toString().replace(/\D/g, ''),
-          description: 'Order Payment'
-      };
+          payerName: req.user.username || "No Name",
+          payerEmail: req.user.email || "test@example.com",
+          payerPhone: (req.user.phone || "08000000000").toString().replace(/\D/g, ''),
+          description: "Order Payment"
+        };
 
 
         // Auth header

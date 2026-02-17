@@ -879,7 +879,7 @@ section {
 #accountModal .modal-content {
     /* Ensure the content area can scroll if needed */
     max-height: 80vh; /* Set a maximum height for the content area */
-    overflow-y: hidden; /* Enable vertical scrolling */
+    overflow-y: auto; /* Enable vertical scrolling */
     padding: 2rem;
     box-sizing: border-box; /* Ensure padding is included in the height calculation */
 }
@@ -3372,21 +3372,3 @@ section {
     cursor: not-allowed;
 }
 /* Scroll-triggered slide-in animations */
-.slide-in {
-  opacity: 0;
-  transform: translateY(80px);
-  transition: opacity 0.6s ease-out, transform .6s ease-out;
-}
-
-.slide-in.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Optional: stagger delay for multiple items */
-.slide-in.delay-1 { transition-delay: 0.1s; }
-.slide-in.delay-2 { transition-delay: 0.2s; }
-.slide-in.delay-3 { transition-delay: 0.3s; }
-html {
-  scroll-behavior: smooth;
-}

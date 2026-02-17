@@ -205,7 +205,6 @@ async function proceedToCheckout() {
     showLoader("Processing your order...");
 
     try {
-        // Prepare order items and calculate total
         let total = 0;
         const orderItems = [];
 
@@ -215,7 +214,6 @@ async function proceedToCheckout() {
             const product = await productRes.json();
 
             let price = 0;
-
             if (typeof product.price === 'string') {
                 price = Number(product.price.replace(/\D/g, '')) || 0;
             } else if (typeof product.price === 'number') {
@@ -232,11 +230,9 @@ async function proceedToCheckout() {
             });
         }
 
-        if (orderItems.length === 0) {
-            throw new Error("No valid products found in cart.");
-        }
+        if (orderItems.length === 0) throw new Error("No valid products found in cart.");
 
-        // Get user's current address
+        // Get user info
         const userRes = await fetch('https://www.phemmysolar.com/api/user', {
             headers: { Authorization: `Bearer ${token}` }
         });
@@ -251,10 +247,9 @@ async function proceedToCheckout() {
             country: "Nigeria"
         };
 
-        // Create order payload
         const orderData = {
             items: orderItems,
-            total: total,
+            total: Number(total).toFixed(2).toString(), // string with 2 decimals
             deliveryAddress
         };
 
@@ -288,27 +283,26 @@ async function proceedToCheckout() {
 
         // Initialize Remita modal
         const paymentEngine = RmPaymentEngine.init({
-        key: 'QzAwMDAyNzEyNTl8MTEwNjE4NjF8OWZjOWYwNmMyZDk3MDRhYWM3YThiOThlNTNjZTE3ZjYxOTY5NDdmZWE1YzU3NDc0ZjE2ZDZjNTg1YWYxNWY3NWM4ZjMzNzZhNjNhZWZlOWQwNmJhNTFkMjIxYTRiMjYzZDkzNGQ3NTUxNDIxYWNlOGY4ZWEyODY3ZjlhNGUwYTY=',
-        customerId: result.orderId.toString(),
-        firstName: result.payerName,
-        email: result.payerEmail,
-        amount: Number(result.amount),
-        narration: 'Order Payment',
-        transactionId: result.rrr,
-        phoneNumber: (result.payerPhone || '2348000000000').replace(/\D/g, ''),
-        onSuccess: function(response) {
-            console.log('Payment successful:', response);
-            window.location.href = result.returnUrl;
-        },
-        onError: function(response) {
-            console.error('Payment failed:', response);
-            showCustomAlert("Payment failed. Please try again.", "Payment Error");
-        },
-        onClose: function() {
-            console.log('Remita modal closed');
-        }
-    });
-
+            key: 'QzAwMDAyNzEyNTl8MTEwNjE4NjF8OWZjOWYwNmMyZDk3MDRhYWM3YThiOThlNTNjZTE3ZjYxOTY5NDdmZWE1YzU3NDc0ZjE2ZDZjNTg1YWYxNWY3NWM4ZjMzNzZhNjNhZWZlOWQwNmJhNTFkMjIxYTRiMjYzZDkzNGQ3NTUxNDIxYWNlOGY4ZWEyODY3ZjlhNGUwYTY=',
+            customerId: result.orderId.toString(),
+            firstName: result.payerName || "No Name",
+            email: result.payerEmail || "test@example.com",
+            amount: result.amount.toString(), // string
+            narration: 'Order Payment',
+            transactionId: result.rrr.toString(), // string
+            phoneNumber: (result.payerPhone || '08000000000').toString().replace(/\D/g, ''),
+            onSuccess: function(response) {
+                console.log('Payment successful:', response);
+                window.location.href = result.returnUrl;
+            },
+            onError: function(response) {
+                console.error('Payment failed:', response);
+                showCustomAlert("Payment failed. Please try again.", "Payment Error");
+            },
+            onClose: function() {
+                console.log('Remita modal closed');
+            }
+        });
 
         paymentEngine.showPaymentWidget();
 
@@ -319,6 +313,7 @@ async function proceedToCheckout() {
         hideLoader();
     }
 }
+
 
 
 

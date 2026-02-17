@@ -1317,6 +1317,25 @@ function initMobileMenu() {
 
 // Initialize everything when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
+
+    const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+        }
+      });
+    },
+    {
+      threshold: 0.1, // Trigger when 10% of element is visible
+    }
+  );
+
+  // Observe all elements with class 'slide-in'
+  document.querySelectorAll(".slide-in").forEach((el) => {
+    observer.observe(el);
+  });
+  
     // Initialize cart from sessionStorage
     cart = JSON.parse(sessionStorage.getItem('cart')) || [];
 

@@ -316,7 +316,6 @@ async function proceedToCheckout() {
 
 
 
-
 // Close Cart Modal
 function closeCartModal() {
     const modal = document.getElementById("cartModal");

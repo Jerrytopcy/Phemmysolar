@@ -210,7 +210,7 @@ async function proceedToCheckout() {
         const orderItems = [];
 
         for (const cartItem of cart) {
-            const productRes = await fetch(`https://www.phemmysolar.com/api/products/${cartItem.productId}`);
+            const productRes = await fetch(`/api/products/${cartItem.productId}`);
             if (!productRes.ok) continue;
             const product = await productRes.json();
 
@@ -237,7 +237,7 @@ async function proceedToCheckout() {
         }
 
         // Get user's current address
-        const userRes = await fetch('https://www.phemmysolar.com/api/user', {
+        const userRes = await fetch('/api/user', {
             headers: { Authorization: `Bearer ${token}` }
         });
         if (!userRes.ok) throw new Error("Failed to load user profile");
@@ -259,7 +259,7 @@ async function proceedToCheckout() {
         };
 
         // Send order to backend for Remita initiation
-        const orderRes = await fetch('https://www.phemmysolar.com/api/orders/remita-initiate', {
+        const orderRes = await fetch('/api/orders/remita-initiate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

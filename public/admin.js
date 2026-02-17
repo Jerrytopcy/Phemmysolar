@@ -765,7 +765,7 @@ async function updateOrderStatus(orderId, newStatus) {
 // Delete product
 async function deleteProduct(productId) {
     const confirmed = await showAdminConfirm(
-        "Are you sure you want to delete this product? This action cannot be undone.",
+        "Are you sure you want to deactivate this product? This action cannot be undone.",
         "Delete Product",
     );
     if (confirmed) {
@@ -781,13 +781,13 @@ async function deleteProduct(productId) {
             const result = await response.json();
             if (result.success) {
                 loadProducts(); // Reload the product list
-                await showAdminAlert("Product deleted successfully!", "Success");
+                await showAdminAlert("Product deactivated successfully!", "Success");
             } else {
-                throw new Error(result.error || "Failed to delete product.");
+                throw new Error(result.error || "Failed to deactivate product.");
             }
         } catch (error) {
-            console.error("Error deleting product:", error);
-            await showAdminAlert(`Error deleting product: ${error.message}`, "Error");
+            console.error("Error deactivating product:", error);
+            await showAdminAlert(`Error deactivating product: ${error.message}`, "Error");
         } finally {
             hideLoader(); // Hide loader after deleting product
         }

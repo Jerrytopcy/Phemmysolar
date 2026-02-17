@@ -1335,7 +1335,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".slide-in").forEach((el) => {
     observer.observe(el);
   });
-  
+
     // Initialize cart from sessionStorage
     cart = JSON.parse(sessionStorage.getItem('cart')) || [];
 
@@ -2037,3 +2037,10 @@ function hideValidationMessages() {
         hideValidationMessage(fieldType);
     });
 }
+// In your modal open function (e.g., when showing #accountModal):
+document.body.style.overflow = 'hidden';
+document.body.style.paddingRight = window.innerWidth - document.documentElement.clientWidth + 'px'; // compensate for scrollbar loss
+
+// On close:
+document.body.style.overflow = '';
+document.body.style.paddingRight = '';

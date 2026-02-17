@@ -214,7 +214,14 @@ async function proceedToCheckout() {
             if (!productRes.ok) continue;
             const product = await productRes.json();
 
-            const price = Number(product.price.replace(/\D/g, ''));
+            let price = 0;
+
+            if (typeof product.price === 'string') {
+                price = Number(product.price.replace(/\D/g, '')) || 0;
+            } else if (typeof product.price === 'number') {
+                price = product.price;
+            }
+
             const itemTotal = price * cartItem.quantity;
             total += itemTotal;
 

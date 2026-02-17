@@ -1251,7 +1251,7 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
             payerName: req.user.username,
             payerEmail: req.user.email,
             // Ensure proper Nigerian format without + or spaces
-            payerPhone: req.user.phone.replace(/\D/g,''),
+            payerPhone: (req.user.phone || '2348000000000').toString().replace(/\D/g, ''),
             description: 'Order Payment'
         };
 
@@ -1259,9 +1259,10 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         const auth = Buffer.from(`${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_SECRET_KEY}`).toString('base64');
 
         // Determine URL dynamically based on test mode
-        const REMITA_BASE_URL = process.env.REMITA_TEST_MODE === true
-            ? 'https://demo.remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit'
-            : 'https://api.remita.net/echannelsvc/merchant/api/paymentinit';
+        const REMITA_BASE_URL = process.env.REMITA_TEST_MODE === 'true'
+    ? 'https://demo.remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit'
+    : 'https://api.remita.net/echannelsvc/merchant/api/paymentinit';
+
 
         // Send to Remita
         const remitaRes = await fetch(REMITA_BASE_URL, {

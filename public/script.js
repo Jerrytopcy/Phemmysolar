@@ -288,7 +288,7 @@ async function proceedToCheckout() {
 
         // Initialize Remita modal
         const paymentEngine = RmPaymentEngine.init({
-            key: 'pk_test_15P5ka7mdPxzHdp4hvLT84+iNhArU/Xvna9NpJIJBpIBXJFl5FtCuQP574mdPMrq', // test key
+            key: 'QzAwMDAyNzEyNTl8MTEwNjE4NjF8OWZjOWYwNmMyZDk3MDRhYWM3YThiOThlNTNjZTE3ZjYxOTY5NDdmZWE1YzU3NDc0ZjE2ZDZjNTg1YWYxNWY3NWM4ZjMzNzZhNjNhZWZlOWQwNmJhNTFkMjIxYTRiMjYzZDkzNGQ3NTUxNDIxYWNlOGY4ZWEyODY3ZjlhNGUwYTY=', // test key
             customerId: result.orderId.toString(),
             firstName: result.payerName,
             email: result.payerEmail,

@@ -3374,8 +3374,8 @@ section {
 /* Scroll-triggered slide-in animations */
 .slide-in {
   opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  transform: translateY(80px);
+  transition: opacity 0.6s ease-out, transform .6s ease-out;
 }
 
 .slide-in.visible {

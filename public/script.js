@@ -286,6 +286,8 @@ const orderData = {
 }
 
 function openManualPaymentModal(orderId, total) {
+document.getElementById('accountModal').classList.remove('active');
+document.body.style.overflow = '';
   const modal = document.getElementById('manualPaymentModal');
   const summary = document.getElementById('manualOrderSummary');
   

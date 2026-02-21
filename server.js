@@ -1061,34 +1061,26 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     const result = await pool.query(`
-  SELECT 
-    o.id,
-    o.date,
-    o.total,
-    o.status,
-    o.payment_status,
-    o.transaction_id,   -- ✅ ADD THIS
-    o.delivery_address,
-    json_agg(
-      json_build_object(
-        'productId', oi.product_id,
-        'quantity', oi.quantity,
-        'price', oi.price
-      )
-    ) AS items
-  FROM orders o
-  JOIN order_items oi ON oi.order_id = o.id
-  WHERE o.user_id = $1
-  GROUP BY 
-    o.id, 
-    o.date, 
-    o.total, 
-    o.status, 
-    o.payment_status,
-    o.transaction_id,
-    o.delivery_address
-  ORDER BY o.date DESC
-`, [userId]);
+      SELECT 
+        o.id,
+        o.date,
+        o.total,
+        o.status,
+        o.payment_status,
+        o.delivery_address,
+        json_agg(
+          json_build_object(
+            'productId', oi.product_id,
+            'quantity', oi.quantity,
+            'price', oi.price
+          )
+        ) AS items
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      WHERE o.user_id = $1
+      GROUP BY o.id
+      ORDER BY o.date DESC
+    `, [userId]);
 
     res.json(result.rows);
 

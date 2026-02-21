@@ -249,7 +249,7 @@ const orderData = {
     total: total,
     deliveryAddress: user.address,
     paymentStatus: "pending",
-    paymentReference: null
+    paymentReference: "manual"
 };
 
         // Create order immediately as pending
@@ -291,7 +291,7 @@ function openManualPaymentModal(orderId, total) {
 
     summary.innerHTML = `
         <p><strong>Order ID:</strong> ${orderId}</p>
-        <p><strong>Total:</strong> ₦${Number(total).toLocaleString()}</p>
+        <p><strong>Total:</strong> ₦${(total).toLocaleString()}</p>
     `;
 
     modal.classList.add('active');

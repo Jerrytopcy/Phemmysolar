@@ -254,19 +254,13 @@ const orderData = {
 
         // Create order immediately as pending
         const orderRes = await fetch('/api/orders', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`
-  },
-  body: JSON.stringify({
-    items: cartItems,
-    total: cartTotal, // ✅ MUST BE HERE
-    deliveryAddress,
-    paymentStatus: 'pending',
-    paymentReference: 'MANUAL'
-  })
-});
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(orderData)
+        });
 
         const result = await orderRes.json();
 

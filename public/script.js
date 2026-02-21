@@ -325,45 +325,54 @@ function openManualPaymentModal(orderId, total) {
     // =============================
 // SECURE COPY HELPER (Copied Text Version)
 // =============================
-    function setupCopyButtons(container) {
+  function setupCopyButtons(container) {
     container.querySelectorAll('.copy-btn').forEach(button => {
         button.addEventListener('click', async function () {
-        const textToCopy = this.getAttribute('data-copy');
-        const icon = this.querySelector('i');
+            const textToCopy = this.getAttribute('data-copy');
+            const icon = this.querySelector('i');
 
-        try {
-            // Copy to clipboard
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(textToCopy);
-            } else {
-            const textarea = document.createElement('textarea');
-            textarea.value = textToCopy;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.focus();
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
+            try {
+                // Copy to clipboard
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(textToCopy);
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = textToCopy;
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.focus();
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                }
+
+                // Show "Copied!" text temporarily
+                if (icon) {
+                    // Hide the icon
+                    icon.style.display = 'none';
+
+                    // Create temporary span
+                    const copiedSpan = document.createElement('span');
+                    copiedSpan.textContent = 'Copied!';
+                    copiedSpan.style.fontWeight = 'bold';
+                    copiedSpan.style.color = '#28a745'; // green text
+                    copiedSpan.classList.add('copied-temp');
+                    button.appendChild(copiedSpan);
+
+                    setTimeout(() => {
+                        // Remove temporary text and show icon again
+                        copiedSpan.remove();
+                        icon.style.display = '';
+                    }, 1500);
+                }
+
+            } catch (err) {
+                alert('Copy failed. Please copy manually.');
             }
-
-            // Show "Copied!" text
-if (icon) {
-    const originalContent = button.innerHTML; // save entire button content
-    button.innerHTML = 'Copied!'; // temporarily show text
-
-    setTimeout(() => {
-        button.innerHTML = originalContent; // restore original icon
-        if (window.lucide) lucide.createIcons(); // re-render icon
-    }, 1500);
-}
-
-        } catch (err) {
-            alert('Copy failed. Please copy manually.');
-        }
         });
     });
-    }
+}
 
   // =============================
   // FETCH BANK DETAILS

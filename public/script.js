@@ -353,15 +353,20 @@ function openManualPaymentModal(orderId, total) {
     }
   };
   
-  document.getElementById('confirmManualPaymentBtn').onclick = function() {
+document.getElementById('confirmManualPaymentBtn').onclick = function() {
     modal.classList.remove('active');
     document.body.style.overflow = "";
-    showCustomAlert("Order placed successfully. Upload your payment receipt to complete the process.","Order Pending");
-  };
+    // Changed message to be more accurate
+    showCustomAlert("Payment receipt upload completed. Your order will be processed once payment is confirmed by admin.", "Receipt Uploaded");
+};
 }
 
 function closeManualPaymentModal() {
-    document.getElementById('manualPaymentModal').classList.remove('active');
+    const modal = document.getElementById('manualPaymentModal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = "";
+    }
 }
 
 // Close Cart Modal
@@ -539,9 +544,12 @@ async function loadOrderHistory() {
                 
             // Build action buttons based on order status and receipt status
             let actionButtons = '';
+            // Fixed code
             if (order.status === 'pending' && !hasReceipt) {
                 actionButtons = `
-                    <button class="btn btn-primary" onclick="openReceiptUploadModal('${order.id}', ${order.total})">Upload Payment Receipt</button>
+                    <button class="btn btn-primary" onclick="reopenPaymentModal('${order.id}', ${order.total})">
+                        Make Payment
+                    </button>
                 `;
             } else if (order.status === 'pending' && hasReceipt) {
                 actionButtons = `
@@ -656,6 +664,48 @@ function openReceiptUploadModal(orderId, total) {
     };
 }
 
+// Reopen the payment modal for existing orders
+function reopenPaymentModal(orderId, total) {
+    // First, close any existing modals
+    closeCartModal();
+    closeManualPaymentModal();
+    
+    // Open the manual payment modal with the existing order details
+    openManualPaymentModal(orderId, total);
+    
+    // Update the modal content to reflect this is for an existing order
+    const modal = document.getElementById('manualPaymentModal');
+    if (modal) {
+        const summary = document.getElementById('manualOrderSummary');
+        if (summary) {
+            summary.innerHTML = `
+                <p><strong>Order ID:</strong> ${orderId}</p>
+                <p><strong>Total:</strong> ₦${(total).toLocaleString()}</p>
+                <p><strong>Payment Instructions:</strong></p>
+                <ul>
+                    <li>Make payment to the account provided by the admin</li>
+                    <li>Upload your payment receipt below</li>
+                </ul>
+                
+                <div class="receipt-upload-section">
+                    <label for="paymentReceipt">Upload Payment Receipt:</label>
+                    <input type="file" id="paymentReceipt" accept="image/*,.pdf">
+                    <button class="btn btn-primary" id="uploadReceiptBtn">Upload Receipt</button>
+                    <div id="receiptUploadStatus" class="upload-status"></div>
+                </div>
+            `;
+        }
+        
+        // Update the confirm button text to be more appropriate
+        const confirmBtn = document.getElementById('confirmManualPaymentBtn');
+        if (confirmBtn) {
+            confirmBtn.textContent = "Close";
+        }
+        
+        modal.classList.add('active');
+        document.body.style.overflow = "hidden";
+    }
+}
 // Update UI elements based on user status and cart
 function updateUIBasedOnUser() {
     const loginBtn = document.getElementById('loginBtn');

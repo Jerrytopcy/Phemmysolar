@@ -354,10 +354,19 @@ function openManualPaymentModal(orderId, total) {
   };
   
 document.getElementById('confirmManualPaymentBtn').onclick = function() {
-    modal.classList.remove('active');
-    document.body.style.overflow = "";
-    // Changed message to be more accurate
-    showCustomAlert("Payment receipt upload completed. Your order will be processed once payment is confirmed by admin.", "Receipt Uploaded");
+  const uploadBtn = document.getElementById('uploadReceiptBtn');
+  const statusElement = document.getElementById('receiptUploadStatus');
+  
+  // Check if upload button is still enabled (meaning no receipt was uploaded)
+  if (!uploadBtn.disabled) {
+    statusElement.innerHTML = '<span class="error">Please upload your payment receipt before proceeding.</span>';
+    return;
+  }
+  
+  // Only close modal if receipt was successfully uploaded
+  modal.classList.remove('active');
+  document.body.style.overflow = "";
+  showCustomAlert("Payment receipt upload completed. Your order will be processed once payment is confirmed by admin.", "Receipt Uploaded");
 };
 }
 
@@ -666,44 +675,17 @@ function openReceiptUploadModal(orderId, total) {
 
 // Reopen the payment modal for existing orders
 function reopenPaymentModal(orderId, total) {
-    // First, close any existing modals
+    // Close any existing modals
     closeCartModal();
     closeManualPaymentModal();
     
-    // Open the manual payment modal with the existing order details
+    // Reopen the manual payment modal
     openManualPaymentModal(orderId, total);
     
-    // Update the modal content to reflect this is for an existing order
-    const modal = document.getElementById('manualPaymentModal');
-    if (modal) {
-        const summary = document.getElementById('manualOrderSummary');
-        if (summary) {
-            summary.innerHTML = `
-                <p><strong>Order ID:</strong> ${orderId}</p>
-                <p><strong>Total:</strong> ₦${(total).toLocaleString()}</p>
-                <p><strong>Payment Instructions:</strong></p>
-                <ul>
-                    <li>Make payment to the account provided by the admin</li>
-                    <li>Upload your payment receipt below</li>
-                </ul>
-                
-                <div class="receipt-upload-section">
-                    <label for="paymentReceipt">Upload Payment Receipt:</label>
-                    <input type="file" id="paymentReceipt" accept="image/*,.pdf">
-                    <button class="btn btn-primary" id="uploadReceiptBtn">Upload Receipt</button>
-                    <div id="receiptUploadStatus" class="upload-status"></div>
-                </div>
-            `;
-        }
-        
-        // Update the confirm button text to be more appropriate
-        const confirmBtn = document.getElementById('confirmManualPaymentBtn');
-        if (confirmBtn) {
-            confirmBtn.textContent = "Close";
-        }
-        
-        modal.classList.add('active');
-        document.body.style.overflow = "hidden";
+    // Only update confirm button text
+    const confirmBtn = document.getElementById('confirmManualPaymentBtn');
+    if (confirmBtn) {
+        confirmBtn.textContent = "I Have Paid";
     }
 }
 // Update UI elements based on user status and cart

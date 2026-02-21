@@ -296,8 +296,8 @@ document.body.style.overflow = '';
     <p><strong>Total:</strong> ₦${(total).toLocaleString()}</p>
     <p><strong>Payment Instructions:</strong></p>
     <ul>
-      <li>Make payment to the account provided by the admin</li>
-      <li>Upload your payment receipt below</li>
+      <li>💳 Make payment to the account provided by the admin</li>
+    <li>📸 Upload your payment receipt below</li>
     </ul>
     
     <div class="receipt-upload-section">

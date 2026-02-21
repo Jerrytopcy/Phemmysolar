@@ -213,7 +213,7 @@ async function proceedToCheckout() {
             if (!productRes.ok) continue;
 
             const product = await productRes.json();
-            const price = Number(product.price) || 0;
+            const price = parseFloat(product.price.replace(/[^\d.-]/g, '')) || 0;
 
             total += price * cartItem.quantity;
 

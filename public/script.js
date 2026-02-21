@@ -293,15 +293,11 @@ function openManualPaymentModal(orderId, total) {
   const summary = document.getElementById('manualOrderSummary');
   const bankDetailsContainer = document.getElementById('bankDetailsContainer');
 
-  // Clear previous content
   summary.innerHTML = '';
-  if (bankDetailsContainer) {
-    bankDetailsContainer.innerHTML = '';
-  }
+  if (bankDetailsContainer) bankDetailsContainer.innerHTML = '';
 
   const paymentReference = `PHSOLAR-${orderId}`;
 
-  // Render summary securely
   summary.innerHTML = `
     <p><strong>Order ID:</strong> ${escapeHTML(orderId)}</p>
     <p><strong>Total:</strong> ₦${escapeHTML(total.toLocaleString())}</p>
@@ -315,21 +311,15 @@ function openManualPaymentModal(orderId, total) {
     <div class="receipt-upload-section">
       <label for="paymentReceipt">Upload Payment Receipt:</label>
       <input type="file" id="paymentReceipt" accept="image/*,.pdf">
+
+      <div id="receiptPreviewContainer" class="receipt-preview"></div>
+
       <button class="btn btn-primary" id="uploadReceiptBtn">Upload Receipt</button>
       <div id="receiptUploadStatus" class="upload-status"></div>
-      <div class="receipt-upload-section">
-  <label for="paymentReceipt">Upload Payment Receipt:</label>
-  <input type="file" id="paymentReceipt" accept="image/*,.pdf">
-  
-  <div id="receiptPreviewContainer" class="receipt-preview"></div>
-  
-  <button class="btn btn-primary" id="uploadReceiptBtn">Upload Receipt</button>
-  <div id="receiptUploadStatus" class="upload-status"></div>
-</div>
     </div>
   `;
 
-  // Fetch secure bank details
+  // Fetch bank details securely
   if (bankDetailsContainer) {
     fetchBankDetails()
       .then(config => {
@@ -343,8 +333,7 @@ function openManualPaymentModal(orderId, total) {
           </p>
         `;
       })
-      .catch(error => {
-        console.error('Bank config error:', error);
+      .catch(() => {
         bankDetailsContainer.innerHTML = `
           <div class="error-banner">
             <p>Payment system unavailable. Contact support.</p>
@@ -356,54 +345,75 @@ function openManualPaymentModal(orderId, total) {
   modal.classList.add('active');
   document.body.style.overflow = "hidden";
 
+  // =============================
+  // FILE PREVIEW LOGIC
+  // =============================
 
-// Live preview handler
-document.getElementById('paymentReceipt').addEventListener('change', function () {
-  const file = this.files[0];
-  const previewContainer = document.getElementById('receiptPreviewContainer');
-  previewContainer.innerHTML = '';
+  const fileInput = document.getElementById('paymentReceipt');
 
-  if (!file) return;
+  fileInput.addEventListener('change', function () {
+    const file = this.files[0];
+    const previewContainer = document.getElementById('receiptPreviewContainer');
+    previewContainer.innerHTML = '';
 
-  const fileType = file.type;
+    if (!file) return;
 
-  // Image preview
-  if (fileType.startsWith('image/')) {
-    const reader = new FileReader();
-    reader.onload = function (e) {
+    const fileType = file.type;
+
+    // Image preview
+    if (fileType.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        previewContainer.innerHTML = `
+          <p><strong>Image Preview:</strong></p>
+          <img src="${e.target.result}" 
+               style="max-width:100%; max-height:300px; margin-top:10px; border-radius:8px;">
+        `;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // PDF preview
+    else if (fileType === 'application/pdf') {
+      const fileURL = URL.createObjectURL(file);
       previewContainer.innerHTML = `
-        <p><strong>Image Preview:</strong></p>
-        <img src="${e.target.result}" style="max-width: 100%; max-height: 300px; border-radius: 8px; margin-top: 10px;">
+        <p><strong>PDF Preview:</strong></p>
+        <iframe src="${fileURL}" 
+                width="100%" 
+                height="400px" 
+                style="margin-top:10px; border-radius:8px;">
+        </iframe>
       `;
-    };
-    reader.readAsDataURL(file);
-  }
+    }
 
-  // PDF preview
-  else if (fileType === 'application/pdf') {
-    const fileURL = URL.createObjectURL(file);
-    previewContainer.innerHTML = `
-      <p><strong>PDF Preview:</strong></p>
-      <iframe src="${fileURL}" width="100%" height="400px" style="margin-top: 10px; border-radius: 8px;"></iframe>
-    `;
-  }
+    else {
+      previewContainer.innerHTML = `
+        <span class="error">Unsupported file type.</span>
+      `;
+    }
+  });
 
-  else {
-    previewContainer.innerHTML = `
-      <span class="error">Unsupported file type.</span>
-    `;
-  }
-});
+  // =============================
+  // UPLOAD LOGIC
+  // =============================
 
-
-  // Handle receipt upload
   document.getElementById('uploadReceiptBtn').onclick = async function () {
-    const fileInput = document.getElementById('paymentReceipt');
     const file = fileInput.files[0];
     const statusElement = document.getElementById('receiptUploadStatus');
 
     if (!file) {
       statusElement.innerHTML = '<span class="error">Please select a file to upload</span>';
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      statusElement.innerHTML = '<span class="error">Invalid file type. Only images or PDF allowed.</span>';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      statusElement.innerHTML = '<span class="error">File too large. Maximum 5MB allowed.</span>';
       return;
     }
 
@@ -432,7 +442,7 @@ document.getElementById('paymentReceipt').addEventListener('change', function ()
         document.getElementById('uploadReceiptBtn').disabled = true;
         fileInput.disabled = true;
       } else {
-        throw new Error(result.error || 'Failed to upload receipt');
+        throw new Error(result.error || 'Upload failed');
       }
 
     } catch (error) {
@@ -440,7 +450,10 @@ document.getElementById('paymentReceipt').addEventListener('change', function ()
     }
   };
 
-  // Confirm button
+  // =============================
+  // CONFIRM BUTTON
+  // =============================
+
   document.getElementById('confirmManualPaymentBtn').onclick = function () {
     const uploadBtn = document.getElementById('uploadReceiptBtn');
     const statusElement = document.getElementById('receiptUploadStatus');

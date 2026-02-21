@@ -349,14 +349,13 @@ function setupCopyButtons(container) {
                 // Create temporary "Copied!" message
                 const copiedMessage = document.createElement('span');
                 copiedMessage.textContent = 'Copied!';
-                copiedMessage.style.color = '#0c0c0c70'; // green
-                copiedMessage.style.fontWeight = 'bold';
-                copiedMessage.style.marginRight = '8px';
+                copiedMessage.style.color = '#0c0c0c70';
+                copiedMessage.style.marginRight = '6px';
                 copiedMessage.style.opacity = '1';
                 copiedMessage.style.transition = 'opacity 0.5s';
                 
                 // Insert message before the button
-                button.parentNode.insertBefore(button, copiedMessage);
+                button.parentNode.insertAfter(copiedMessage, button.nextSibling);
 
                 // Fade out after 1.5 seconds
                 setTimeout(() => {

@@ -836,9 +836,7 @@ section {
 .modal-overlay.active {
   display: flex;
 }
-#manualPaymentModal{
-  z-index: 1000;
-}
+
 
 
 .modal-container {

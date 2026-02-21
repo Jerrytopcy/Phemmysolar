@@ -202,26 +202,20 @@ async function proceedToCheckout() {
         return;
     }
 
-    showLoader("Processing your order...");
+    showLoader("Preparing your order...");
 
     try {
         let total = 0;
         const orderItems = [];
 
         for (const cartItem of cart) {
-            const productRes = await fetch(`https://www.phemmysolar.com/api/products/${cartItem.productId}`);
+            const productRes = await fetch(`/api/products/${cartItem.productId}`);
             if (!productRes.ok) continue;
+
             const product = await productRes.json();
+            const price = Number(product.price) || 0;
 
-            let price = 0;
-            if (typeof product.price === 'string') {
-                price = Number(product.price.replace(/\D/g, '')) || 0;
-            } else if (typeof product.price === 'number') {
-                price = product.price;
-            }
-
-            const itemTotal = price * cartItem.quantity;
-            total += itemTotal;
+            total += price * cartItem.quantity;
 
             orderItems.push({
                 productId: product.id,
@@ -230,31 +224,19 @@ async function proceedToCheckout() {
             });
         }
 
-        if (orderItems.length === 0) throw new Error("No valid products found in cart.");
-
-        // Get user info
-        const userRes = await fetch('https://www.phemmysolar.com/api/user', {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!userRes.ok) throw new Error("Failed to load user profile");
-        const user = await userRes.json();
-
-        const deliveryAddress = user.address || {
-            street: "",
-            city: "",
-            state: "",
-            postalCode: "",
-            country: "Nigeria"
-        };
+        if (orderItems.length === 0) {
+            throw new Error("No valid products found.");
+        }
 
         const orderData = {
             items: orderItems,
-            total: Number(total).toFixed(2).toString(), // string with 2 decimals
-            deliveryAddress
+            total: total,
+            paymentStatus: "pending",
+            paymentReference: null
         };
 
-        // Send order to backend for Remita initiation
-        const orderRes = await fetch('https://www.phemmysolar.com/api/orders/remita-initiate', {
+        // Create order immediately as pending
+        const orderRes = await fetch('/api/orders', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -263,16 +245,10 @@ async function proceedToCheckout() {
             body: JSON.stringify(orderData)
         });
 
-        const resultText = await orderRes.text();
-        let result;
-        try {
-            result = JSON.parse(resultText);
-        } catch {
-            throw new Error(`Failed to parse backend response: ${resultText}`);
-        }
+        const result = await orderRes.json();
 
-        if (!result.success || !result.rrr) {
-            throw new Error(`Payment initiation failed: ${result.error || 'Unknown error'}`);
+        if (!result.success) {
+            throw new Error("Failed to create order.");
         }
 
         // Clear cart
@@ -281,40 +257,40 @@ async function proceedToCheckout() {
         updateUIBasedOnUser();
         closeCartModal();
 
-        // Initialize Remita modal
-        const paymentEngine = RmPaymentEngine.init({
-            key: 'QzAwMDAyNzEyNTl8MTEwNjE4NjF8OWZjOWYwNmMyZDk3MDRhYWM3YThiOThlNTNjZTE3ZjYxOTY5NDdmZWE1YzU3NDc0ZjE2ZDZjNTg1YWYxNWY3NWM4ZjMzNzZhNjNhZWZlOWQwNmJhNTFkMjIxYTRiMjYzZDkzNGQ3NTUxNDIxYWNlOGY4ZWEyODY3ZjlhNGUwYTY=',
-            customerId: result.orderId.toString(),
-            firstName: result.payerName || "No Name",
-            email: result.payerEmail || "test@example.com",
-            amount: result.amount.toString(), // string
-            narration: 'Order Payment',
-            transactionId: result.rrr.toString(), // string
-            phoneNumber: (result.payerPhone || '08000000000').toString().replace(/\D/g, ''),
-            onSuccess: function(response) {
-                console.log('Payment successful:', response);
-                window.location.href = result.returnUrl;
-            },
-            onError: function(response) {
-                console.error('Payment failed:', response);
-                showCustomAlert("Payment failed. Please try again.", "Payment Error");
-            },
-            onClose: function() {
-                console.log('Remita modal closed');
-            }
-        });
-
-        paymentEngine.showPaymentWidget();
+        // Show manual payment modal
+        openManualPaymentModal(result.orderId, total);
 
     } catch (err) {
-        console.error("Error during checkout:", err);
-        showCustomAlert(`Failed to place order: ${err.message}`, "Error");
+        console.error(err);
+        showCustomAlert(err.message, "Checkout Error");
     } finally {
         hideLoader();
     }
 }
 
+function openManualPaymentModal(orderId, total) {
+    const modal = document.getElementById('manualPaymentModal');
+    const summary = document.getElementById('manualOrderSummary');
 
+    summary.innerHTML = `
+        <p><strong>Order ID:</strong> ${orderId}</p>
+        <p><strong>Total:</strong> ₦${Number(total).toLocaleString()}</p>
+    `;
+
+    modal.classList.add('active');
+
+    document.getElementById('confirmManualPaymentBtn').onclick = function () {
+        modal.classList.remove('active');
+        showCustomAlert(
+            "Order placed successfully. It is now pending until payment is confirmed by admin.",
+            "Order Pending"
+        );
+    };
+}
+
+function closeManualPaymentModal() {
+    document.getElementById('manualPaymentModal').classList.remove('active');
+}
 
 // Close Cart Modal
 function closeCartModal() {

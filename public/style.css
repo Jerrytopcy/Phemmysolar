@@ -3482,8 +3482,6 @@ html {
 
 /* Manual Payment Modal Specifics */
 
-
-
 .manual-bank-details {
   background-color: var(--light-bg);
   padding: 1.5rem;
@@ -3524,4 +3522,11 @@ html {
 
 #manualOrderSummary strong {
   color: var(--text-dark);
+}
+.receipt-preview {
+  margin-top: 15px;
+}
+.receipt-preview img,
+.receipt-preview iframe {
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }

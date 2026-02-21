@@ -317,6 +317,15 @@ function openManualPaymentModal(orderId, total) {
       <input type="file" id="paymentReceipt" accept="image/*,.pdf">
       <button class="btn btn-primary" id="uploadReceiptBtn">Upload Receipt</button>
       <div id="receiptUploadStatus" class="upload-status"></div>
+      <div class="receipt-upload-section">
+  <label for="paymentReceipt">Upload Payment Receipt:</label>
+  <input type="file" id="paymentReceipt" accept="image/*,.pdf">
+  
+  <div id="receiptPreviewContainer" class="receipt-preview"></div>
+  
+  <button class="btn btn-primary" id="uploadReceiptBtn">Upload Receipt</button>
+  <div id="receiptUploadStatus" class="upload-status"></div>
+</div>
     </div>
   `;
 
@@ -346,6 +355,46 @@ function openManualPaymentModal(orderId, total) {
 
   modal.classList.add('active');
   document.body.style.overflow = "hidden";
+
+
+// Live preview handler
+document.getElementById('paymentReceipt').addEventListener('change', function () {
+  const file = this.files[0];
+  const previewContainer = document.getElementById('receiptPreviewContainer');
+  previewContainer.innerHTML = '';
+
+  if (!file) return;
+
+  const fileType = file.type;
+
+  // Image preview
+  if (fileType.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      previewContainer.innerHTML = `
+        <p><strong>Image Preview:</strong></p>
+        <img src="${e.target.result}" style="max-width: 100%; max-height: 300px; border-radius: 8px; margin-top: 10px;">
+      `;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // PDF preview
+  else if (fileType === 'application/pdf') {
+    const fileURL = URL.createObjectURL(file);
+    previewContainer.innerHTML = `
+      <p><strong>PDF Preview:</strong></p>
+      <iframe src="${fileURL}" width="100%" height="400px" style="margin-top: 10px; border-radius: 8px;"></iframe>
+    `;
+  }
+
+  else {
+    previewContainer.innerHTML = `
+      <span class="error">Unsupported file type.</span>
+    `;
+  }
+});
+
 
   // Handle receipt upload
   document.getElementById('uploadReceiptBtn').onclick = async function () {

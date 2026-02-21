@@ -3481,18 +3481,8 @@ html {
 }
 
 /* Manual Payment Modal Specifics */
-#manualPaymentModal .modal-content {
-  display: block;
-  padding: 2rem;
-  max-width: 500px;
-  margin: 0 auto;
-}
 
-#manualPaymentModal h2 {
-  text-align: center;
-  margin-bottom: 1.5rem;
-  color: var(--text-dark);
-}
+
 
 .manual-bank-details {
   background-color: var(--light-bg);
@@ -3507,7 +3497,6 @@ html {
   color: var(--secondary-color);
   margin-bottom: 1rem;
   border-bottom: 2px solid var(--primary-color);
-  display: inline-block;
   padding-bottom: 0.25rem;
 }
 
@@ -3534,17 +3523,9 @@ html {
 #manualOrderSummary li {
   padding: 0.5rem 0;
   color: var(--text-light);
-  display: flex;
-  align-items: flex-start;
   gap: 0.5rem;
 }
 
 #manualOrderSummary strong {
   color: var(--text-dark);
-}
-
-/* Ensure button spans full width */
-#confirmManualPaymentBtn {
-  width: 100%;
-  margin-top: 1rem;
 }

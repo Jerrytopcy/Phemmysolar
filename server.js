@@ -57,7 +57,15 @@ const newsStorage = new CloudinaryStorage({
 // Multer middleware (single image per news article)
 const uploadNewsImage = multer({ storage: newsStorage });
 
-
+// Configure multer specifically for payment receipts
+const receiptStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'payment-receipts',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf']
+  }
+});
+const uploadReceipt = multer({ storage: receiptStorage });
 
 // Set your SendGrid API key
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -1090,264 +1098,316 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
   }
 });
 
+app.post('/api/orders/:id/upload-receipt', authMiddleware, uploadReceipt.single('receipt'), async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const userId = req.user.id;
+    
+    // Verify the order exists and belongs to the user
+    const orderResult = await pool.query(
+      'SELECT id, user_id, status FROM orders WHERE id = $1 AND user_id = $2',
+      [orderId, userId]
+    );
+    
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found or unauthorized' });
+    }
+    
+    const order = orderResult.rows[0];
+    
+    // Check if a file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ error: 'No receipt file provided' });
+    }
+    
+    // Update order with receipt information
+    await pool.query(
+      'UPDATE orders SET receipt_url = $1, receipt_public_id = $2 WHERE id = $3',
+      [req.file.path, req.file.filename, orderId]
+    );
+    
+    res.json({
+      success: true,
+      receiptUrl: req.file.path,
+      message: 'Receipt uploaded successfully. Your order will be processed once payment is confirmed.'
+    });
+    
+  } catch (err) {
+    console.error('Receipt upload error:', err);
+    res.status(500).json({ error: 'Failed to upload receipt' });
+  }
+});
+
 
 // --- REQUERY PAYMENT STATUS (v1 API) ---
-app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
-    const orderId = req.params.id;
-    try {
-        // Fetch the order to get transaction_id (RRR)
-        const orderResult = await pool.query(
-            'SELECT id, transaction_id, status FROM orders WHERE id = $1 AND user_id = $2',
-            [orderId, req.user.id]
-        );
 
-        if (orderResult.rows.length === 0) {
-            return res.status(404).json({ 
-                success: false,
-                error: 'Order not found or unauthorized' 
-            });
-        }
 
-        const order = orderResult.rows[0];
+// app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
+//     const orderId = req.params.id;
+//     try {
+//         // Fetch the order to get transaction_id (RRR)
+//         const orderResult = await pool.query(
+//             'SELECT id, transaction_id, status FROM orders WHERE id = $1 AND user_id = $2',
+//             [orderId, req.user.id]
+//         );
 
-        // If already paid, don't requery
-        if (order.status === 'paid') {
-            return res.json({
-                success: true,
-                status: 'paid',
-                message: 'Order is already paid.'
-            });
-        }
+//         if (orderResult.rows.length === 0) {
+//             return res.status(404).json({ 
+//                 success: false,
+//                 error: 'Order not found or unauthorized' 
+//             });
+//         }
 
-        // If no RRR, cannot requery
-        if (!order.transaction_id) {
-            return res.json({
-                success: false,
-                status: 'pending',
-                message: 'No payment reference (RRR) available for this order.'
-            });
-        }
+//         const order = orderResult.rows[0];
 
-        // Prepare Remita API request (using v1 endpoint)
-        const merchantId = process.env.REMITA_MERCHANT_ID;
-        const apiKey = process.env.REMITA_API_KEY;
-        if (!merchantId || !apiKey) {
-            throw new Error('Remita credentials not configured');
-        }
+//         // If already paid, don't requery
+//         if (order.status === 'paid') {
+//             return res.json({
+//                 success: true,
+//                 status: 'paid',
+//                 message: 'Order is already paid.'
+//             });
+//         }
 
-        // Create Basic Auth header
-        const auth = Buffer.from(`${merchantId}:${apiKey}`).toString('base64');
+//         // If no RRR, cannot requery
+//         if (!order.transaction_id) {
+//             return res.json({
+//                 success: false,
+//                 status: 'pending',
+//                 message: 'No payment reference (RRR) available for this order.'
+//             });
+//         }
 
-        // Send validation request
-        const response = await fetch('https://remita.net/remita/ecomm/v1/validate/payment.json', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Basic ${auth}`
-            },
-            body: JSON.stringify({
-                merchantId: merchantId,
-                transactionId: order.transaction_id
-            })
-        });
+//         // Prepare Remita API request (using v1 endpoint)
+//         const merchantId = process.env.REMITA_MERCHANT_ID;
+//         const apiKey = process.env.REMITA_API_KEY;
+//         if (!merchantId || !apiKey) {
+//             throw new Error('Remita credentials not configured');
+//         }
 
-        // --- READ BODY ONCE AS TEXT ---
-        const rawBody = await response.text();
+//         // Create Basic Auth header
+//         const auth = Buffer.from(`${merchantId}:${apiKey}`).toString('base64');
 
-        if (!response.ok) {
-            console.error(`Remita v1 validate API returned HTTP ${response.status}: ${rawBody}`);
-            throw new Error(`Remita v1 validate failed: ${rawBody}`);
-        }
+//         // Send validation request
+//         const response = await fetch('https://remita.net/remita/ecomm/v1/validate/payment.json', {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//                 'Authorization': `Basic ${auth}`
+//             },
+//             body: JSON.stringify({
+//                 merchantId: merchantId,
+//                 transactionId: order.transaction_id
+//             })
+//         });
 
-        let result;
-        try {
-            result = JSON.parse(rawBody);
-        } catch (jsonError) {
-            console.error('Failed to parse Remita v1 validate response as JSON. Raw response:', rawBody);
-            throw new Error(`Remita v1 validate returned invalid JSON: ${rawBody}`);
-        }
+//         // --- READ BODY ONCE AS TEXT ---
+//         const rawBody = await response.text();
 
-        // Extract status from Remita response
-        let newStatus = 'pending';
-        let message = 'Payment not yet confirmed. Please try again later.';
+//         if (!response.ok) {
+//             console.error(`Remita v1 validate API returned HTTP ${response.status}: ${rawBody}`);
+//             throw new Error(`Remita v1 validate failed: ${rawBody}`);
+//         }
 
-        if (result.status === '00') { // Success
-            newStatus = 'paid';
-            message = 'Payment successfully confirmed!';
-        } else if (result.status === '01') { // Failed
-            newStatus = 'failed';
-            message = 'Payment failed. Please contact support.';
-        } else if (result.status === '02') { // Pending
-            newStatus = 'pending';
-            message = 'Payment still processing. Please try again later.';
-        } else {
-            newStatus = 'pending';
-            message = `Unknown status: ${result.status}. Please contact support.`;
-        }
+//         let result;
+//         try {
+//             result = JSON.parse(rawBody);
+//         } catch (jsonError) {
+//             console.error('Failed to parse Remita v1 validate response as JSON. Raw response:', rawBody);
+//             throw new Error(`Remita v1 validate returned invalid JSON: ${rawBody}`);
+//         }
 
-        // Update order status if changed
-        if (newStatus !== order.status) {
-            await pool.query(
-                'UPDATE orders SET status = $1 WHERE id = $2',
-                [newStatus, orderId]
-            );
-        }
+//         // Extract status from Remita response
+//         let newStatus = 'pending';
+//         let message = 'Payment not yet confirmed. Please try again later.';
 
-        res.json({
-            success: true,
-            status: newStatus,
-            message: message,
-            remitaResponse: result
-        });
+//         if (result.status === '00') { // Success
+//             newStatus = 'paid';
+//             message = 'Payment successfully confirmed!';
+//         } else if (result.status === '01') { // Failed
+//             newStatus = 'failed';
+//             message = 'Payment failed. Please contact support.';
+//         } else if (result.status === '02') { // Pending
+//             newStatus = 'pending';
+//             message = 'Payment still processing. Please try again later.';
+//         } else {
+//             newStatus = 'pending';
+//             message = `Unknown status: ${result.status}. Please contact support.`;
+//         }
 
-    } catch (err) {
-        console.error('Error requerying payment:', err);
-        res.status(500).json({ 
-            success: false,
-            error: 'Failed to requery payment. Please contact support.', 
-            details: err.message 
-        });
-    }
-});
+//         // Update order status if changed
+//         if (newStatus !== order.status) {
+//             await pool.query(
+//                 'UPDATE orders SET status = $1 WHERE id = $2',
+//                 [newStatus, orderId]
+//             );
+//         }
+
+//         res.json({
+//             success: true,
+//             status: newStatus,
+//             message: message,
+//             remitaResponse: result
+//         });
+
+//     } catch (err) {
+//         console.error('Error requerying payment:', err);
+//         res.status(500).json({ 
+//             success: false,
+//             error: 'Failed to requery payment. Please contact support.', 
+//             details: err.message 
+//         });
+//     }
+// });
 
 // --- REMITA PAYMENT INITIATION ROUTE (WORKING VERSION) ---
 // --- REMITA PAYMENT INITIATION ROUTE ---
-const REMITA_BASE_URL = process.env.REMITA_TEST_MODE === 'true'
-    ? 'https://demo.remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit'
-    : 'https://api.remita.net/echannelsvc/merchant/api/paymentinit';
 
-app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const { items, total, deliveryAddress } = req.body;
 
-        // Validate order
-        if (!items || !items.length || !total) {
-            return res.status(400).json({ success: false, error: 'Invalid order data' });
-        }
+// const REMITA_BASE_URL = process.env.REMITA_TEST_MODE === 'true'
+//     ? 'https://demo.remita.net/remita/exapp/api/v1/send/api/echannelsvc/merchant/api/paymentinit'
+//     : 'https://api.remita.net/echannelsvc/merchant/api/paymentinit';
 
-        // Insert order into DB
-        const orderResult = await pool.query(
-            `INSERT INTO orders (user_id, total, delivery_address, payment_status, status)
-             VALUES ($1, $2, $3, 'pending', 'pending') RETURNING id`,
-            [userId, total, deliveryAddress]
-        );
-        const orderId = orderResult.rows[0].id;
 
-        // Insert order items
-        for (const item of items) {
-            await pool.query(
-                `INSERT INTO order_items (order_id, product_id, quantity, price)
-                 VALUES ($1, $2, $3, $4)`,
-                [orderId, item.productId, item.quantity, item.price]
-            );
-        }
+// app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
+//     try {
+//         const userId = req.user.id;
+//         const { items, total, deliveryAddress } = req.body;
 
-        // Prepare payload for Remita
-        const payload = {
-            serviceTypeId: (process.env.REMITA_SERVICE_TYPE_ID || "4430731").toString(),
-            amount: Number(total).toFixed(2).toString(),  // formatted as string with 2 decimals
-            orderId: orderId.toString(),
-            payerName: req.user.username || "No Name",
-            payerEmail: req.user.email || "test@example.com",
-            payerPhone: (req.user.phone || "08000000000").toString().replace(/\D/g, ''),
-            description: "Order Payment"
-        };
+//         // Validate order
+//         if (!items || !items.length || !total) {
+//             return res.status(400).json({ success: false, error: 'Invalid order data' });
+//         }
 
-        // Auth header
-        const auth = Buffer.from(`${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_API_KEY}`).toString('base64');
+//         // Insert order into DB
+//         const orderResult = await pool.query(
+//             `INSERT INTO orders (user_id, total, delivery_address, payment_status, status)
+//              VALUES ($1, $2, $3, 'pending', 'pending') RETURNING id`,
+//             [userId, total, deliveryAddress]
+//         );
+//         const orderId = orderResult.rows[0].id;
 
-        // 🔎 Debug logs to inspect payload
-        console.log("===== REMITA DEBUG =====");
-        console.log("Payload sent:", payload);
-        console.log("Authorization:", auth);
-        console.log("URL:", REMITA_BASE_URL);
-        console.log("========================");
+//         // Insert order items
+//         for (const item of items) {
+//             await pool.query(
+//                 `INSERT INTO order_items (order_id, product_id, quantity, price)
+//                  VALUES ($1, $2, $3, $4)`,
+//                 [orderId, item.productId, item.quantity, item.price]
+//             );
+//         }
 
-        // Send request to Remita
-        const remitaRes = await fetch(REMITA_BASE_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Basic ${auth}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
+//         // Prepare payload for Remita
+//         const payload = {
+//             serviceTypeId: (process.env.REMITA_SERVICE_TYPE_ID || "4430731").toString(),
+//             amount: Number(total).toFixed(2).toString(),  // formatted as string with 2 decimals
+//             orderId: orderId.toString(),
+//             payerName: req.user.username || "No Name",
+//             payerEmail: req.user.email || "test@example.com",
+//             payerPhone: (req.user.phone || "08000000000").toString().replace(/\D/g, ''),
+//             description: "Order Payment"
+//         };
 
-        const raw = await remitaRes.text();
-        console.log('✅ Remita raw response:', raw);
+//         // Auth header
+//         const auth = Buffer.from(`${process.env.REMITA_MERCHANT_ID}:${process.env.REMITA_API_KEY}`).toString('base64');
 
-        let data;
-        try {
-            data = JSON.parse(raw);
-        } catch (e) {
-            console.error('❌ Failed to parse Remita response:', e);
-            return res.status(500).json({ success: false, error: 'Invalid response from Remita' });
-        }
+//         // 🔎 Debug logs to inspect payload
+//         console.log("===== REMITA DEBUG =====");
+//         console.log("Payload sent:", payload);
+//         console.log("Authorization:", auth);
+//         console.log("URL:", REMITA_BASE_URL);
+//         console.log("========================");
 
-        // Check status
-        if (data.statuscode !== "00" || !data.RRR) {
-            return res.status(400).json({
-                success: false,
-                error: data.status || 'Remita initiation failed'
-            });
-        }
+//         // Send request to Remita
+//         const remitaRes = await fetch(REMITA_BASE_URL, {
+//             method: 'POST',
+//             headers: {
+//                 'Authorization': `Basic ${auth}`,
+//                 'Content-Type': 'application/json'
+//             },
+//             body: JSON.stringify(payload)
+//         });
 
-        // Update order with RRR
-        await pool.query(
-            'UPDATE orders SET transaction_id = $1 WHERE id = $2',
-            [data.RRR.toString(), orderId]
-        );
+//         const raw = await remitaRes.text();
+//         console.log('✅ Remita raw response:', raw);
 
-        // Respond to frontend
-        res.json({
-            success: true,
-            orderId: orderId.toString(),
-            rrr: data.RRR.toString(),
-            amount: Number(total).toFixed(2).toString(),
-            merchantId: process.env.REMITA_MERCHANT_ID.toString(),
-            serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID.toString(),
-            payerName: req.user.username || "No Name",
-            payerEmail: req.user.email || "test@example.com",
-            payerPhone: (req.user.phone || "08000000000").toString().replace(/\D/g, ''),
-            returnUrl: `${process.env.FRONTEND_URL}/account`
-        });
+//         let data;
+//         try {
+//             data = JSON.parse(raw);
+//         } catch (e) {
+//             console.error('❌ Failed to parse Remita response:', e);
+//             return res.status(500).json({ success: false, error: 'Invalid response from Remita' });
+//         }
 
-    } catch (err) {
-        console.error('❌ Remita initiation error:', err);
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
+//         // Check status
+//         if (data.statuscode !== "00" || !data.RRR) {
+//             return res.status(400).json({
+//                 success: false,
+//                 error: data.status || 'Remita initiation failed'
+//             });
+//         }
+
+//         // Update order with RRR
+//         await pool.query(
+//             'UPDATE orders SET transaction_id = $1 WHERE id = $2',
+//             [data.RRR.toString(), orderId]
+//         );
+
+//         // Respond to frontend
+//         res.json({
+//             success: true,
+//             orderId: orderId.toString(),
+//             rrr: data.RRR.toString(),
+//             amount: Number(total).toFixed(2).toString(),
+//             merchantId: process.env.REMITA_MERCHANT_ID.toString(),
+//             serviceTypeId: process.env.REMITA_SERVICE_TYPE_ID.toString(),
+//             payerName: req.user.username || "No Name",
+//             payerEmail: req.user.email || "test@example.com",
+//             payerPhone: (req.user.phone || "08000000000").toString().replace(/\D/g, ''),
+//             returnUrl: `${process.env.FRONTEND_URL}/account`
+//         });
+
+//     } catch (err) {
+//         console.error('❌ Remita initiation error:', err);
+//         res.status(500).json({ success: false, error: err.message });
+//     }
+// });
 
 // --- REAL REMITA WEBHOOK ENDPOINT (v3 Compatible) ---
-app.post('/api/webhook/remita', async (req, res) => {
-    try {
-        const { transactionId, status, paymentStatus } = req.body; // Extract from Remita's actual webhook
 
-        // Map Remita status codes to your system
-        let newStatus = 'pending';
-        if (status === '00' || paymentStatus === 'PAID') {
-            newStatus = 'paid';
-        } else if (status === '01' || paymentStatus === 'FAILED') {
-            newStatus = 'failed';
-        }
 
-        // Update order status
-        await pool.query(
-            'UPDATE orders SET status = $1, payment_status = $1 WHERE transaction_id = $2',
-            [newStatus, transactionId]
-        );
 
-        // Log for debugging
-        console.log(`✅ Webhook processed: RRR=${transactionId}, Status=${newStatus}`);
+// app.post('/api/webhook/remita', async (req, res) => {
+//     try {
+//         const { transactionId, status, paymentStatus } = req.body; // Extract from Remita's actual webhook
 
-        res.status(200).send('OK');
-    } catch (err) {
-        console.error('Error handling Remita webhook:', err);
-        res.status(500).json({ error: 'Failed to update order status' });
-    }
-});
+//         // Map Remita status codes to your system
+//         let newStatus = 'pending';
+//         if (status === '00' || paymentStatus === 'PAID') {
+//             newStatus = 'paid';
+//         } else if (status === '01' || paymentStatus === 'FAILED') {
+//             newStatus = 'failed';
+//         }
+
+//         // Update order status
+//         await pool.query(
+//             'UPDATE orders SET status = $1, payment_status = $1 WHERE transaction_id = $2',
+//             [newStatus, transactionId]
+//         );
+
+//         // Log for debugging
+//         console.log(`✅ Webhook processed: RRR=${transactionId}, Status=${newStatus}`);
+
+//         res.status(200).send('OK');
+//     } catch (err) {
+//         console.error('Error handling Remita webhook:', err);
+//         res.status(500).json({ error: 'Failed to update order status' });
+//     }
+// });
+
+
 // --- FORGOT PASSWORD ROUTE ---
+
+
 app.post('/api/forgot-password', async (req, res) => {
     const { username, email } = req.body;
 

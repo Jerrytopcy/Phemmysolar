@@ -325,17 +325,17 @@ function openManualPaymentModal(orderId, total) {
   // =============================
   // SECURE COPY HELPER
   // =============================
-  function setupCopyButtons(container) {
+    function setupCopyButtons(container) {
     container.querySelectorAll('.copy-btn').forEach(button => {
-      button.addEventListener('click', function () {
+        button.addEventListener('click', async function () {
         const textToCopy = this.getAttribute('data-copy');
         const icon = this.querySelector('i');
 
         try {
-          // Modern clipboard
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(textToCopy);
-          } else {
+            // Modern clipboard
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(textToCopy);
+            } else {
             // Fallback for older browsers
             const textarea = document.createElement('textarea');
             textarea.value = textToCopy;
@@ -346,23 +346,24 @@ function openManualPaymentModal(orderId, total) {
             textarea.select();
             document.execCommand('copy');
             document.body.removeChild(textarea);
-          }
+            }
 
-          // Icon feedback
-          if (icon) {
+            // Change icon to check and back to copy
+            if (icon) {
             icon.setAttribute('data-lucide', 'check');
-            lucide.createIcons();
+            lucide.replace(icon); // Replace this icon only
+
             setTimeout(() => {
-              icon.setAttribute('data-lucide', 'copy');
-              lucide.createIcons();
+                icon.setAttribute('data-lucide', 'copy');
+                lucide.replace(icon); // Switch back
             }, 1500);
-          }
+            }
         } catch (err) {
-          alert('Copy failed. Please copy manually.');
+            alert('Copy failed. Please copy manually.');
         }
-      });
+        });
     });
-  }
+    }
 
   // =============================
   // FETCH BANK DETAILS

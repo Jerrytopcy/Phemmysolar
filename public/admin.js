@@ -628,32 +628,71 @@ View
 `).join("");
 }
 // View Receipt Modal
-function viewReceipt(receiptUrl, orderId) {
-const modal = document.getElementById("receiptModal");
-const imageContainer = document.getElementById("receiptImageContainer");
-const noImageMsg = document.getElementById("receiptNoImage");
-const downloadBtn = document.getElementById("downloadReceiptBtn");
+// View Receipt Modal
+async function viewReceipt(receiptUrl, orderId) {
+    const modal = document.getElementById("receiptModal");
+    const imageContainer = document.getElementById("receiptImageContainer");
+    const noImageMsg = document.getElementById("receiptNoImage");
+    const downloadBtn = document.getElementById("downloadReceiptBtn");
 
-if (!receiptUrl) {
-imageContainer.style.display = "none";
-noImageMsg.style.display = "block";
-downloadBtn.style.display = "none";
-} else {
-imageContainer.style.display = "block";
-noImageMsg.style.display = "none";
-downloadBtn.style.display = "inline-block";
+    if (!receiptUrl) {
+        imageContainer.style.display = "none";
+        noImageMsg.style.display = "block";
+        downloadBtn.style.display = "none";
+    } else {
+        imageContainer.style.display = "block";
+        noImageMsg.style.display = "none";
+        downloadBtn.style.display = "inline-block";
 
-// Display receipt image
-imageContainer.innerHTML = `
-<img src="${receiptUrl}" alt="Payment Receipt for Order #${orderId}" class="receipt-image">
-`;
+        // Display receipt image
+        imageContainer.innerHTML = `
+            <img src="${receiptUrl}" alt="Payment Receipt for Order #${orderId}" class="receipt-image">
+        `;
 
-// Set download button
-downloadBtn.href = receiptUrl;
-downloadBtn.setAttribute("download", `receipt-order-${orderId}.jpg`);
+        // Handle Download Click
+        downloadBtn.onclick = async (e) => {
+            e.preventDefault();
+            try {
+                showLoader("Preparing download...");
+                
+                // Fetch the file as a blob
+                const response = await fetch(receiptUrl);
+                const blob = await response.blob();
+                
+                // Create a temporary object URL
+                const blobUrl = window.URL.createObjectURL(blob);
+                
+                // Create a temporary link to trigger download
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                
+                // Extract filename from URL or default to generic name
+                const fileName = receiptUrl.split('/').pop() || `receipt-order-${orderId}.jpg`;
+                link.download = fileName;
+                
+                // Append, click, and remove
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Clean up the object URL
+                window.URL.revokeObjectURL(blobUrl);
+            } catch (err) {
+                console.error("Download error:", err);
+                showAdminAlert("Failed to download receipt. Please try again.", "Error");
+            } finally {
+                hideLoader();
+            }
+        };
+    }
+
+    modal.style.display = "flex";
 }
 
-modal.style.display = "flex";
+// Close Receipt Modal
+function closeReceiptModal() {
+    const modal = document.getElementById("receiptModal");
+    modal.style.display = "none";
 }
 
 // Close Receipt Modal

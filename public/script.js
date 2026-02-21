@@ -213,10 +213,7 @@ async function proceedToCheckout() {
             if (!productRes.ok) continue;
 
             const product = await productRes.json();
-            let price = 0;
-if (product.price != null) {
-    price = parseFloat(String(product.price).replace(/[^\d.-]/g, '')) || 0;
-}
+            const price = parseFloat(product.price.replace(/[^\d.-]/g, '')) || 0;
 
             total += price * cartItem.quantity;
 
@@ -536,8 +533,8 @@ function setupCopyButtons(container) {
 
 // XSS protection utility
 function escapeHTML(str) {
-  if (!str) return '';
-  return str.replace(/[&<>"']/g, 
+  if (str == null) return ''; // handles null and undefined
+  return String(str).replace(/[&<>"']/g, 
     m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
 

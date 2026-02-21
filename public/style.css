@@ -3424,54 +3424,56 @@ html {
 }
 /* Receipt upload styling */
 .receipt-upload-section {
-  margin-top: 15px;
-  padding: 15px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: #f9f9f9;
+    margin-top: 15px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f9f9f9;
 }
 
 .receipt-upload-section label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
 }
 
 .upload-status {
-  margin-top: 10px;
-  font-size: 0.9em;
+    margin-top: 10px;
+    font-size: 0.9em;
 }
 
 .upload-status .success {
-  color: #28a745;
+    color: #28a745;
 }
 
 .upload-status .error {
-  color: #dc3545;
+    color: #dc3545;
 }
 
 .upload-status .info {
-  color: #007bff;
+    color: #007bff;
 }
 
 .receipt-status {
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 0.85em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    margin-left: 5px;
 }
 
 .receipt-status.uploaded {
-  background-color: #d4edda;
-  color: #155724;
+    background-color: #d4edda;
+    color: #155724;
 }
 
 .receipt-status.pending {
-  background-color: #fff3cd;
-  color: #856404;
+    background-color: #fff3cd;
+    color: #856404;
 }
 
 .receipt-note {
-  font-size: 0.85em;
-  color: #6c757d;
-  margin-left: 10px;
+    font-size: 0.85em;
+    color: #6c757d;
+    margin-left: 10px;
+    display: inline-block;
 }

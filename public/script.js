@@ -470,179 +470,190 @@ async function resumePaymentForOrder(orderId) {
 }
 // Load user's order history (for account page)
 async function loadOrderHistory() {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    document.getElementById('orderHistory').innerHTML = '<p>Please log in to view your order history.</p>';
-    return;
-  }
-  showLoader("Loading your order history...");
-  try {
-    const response = await fetch('/api/orders', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    
-    if (!response.ok) {
-      throw new Error("Failed to load order history");
+    const token = localStorage.getItem('token');
+    if (!token) {
+        document.getElementById('orderHistory').innerHTML = '<p>Please log in to view your order history.</p>';
+        return;
     }
-    
-    const orders = await response.json();
-    const historyContainer = document.getElementById('orderHistory');
-    let historyHTML = '';
-    
-    if (orders.length === 0) {
-      historyHTML = '<p>No orders found.</p>';
-    } else {
-      for (const order of orders) {
-        // Format date
-        const date = new Date(order.date);
-        const formattedDate = date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
+    showLoader("Loading your order history...");
+    try {
+        const response = await fetch('/api/orders', {
+            headers: { Authorization: `Bearer ${token}` }
         });
-        
-        // Format address
-        const address = order.delivery_address;
-        const fullAddress = `${address.street}, ${address.city}, ${address.state}, ${address.country || 'Nigeria'}`;
-        
-        // Build items HTML
-        let itemsHTML = '';
-        for (const item of order.items) {
-          itemsHTML += `
-            <div class="order-item">
-              <p><strong>${item.productId}</strong> × ${item.quantity}</p>
-              <p>₦${(item.price * item.quantity).toLocaleString()}</p>
-            </div>
-          `;
+        if (!response.ok) throw new Error('Failed to load order history');
+        const orders = await response.json();
+        if (!orders.length) {
+            document.getElementById('orderHistory').innerHTML = '<p>No orders found.</p>';
+            return;
         }
-        
-        // Check if receipt exists
-        const hasReceipt = order.receipt_url;
-        const receiptStatus = hasReceipt 
-          ? '<span class="receipt-status uploaded">Receipt Uploaded</span>'
-          : '<span class="receipt-status pending">Receipt Pending</span>';
-          
-        // Build action buttons
-        let actionButtons = '';
-        if (order.status === 'pending' && !hasReceipt) {
-          actionButtons = `
-            <button class="btn btn-primary" onclick="requeryPayment('${order.id}')">Check Payment Status</button>
-            <button class="btn btn-success" onclick="openReceiptUploadModal('${order.id}', ${order.total})">Upload Receipt</button>
-          `;
-        } else if (order.status === 'pending' && hasReceipt) {
-          actionButtons = `
-            <button class="btn btn-primary" onclick="requeryPayment('${order.id}')">Check Payment Status</button>
-            <span class="receipt-note">Receipt uploaded - awaiting confirmation</span>
-          `;
+        // Sort orders newest first
+        orders.sort((a, b) => new Date(b.date) - new Date(a.date));
+        // Collect all unique product IDs from all orders
+        const allProductIds = [...new Set(orders.flatMap(order => order.items.map(item => item.productId)))];
+        // Fetch all products in a single request (if supported)
+        const productsResponse = await fetch(`/api/products?ids=${allProductIds.join(',')}`);
+        if (!productsResponse.ok) throw new Error('Failed to load products');
+        const productsData = await productsResponse.json();
+        // Map products by ID for fast lookup
+        const productsMap = {};
+        for (const product of productsData) {
+            productsMap[product.id] = product;
         }
-        
-        historyHTML += `
-          <div class="order-history-item">
-            <div class="order-header">
-              <p><strong>Order #${order.id}</strong> - ${formattedDate}</p>
-              <p><strong>Status:</strong> <span class="order-status ${order.status.toLowerCase()}">${order.status}</span></p>
-              <p><strong>Receipt:</strong> ${receiptStatus}</p>
-              ${actionButtons}
-            </div>
-            <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
-            <div class="order-items-list">${itemsHTML}</div>
-          </div>
-        `;
-      }
+        let historyHTML = '<h3>Your Order History</h3><div class="orders-list">';
+        for (const order of orders) {
+            // Correctly get delivery address
+            const address = order.delivery_address || {};
+            const fullAddress = `${address.street || ""}, ${address.city || ""}, ${address.state || ""} ${address.postalCode || ""}, ${address.country || "Nigeria"}`;
+            // Keep order ID exactly as returned by DB
+            const orderId = order.id;
+            const orderDate = new Date(order.date);
+            const formattedDate = orderDate.toLocaleString('en-NG', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+            });
+            let itemsHTML = '';
+            for (const item of order.items) {
+                const product = productsMap[item.productId];
+                const productName = product?.name || "Product unavailable";
+                const imageUrl = product?.images?.[0] || '/placeholder.svg';
+                itemsHTML += `
+<div class="order-history-item">
+<div class="order-item-image-wrapper">
+<img src="${imageUrl}" alt="${productName}" onerror="this.src='/placeholder.svg'; this.alt='Image not available';">
+</div>
+<div class="order-item-details">
+<div class="order-item-name">${productName}</div>
+<div class="order-item-meta">
+<span class="order-item-qty">Qty: ${item.quantity}</span>
+<span class="order-item-price">${formatNaira(item.price * item.quantity)}</span>
+</div>
+</div>
+</div>`;
+            }
+            
+            // Check if receipt exists for this order
+            const hasReceipt = order.receipt_url;
+            const receiptStatus = hasReceipt 
+                ? '<span class="receipt-status uploaded">Receipt Uploaded</span>'
+                : '<span class="receipt-status pending">Receipt Pending</span>';
+                
+            // Build action buttons based on order status and receipt status
+            let actionButtons = '';
+            if (order.status === 'pending' && !hasReceipt) {
+                actionButtons = `
+                    <button class="btn btn-primary" onclick="openReceiptUploadModal('${order.id}', ${order.total})">Upload Payment Receipt</button>
+                `;
+            } else if (order.status === 'pending' && hasReceipt) {
+                actionButtons = `
+                    <span class="receipt-note">Receipt uploaded - awaiting admin confirmation</span>
+                `;
+            }
+            
+            historyHTML += `
+<div class="order-item">
+  <div class="order-header">
+    <p><strong>Order #${order.id}</strong> - ${new Date(order.date).toLocaleDateString()}</p>
+    <p><strong>Status:</strong> <span class="order-status ${order.status.toLowerCase()}">${order.status}</span></p>
+    <p><strong>Receipt:</strong> ${receiptStatus}</p>
+    ${actionButtons}
+  </div>
+  <p><strong>Total:</strong> <span class="order-total ${order.status.toLowerCase()}">${formatNaira(order.total)}</span></p>
+  <div class="order-items-list">${itemsHTML}</div>
+</div>`;
+        }
+        historyHTML += '</div>';
+        document.getElementById('orderHistory').innerHTML = historyHTML;
+    } catch (error) {
+        console.error("Error loading order history:", error);
+        document.getElementById('orderHistory').innerHTML = '<p>Error loading order history. Please try again.</p>';
+    } finally {
+        hideLoader();
     }
-    
-    historyContainer.innerHTML = historyHTML;
-  } catch (error) {
-    console.error("Error loading order history:", error);
-    document.getElementById('orderHistory').innerHTML = '<p>Failed to load order history. Please try again later.</p>';
-  } finally {
-    hideLoader();
-  }
 }
 function openReceiptUploadModal(orderId, total) {
-  // Create modal if it doesn't exist
-  let modal = document.getElementById('receiptUploadModal');
-  if (!modal) {
-    const modalHTML = `
-      <div id="receiptUploadModal" class="modal">
-        <div class="modal-content">
-          <span class="close">&times;</span>
-          <h2>Upload Payment Receipt</h2>
-          <p><strong>Order ID:</strong> ${orderId}</p>
-          <p><strong>Amount:</strong> ₦${total.toLocaleString()}</p>
-          
-          <div class="receipt-upload-section">
-            <label for="historyPaymentReceipt">Upload Payment Receipt:</label>
-            <input type="file" id="historyPaymentReceipt" accept="image/*,.pdf">
-            <button class="btn btn-primary" id="historyUploadReceiptBtn">Upload Receipt</button>
-            <div id="historyReceiptUploadStatus" class="upload-status"></div>
-          </div>
-        </div>
-      </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Add close functionality
-    document.querySelector('#receiptUploadModal .close').onclick = function() {
-      document.getElementById('receiptUploadModal').remove();
-    };
-    
-    // Close modal when clicking outside
-    document.getElementById('receiptUploadModal').onclick = function(e) {
-      if (e.target === this) {
-        this.remove();
-      }
-    };
-  }
-  
-  modal = document.getElementById('receiptUploadModal');
-  modal.style.display = 'block';
-  
-  // Handle upload
-  document.getElementById('historyUploadReceiptBtn').onclick = async function() {
-    const fileInput = document.getElementById('historyPaymentReceipt');
-    const file = fileInput.files[0];
-    const statusElement = document.getElementById('historyReceiptUploadStatus');
-    
-    if (!file) {
-      statusElement.innerHTML = '<span class="error">Please select a file to upload</span>';
-      return;
-    }
-    
-    try {
-      statusElement.innerHTML = '<span class="info">Uploading receipt...</span>';
-      
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('receipt', file);
-      
-      const response = await fetch(`/api/orders/${orderId}/upload-receipt`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        statusElement.innerHTML = `
-          <span class="success">Receipt uploaded successfully!</span>
-          <p>Your order will be processed once payment is confirmed by admin.</p>
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('receiptUploadModal');
+    if (!modal) {
+        const modalHTML = `
+            <div id="receiptUploadModal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h2>Upload Payment Receipt</h2>
+                    <p><strong>Order ID:</strong> ${orderId}</p>
+                    <p><strong>Amount:</strong> ₦${total.toLocaleString()}</p>
+                    
+                    <div class="receipt-upload-section">
+                        <label for="paymentReceipt">Upload Payment Receipt (JPG, PNG, or PDF):</label>
+                        <input type="file" id="paymentReceipt" accept="image/*,.pdf">
+                        <button class="btn btn-primary" id="uploadReceiptBtn">Upload Receipt</button>
+                        <div id="receiptUploadStatus" class="upload-status"></div>
+                    </div>
+                </div>
+            </div>
         `;
-        document.getElementById('historyUploadReceiptBtn').disabled = true;
-        fileInput.disabled = true;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
         
-        // Refresh order history after 2 seconds
-        setTimeout(loadOrderHistory, 2000);
-      } else {
-        throw new Error(result.error || 'Failed to upload receipt');
-      }
-    } catch (error) {
-      statusElement.innerHTML = `<span class="error">${error.message}</span>`;
+        // Add close functionality
+        document.querySelector('#receiptUploadModal .close').onclick = function() {
+            document.getElementById('receiptUploadModal').remove();
+        };
+        
+        // Close modal when clicking outside
+        document.getElementById('receiptUploadModal').onclick = function(e) {
+            if (e.target === this) {
+                this.remove();
+            }
+        };
     }
-  };
+    
+    modal = document.getElementById('receiptUploadModal');
+    modal.style.display = 'block';
+    
+    // Handle upload
+    document.getElementById('uploadReceiptBtn').onclick = async function() {
+        const fileInput = document.getElementById('paymentReceipt');
+        const file = fileInput.files[0];
+        const statusElement = document.getElementById('receiptUploadStatus');
+        
+        if (!file) {
+            statusElement.innerHTML = '<span class="error">Please select a file to upload</span>';
+            return;
+        }
+        
+        try {
+            statusElement.innerHTML = '<span class="info">Uploading receipt...</span>';
+            
+            const token = localStorage.getItem('token');
+            const formData = new FormData();
+            formData.append('receipt', file);
+            
+            const response = await fetch(`/api/orders/${orderId}/upload-receipt`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                statusElement.innerHTML = `
+                    <span class="success">Receipt uploaded successfully!</span>
+                    <p>Your order will be processed once payment is confirmed by admin.</p>
+                `;
+                document.getElementById('uploadReceiptBtn').disabled = true;
+                fileInput.disabled = true;
+                
+                // Refresh order history after 2 seconds
+                setTimeout(loadOrderHistory, 2000);
+            } else {
+                throw new Error(result.error || 'Failed to upload receipt');
+            }
+        } catch (error) {
+            statusElement.innerHTML = `<span class="error">${error.message}</span>`;
+        }
+    };
 }
 
 // Update UI elements based on user status and cart

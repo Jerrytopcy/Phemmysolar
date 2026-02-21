@@ -349,19 +349,28 @@ function setupCopyButtons(container) {
                 // Create temporary "Copied!" message
                 const copiedMessage = document.createElement('span');
                 copiedMessage.textContent = 'Copied!';
-                copiedMessage.style.color = '#28a745'; // green
+                copiedMessage.style.color = '#28a745';
                 copiedMessage.style.fontWeight = 'bold';
-                copiedMessage.style.marginRight = '8px';
-                copiedMessage.style.opacity = '1';
+                copiedMessage.style.position = 'absolute';
+                copiedMessage.style.zIndex = '1000';
+                copiedMessage.style.background = 'rgba(255,255,255,0.9)';
+                copiedMessage.style.padding = '2px 6px';
+                copiedMessage.style.borderRadius = '4px';
+                copiedMessage.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
                 copiedMessage.style.transition = 'opacity 0.5s';
-                
-                // Insert message before the button
-                button.parentNode.insertBefore(copiedMessage, button);
+                copiedMessage.style.opacity = '1';
+
+                // Position it in front of the button
+                const rect = button.getBoundingClientRect();
+                copiedMessage.style.top = `${rect.top + window.scrollY - 30}px`; // above button
+                copiedMessage.style.left = `${rect.left + window.scrollX}px`;
+
+                document.body.appendChild(copiedMessage);
 
                 // Fade out after 1.5 seconds
                 setTimeout(() => {
                     copiedMessage.style.opacity = '0';
-                    setTimeout(() => copiedMessage.remove(), 500); // remove after fade
+                    setTimeout(() => copiedMessage.remove(), 500);
                 }, 1500);
 
             } catch (err) {

@@ -228,12 +228,29 @@ async function proceedToCheckout() {
             throw new Error("No valid products found.");
         }
 
-        const orderData = {
-            items: orderItems,
-            total: total,
-            paymentStatus: "pending",
-            paymentReference: null
-        };
+        // Get user profile first
+const userRes = await fetch('/api/user', {
+    headers: { Authorization: `Bearer ${token}` }
+});
+
+if (!userRes.ok) {
+    throw new Error("Failed to load user profile.");
+}
+
+const user = await userRes.json();
+
+// Make sure address exists
+if (!user.address) {
+    throw new Error("Please update your delivery address before checkout.");
+}
+
+const orderData = {
+    items: orderItems,
+    total: total,
+    deliveryAddress: user.address,
+    paymentStatus: "pending",
+    paymentReference: null
+};
 
         // Create order immediately as pending
         const orderRes = await fetch('/api/orders', {

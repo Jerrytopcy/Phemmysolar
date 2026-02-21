@@ -1210,7 +1210,6 @@ app.post('/api/orders/:id/requery', authMiddleware, async (req, res) => {
     }
 });
 
-
 // --- REMITA PAYMENT INITIATION ROUTE (WORKING VERSION) ---
 // --- REMITA PAYMENT INITIATION ROUTE ---
 const REMITA_BASE_URL = process.env.REMITA_TEST_MODE === 'true'
@@ -1319,9 +1318,6 @@ app.post('/api/orders/remita-initiate', authMiddleware, async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
-
-
-
 
 // --- REAL REMITA WEBHOOK ENDPOINT (v3 Compatible) ---
 app.post('/api/webhook/remita', async (req, res) => {

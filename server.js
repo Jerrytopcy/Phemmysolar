@@ -1098,59 +1098,44 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
   }
 });
 
-// Add this to your server routes
-app.post('/api/orders/:id/upload-receipt', authMiddleware, async (req, res) => {
-    try {
-        const orderId = req.params.id;
-        const userId = req.user.id;
-        
-        // Verify the order exists and belongs to the user
-        const orderResult = await pool.query(
-            'SELECT id, user_id, status FROM orders WHERE id = $1 AND user_id = $2',
-            [orderId, userId]
-        );
-        
-        if (orderResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Order not found or unauthorized' });
-        }
-        
-        const order = orderResult.rows[0];
-        
-        // Don't allow receipt upload for paid orders
-        if (order.status === 'paid') {
-            return res.status(400).json({ 
-                error: 'This order has already been paid',
-                status: 'paid'
-            });
-        }
-        
-        // Handle file upload to Cloudinary
-        // This assumes you have a Cloudinary configuration set up
-        if (!req.files || !req.files.receipt) {
-            return res.status(400).json({ error: 'No receipt file provided' });
-        }
-        
-        const receiptFile = req.files.receipt;
-        const result = await cloudinary.uploader.upload(receiptFile.path, {
-            folder: 'payment-receipts'
-        });
-        
-        // Update order with receipt information
-        await pool.query(
-            'UPDATE orders SET receipt_url = $1, receipt_public_id = $2 WHERE id = $3',
-            [result.secure_url, result.public_id, orderId]
-        );
-        
-        res.json({
-            success: true,
-            receiptUrl: result.secure_url,
-            message: 'Receipt uploaded successfully. Your order will be processed once payment is confirmed.'
-        });
-        
-    } catch (err) {
-        console.error('Receipt upload error:', err);
-        res.status(500).json({ error: 'Failed to upload receipt' });
+app.post('/api/orders/:id/upload-receipt', authMiddleware, uploadReceipt.single('receipt'), async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const userId = req.user.id;
+    
+    // Verify the order exists and belongs to the user
+    const orderResult = await pool.query(
+      'SELECT id, user_id, status FROM orders WHERE id = $1 AND user_id = $2',
+      [orderId, userId]
+    );
+    
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found or unauthorized' });
     }
+    
+    const order = orderResult.rows[0];
+    
+    // Check if a file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ error: 'No receipt file provided' });
+    }
+    
+    // Update order with receipt information
+    await pool.query(
+      'UPDATE orders SET receipt_url = $1, receipt_public_id = $2 WHERE id = $3',
+      [req.file.path, req.file.filename, orderId]
+    );
+    
+    res.json({
+      success: true,
+      receiptUrl: req.file.path,
+      message: 'Receipt uploaded successfully. Your order will be processed once payment is confirmed.'
+    });
+    
+  } catch (err) {
+    console.error('Receipt upload error:', err);
+    res.status(500).json({ error: 'Failed to upload receipt' });
+  }
 });
 
 

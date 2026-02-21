@@ -166,7 +166,29 @@
             </div>
         </div>
     </div>
+       <!-- Manual Payment Modal -->
+<div class="modal-overlay" id="manualPaymentModal">
+    <div class="modal-container">
+        <button class="modal-close" onclick="closeManualPaymentModal()">&times;</button>
+        <div class="modal-content">
+            <h2>Complete Your Payment</h2>
 
+            <div id="manualOrderSummary"></div>
+
+            <div class="manual-bank-details">
+                <h3>Bank Transfer Details</h3>
+                <p><strong>Bank:</strong> Zenith Bank</p>
+                <p><strong>Account Name:</strong> Phemmy Solar Nigeria</p>
+                <p><strong>Account Number:</strong> 1234567890</p>
+                <p>Please use your Order ID as payment reference.</p>
+            </div>
+
+            <button class="btn btn-primary" id="confirmManualPaymentBtn">
+                I Have Paid
+            </button>
+        </div>
+    </div>
+</div>
     <!-- NEW: Account Modal (Optional for news page) -->
     <div class="modal-overlay" id="accountModal">
         <div class="modal-container">

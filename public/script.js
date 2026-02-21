@@ -323,6 +323,48 @@ function openManualPaymentModal(orderId, total) {
   `;
 
   // =============================
+  // SECURE COPY HELPER
+  // =============================
+  function setupCopyButtons(container) {
+    container.querySelectorAll('.copy-btn').forEach(button => {
+      button.addEventListener('click', function () {
+        const textToCopy = this.getAttribute('data-copy');
+        const icon = this.querySelector('i');
+
+        try {
+          // Modern clipboard
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textToCopy);
+          } else {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+          }
+
+          // Icon feedback
+          if (icon) {
+            icon.setAttribute('data-lucide', 'check');
+            lucide.createIcons();
+            setTimeout(() => {
+              icon.setAttribute('data-lucide', 'copy');
+              lucide.createIcons();
+            }, 1500);
+          }
+        } catch (err) {
+          alert('Copy failed. Please copy manually.');
+        }
+      });
+    });
+  }
+
+  // =============================
   // FETCH BANK DETAILS
   // =============================
   if (bankDetailsContainer) {
@@ -331,9 +373,7 @@ function openManualPaymentModal(orderId, total) {
         bankDetailsContainer.innerHTML = `
           <h3>Bank Transfer Details</h3>
 
-          <p>
-            <strong>Bank:</strong> ${escapeHTML(config.bankName)}
-          </p>
+          <p><strong>Bank:</strong> ${escapeHTML(config.bankName)}</p>
 
           <p>
             <strong>Account Name:</strong>
@@ -368,32 +408,11 @@ function openManualPaymentModal(orderId, total) {
           </p>
         `;
 
-        // Activate Lucide icons
-        if (window.lucide) {
-          lucide.createIcons();
-        }
+        // Render icons
+        if (window.lucide) lucide.createIcons();
 
-        // Attach copy listeners
-        document.querySelectorAll('.copy-btn').forEach(button => {
-          button.addEventListener('click', async function () {
-            const textToCopy = this.getAttribute('data-copy');
-            const icon = this.querySelector('i');
-
-            try {
-              await navigator.clipboard.writeText(textToCopy);
-
-              icon.setAttribute('data-lucide', 'check');
-              lucide.createIcons();
-
-              setTimeout(() => {
-                icon.setAttribute('data-lucide', 'copy');
-                lucide.createIcons();
-              }, 1500);
-            } catch (err) {
-              alert('Copy failed. Please copy manually.');
-            }
-          });
-        });
+        // Setup copy
+        setupCopyButtons(bankDetailsContainer);
 
       })
       .catch(() => {
@@ -412,7 +431,6 @@ function openManualPaymentModal(orderId, total) {
   // FILE PREVIEW
   // =============================
   const fileInput = document.getElementById('paymentReceipt');
-
   fileInput.addEventListener('change', function () {
     const file = this.files[0];
     const previewContainer = document.getElementById('receiptPreviewContainer');
@@ -434,11 +452,8 @@ function openManualPaymentModal(orderId, total) {
       const fileURL = URL.createObjectURL(file);
       previewContainer.innerHTML = `
         <p><strong>PDF Preview:</strong></p>
-        <iframe src="${fileURL}" 
-                width="100%" 
-                height="400px"
-                style="margin-top:10px; border-radius:8px;">
-        </iframe>
+        <iframe src="${fileURL}" width="100%" height="400px"
+                style="margin-top:10px; border-radius:8px;"></iframe>
       `;
     } else {
       previewContainer.innerHTML = `<span class="error">Unsupported file type.</span>`;

@@ -3480,8 +3480,13 @@ html {
     display: inline-block;
 }
 
-/* Manual Payment Modal Specifics */
 
+
+/* Manual Payment Modal Specifics */
+#manualflex{
+  display: flex;
+  flex-direction: column;
+}
 .manual-bank-details {
   background-color: var(--light-bg);
   padding: 1.5rem;

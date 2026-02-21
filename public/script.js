@@ -325,11 +325,10 @@ function openManualPaymentModal(orderId, total) {
     // =============================
 // SECURE COPY HELPER (Copied Text Version)
 // =============================
-  function setupCopyButtons(container) {
+function setupCopyButtons(container) {
     container.querySelectorAll('.copy-btn').forEach(button => {
         button.addEventListener('click', async function () {
             const textToCopy = this.getAttribute('data-copy');
-            const icon = this.querySelector('i');
 
             try {
                 // Copy to clipboard
@@ -347,25 +346,23 @@ function openManualPaymentModal(orderId, total) {
                     document.body.removeChild(textarea);
                 }
 
-                // Show "Copied!" text temporarily
-                if (icon) {
-                    // Hide the icon
-                    icon.style.display = 'none';
+                // Create temporary "Copied!" message
+                const copiedMessage = document.createElement('span');
+                copiedMessage.textContent = 'Copied!';
+                copiedMessage.style.color = '#28a745'; // green
+                copiedMessage.style.fontWeight = 'bold';
+                copiedMessage.style.marginRight = '8px';
+                copiedMessage.style.opacity = '1';
+                copiedMessage.style.transition = 'opacity 0.5s';
+                
+                // Insert message before the button
+                button.parentNode.insertBefore(copiedMessage, button);
 
-                    // Create temporary span
-                    const copiedSpan = document.createElement('span');
-                    copiedSpan.textContent = 'Copied!';
-                    copiedSpan.style.fontWeight = 'bold';
-                    copiedSpan.style.color = '#28a745'; // green text
-                    copiedSpan.classList.add('copied-temp');
-                    button.appendChild(copiedSpan);
-
-                    setTimeout(() => {
-                        // Remove temporary text and show icon again
-                        copiedSpan.remove();
-                        icon.style.display = '';
-                    }, 1500);
-                }
+                // Fade out after 1.5 seconds
+                setTimeout(() => {
+                    copiedMessage.style.opacity = '0';
+                    setTimeout(() => copiedMessage.remove(), 500); // remove after fade
+                }, 1500);
 
             } catch (err) {
                 alert('Copy failed. Please copy manually.');

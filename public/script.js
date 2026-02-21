@@ -327,18 +327,12 @@ function openManualPaymentModal(orderId, total) {
 // =============================
     function setupCopyButtons(container) {
     container.querySelectorAll('.copy-btn').forEach(button => {
-        const iconHTML = '<i data-lucide="copy"></i>'; // store icon HTML
-        const iconWrapper = document.createElement('span');
-        iconWrapper.innerHTML = iconHTML;
-        button.innerHTML = ''; // clear button
-        button.appendChild(iconWrapper);
-
-        // Activate Lucide icon
-        if (window.lucide) lucide.replace(iconWrapper.querySelector('i'));
-
         button.addEventListener('click', async function () {
         const textToCopy = this.getAttribute('data-copy');
+        const icon = this.querySelector('i');
+
         try {
+            // Copy to clipboard
             if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(textToCopy);
             } else {
@@ -354,11 +348,16 @@ function openManualPaymentModal(orderId, total) {
             }
 
             // Show "Copied!" text
-            iconWrapper.textContent = 'Copied!';
-            setTimeout(() => {
-            iconWrapper.innerHTML = iconHTML; // restore icon
-            if (window.lucide) lucide.replace(iconWrapper.querySelector('i'));
-            }, 1500);
+if (icon) {
+    const originalContent = button.innerHTML; // save entire button content
+    button.innerHTML = 'Copied!'; // temporarily show text
+
+    setTimeout(() => {
+        button.innerHTML = originalContent; // restore original icon
+        if (window.lucide) lucide.createIcons(); // re-render icon
+    }, 1500);
+}
+
         } catch (err) {
             alert('Copy failed. Please copy manually.');
         }

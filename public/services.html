@@ -13,6 +13,7 @@
 <meta name="msapplication-TileColor" content="#da532c">
 <meta name="theme-color" content="#ffffff">
     <link rel="stylesheet" href="style.css">
+     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <!-- Header / Navbar -->
@@ -329,23 +330,24 @@
             </div>
         </div>
     </div>
-       <!-- Manual Payment Modal -->
+<!-- Manual Payment Modal -->
 <div class="modal-overlay" id="manualPaymentModal">
     <div class="modal-container">
         <button class="modal-close" onclick="closeManualPaymentModal()">&times;</button>
-        <div class="modal-content">
+        <div class="modal-content" id="manualflex">
+            
             <h2>Complete Your Payment</h2>
 
             <div id="manualOrderSummary"></div>
 
-            <div class="manual-bank-details">
-                <h3>Bank Transfer Details</h3>
-                <p><strong>Bank:</strong> Zenith Bank</p>
-                <p><strong>Account Name:</strong> Phemmy Solar Nigeria</p>
-                <p><strong>Account Number:</strong> 1234567890</p>
-                <p>Please use your Order ID as payment reference.</p>
+            <!-- EMPTY container for dynamic bank details -->
+            <div class="manual-bank-details" id="bankDetailsContainer">
+                <!-- Bank details will be populated securely from server -->
             </div>
-
+            <p style="font-size: 0.9rem; color: var(--text-light); margin-top: 1rem;">
+          <strong>Security Notice:</strong> 
+                Our official account details are verified by the server.
+        </p>
             <button class="btn btn-primary" id="confirmManualPaymentBtn">
                 I Have Paid
             </button>

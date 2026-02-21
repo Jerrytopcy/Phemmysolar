@@ -286,20 +286,32 @@ const orderData = {
 }
 
 function openManualPaymentModal(orderId, total) {
-    document.getElementById('accountModal').classList.remove('active');
-document.body.style.overflow = '';
+  document.getElementById('accountModal').classList.remove('active');
+  document.body.style.overflow = '';
+
   const modal = document.getElementById('manualPaymentModal');
   const summary = document.getElementById('manualOrderSummary');
-  
+  const bankDetailsContainer = document.getElementById('bankDetailsContainer');
+
+  // Clear previous content
+  summary.innerHTML = '';
+  if (bankDetailsContainer) {
+    bankDetailsContainer.innerHTML = '';
+  }
+
+  const paymentReference = `PHSOLAR-${orderId}`;
+
+  // Render summary securely
   summary.innerHTML = `
-    <p><strong>Order ID:</strong> ${orderId}</p>
-    <p><strong>Total:</strong> ₦${(total).toLocaleString()}</p>
+    <p><strong>Order ID:</strong> ${escapeHTML(orderId)}</p>
+    <p><strong>Total:</strong> ₦${escapeHTML(total.toLocaleString())}</p>
+    <p><strong>Payment Reference:</strong> ${escapeHTML(paymentReference)}</p>
     <p><strong>Payment Instructions:</strong></p>
     <ul>
-      <li>💳 Make payment to the account provided by the admin</li>
-    <li>📸 Upload your payment receipt below</li>
+      <li>💳 Make payment to the account shown below</li>
+      <li>📸 Upload your payment receipt after payment</li>
     </ul>
-    
+
     <div class="receipt-upload-section">
       <label for="paymentReceipt">Upload Payment Receipt:</label>
       <input type="file" id="paymentReceipt" accept="image/*,.pdf">
@@ -307,70 +319,130 @@ document.body.style.overflow = '';
       <div id="receiptUploadStatus" class="upload-status"></div>
     </div>
   `;
-  
+
+  // Fetch secure bank details
+  if (bankDetailsContainer) {
+    fetchBankDetails()
+      .then(config => {
+        bankDetailsContainer.innerHTML = `
+          <h3>Bank Transfer Details</h3>
+          <p><strong>Bank:</strong> ${escapeHTML(config.bankName)}</p>
+          <p><strong>Account Name:</strong> ${escapeHTML(config.accountName)}</p>
+          <p><strong>Account Number:</strong> ${escapeHTML(config.accountNumber)}</p>
+          <p class="payment-note">
+            <strong>Payment Reference:</strong> ${escapeHTML(paymentReference)}
+          </p>
+        `;
+      })
+      .catch(error => {
+        console.error('Bank config error:', error);
+        bankDetailsContainer.innerHTML = `
+          <div class="error-banner">
+            <p>Payment system unavailable. Contact support.</p>
+          </div>
+        `;
+      });
+  }
+
   modal.classList.add('active');
   document.body.style.overflow = "hidden";
-  
+
   // Handle receipt upload
-  document.getElementById('uploadReceiptBtn').onclick = async function() {
+  document.getElementById('uploadReceiptBtn').onclick = async function () {
     const fileInput = document.getElementById('paymentReceipt');
     const file = fileInput.files[0];
     const statusElement = document.getElementById('receiptUploadStatus');
-    
+
     if (!file) {
       statusElement.innerHTML = '<span class="error">Please select a file to upload</span>';
       return;
     }
-    
+
     try {
       statusElement.innerHTML = '<span class="info">Uploading receipt...</span>';
-      
+
       const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('receipt', file);
-      
-      const response = await fetch(`/api/orders/${orderId}/upload-receipt`, {
+
+      const response = await fetch(`/api/orders/${encodeURIComponent(orderId)}/upload-receipt`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
         },
         body: formData
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         statusElement.innerHTML = `
           <span class="success">Receipt uploaded successfully!</span>
           <p>Your order will be processed once payment is confirmed by admin.</p>
         `;
-        // Disable the upload button after successful upload
         document.getElementById('uploadReceiptBtn').disabled = true;
         fileInput.disabled = true;
       } else {
         throw new Error(result.error || 'Failed to upload receipt');
       }
+
     } catch (error) {
-      statusElement.innerHTML = `<span class="error">${error.message}</span>`;
+      statusElement.innerHTML = `<span class="error">${escapeHTML(error.message)}</span>`;
     }
   };
-  
-  document.getElementById('confirmManualPaymentBtn').onclick = function() {
+
+  // Confirm button
+  document.getElementById('confirmManualPaymentBtn').onclick = function () {
     const uploadBtn = document.getElementById('uploadReceiptBtn');
     const statusElement = document.getElementById('receiptUploadStatus');
-    
-    // Check if upload button is still enabled (meaning no receipt was uploaded)
+
     if (!uploadBtn.disabled) {
       statusElement.innerHTML = '<span class="error">Please upload your payment receipt before proceeding.</span>';
       return;
     }
-    
-    // Only close modal if receipt was successfully uploaded
+
     modal.classList.remove('active');
     document.body.style.overflow = "";
-    showCustomAlert("Payment receipt upload completed. Your order will be processed once payment is confirmed by admin.", "Receipt Uploaded");
+    showCustomAlert(
+      "Payment receipt upload completed. Your order will be processed once payment is confirmed by admin.",
+      "Receipt Uploaded"
+    );
   };
 }
+
+
+// XSS protection utility
+function escapeHTML(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, 
+    m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+
+// Secure bank details fetcher
+async function fetchBankDetails() {
+  const response = await fetch('/api/payment-config', {
+    headers: {
+      'Accept': 'application/json',
+      'Cache-Control': 'no-cache'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Bank configuration unavailable');
+  }
+
+  const config = await response.json();
+
+  if (!config.bankName || !config.accountName || !config.accountNumber) {
+    throw new Error('Invalid bank configuration');
+  }
+
+  return config;
+}
+
+
+
 
 function closeManualPaymentModal() {
     const modal = document.getElementById('manualPaymentModal');

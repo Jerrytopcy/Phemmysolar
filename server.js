@@ -1130,24 +1130,18 @@ app.post('/api/orders/:id/upload-receipt', authMiddleware, uploadReceipt.single(
     res.status(500).json({ error: 'Failed to upload receipt' });
   }
 });
-// Server config (e.g., config.js)
-const BANK_CONFIG = {
-  name: process.env.BANK_NAME || "United Bank for Africa",
-  accountName: process.env.ACCOUNT_NAME || "Oluwafemi Emmanuel(Phemmy Solar Nigeria)",
-  accountNumber: process.env.ACCOUNT_NUMBER || "2203665343",
-  verificationCode: "PHSOLAR" // Unique payment reference prefix
-};
-
-// New API endpoint
+// Add to your server routes
 app.get('/api/payment-config', (req, res) => {
-  // Remove sensitive fields if needed
-  res.json({
-    bankName: BANK_CONFIG.name,
-    accountName: BANK_CONFIG.accountName,
-    accountNumber: BANK_CONFIG.accountNumber,
-    referencePrefix: BANK_CONFIG.verificationCode
-  });
+  // These values should come from environment variables
+  const config = {
+    bankName: process.env.BANK_NAME,
+    accountName: process.env.ACCOUNT_NAME,
+    accountNumber: process.env.ACCOUNT_NUMBER,
+  };
+  
+  res.json(config);
 });
+
 
 
 // --- REQUERY PAYMENT STATUS (v1 API) ---

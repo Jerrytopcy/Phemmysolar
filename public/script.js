@@ -285,66 +285,105 @@ const orderData = {
     }
 }
 
-async function openManualPaymentModal(orderId, total) {
-  try {
-    // Fetch DYNAMIC bank details from server
-    const config = await fetchBankConfig();
+function openManualPaymentModal(orderId, total) {
+  document.getElementById('accountModal').classList.remove('active');
+  document.body.style.overflow = '';
+
+  const modal = document.getElementById('manualPaymentModal');
+  const summary = document.getElementById('manualOrderSummary');
+  const bankDetailsContainer = document.getElementById('bankDetailsContainer');
+  
+  // Clear previous content to prevent XSS residue
+  summary.innerHTML = '';
+  bankDetailsContainer.innerHTML = '';
+
+  // Create ORDER-SPECIFIC payment reference
+  const paymentReference = `PHSOLAR-${orderId}`;
+  
+  // Render order summary with XSS protection
+  summary.innerHTML = `
+    <p><strong>Order ID:</strong> ${escapeHTML(orderId)}</p>
+    <p><strong>Total:</strong> ₦${escapeHTML(total.toLocaleString())}</p>
+    <p><strong>Payment Reference:</strong> ${escapeHTML(paymentReference)}</p>
+    <p><strong>Payment Instructions:</strong></p>
+    <ul>
+      <li>💳 Make payment to the account shown below</li>
+      <li>📸 Upload your payment receipt after payment</li>
+    </ul>
     
-    // Generate ORDER-SPECIFIC reference
-    const paymentReference = `${config.referencePrefix}-${orderId}`;
-    
-    // Render with DOM-safe methods
-    const modal = document.getElementById('manualPaymentModal');
-    const container = document.getElementById('manualOrderSummary');
-    
-    // Clear previous content
-    container.innerHTML = '';
-    
-    // Create elements safely (avoiding innerHTML)
-    const orderDetails = [
-      { label: "Order ID", value: orderId },
-      { label: "Total", value: `₦${total.toLocaleString()}` },
-      { label: "Payment Reference", value: paymentReference }
-    ];
-    
-    orderDetails.forEach(item => {
-      const p = document.createElement('p');
-      p.innerHTML = `<strong>${item.label}:</strong> ${escapeHTML(item.value)}`;
-      container.appendChild(p);
+    <div class="receipt-upload-section">
+      <label for="paymentReceipt">Upload Payment Receipt:</label>
+      <input type="file" id="paymentReceipt" accept="image/*,.pdf">
+      <button class="btn btn-primary" id="uploadReceiptBtn">Upload Receipt</button>
+      <div id="receiptUploadStatus" class="upload-status"></div>
+    </div>
+  `;
+
+  // SECURITY CRITICAL: Fetch bank details from server
+  fetchBankDetails()
+    .then(config => {
+      // Render bank details with HTML escaping
+      bankDetailsContainer.innerHTML = `
+        <h3>Bank Transfer Details</h3>
+        <p><strong>Bank:</strong> ${escapeHTML(config.bankName)}</p>
+        <p><strong>Account Name:</strong> ${escapeHTML(config.accountName)}</p>
+        <p><strong>Account Number:</strong> ${escapeHTML(config.accountNumber)}</p>
+        <p class="payment-note">
+          <strong>Payment Reference:</strong> ${escapeHTML(paymentReference)}
+        </p>
+      `;
+    })
+    .catch(error => {
+      console.error('Bank config error:', error);
+      bankDetailsContainer.innerHTML = `
+        <div class="error-banner">
+          <p>⚠️ Payment system unavailable. Contact support immediately.</p>
+          <p>Do NOT proceed with payment until resolved.</p>
+        </div>
+      `;
     });
 
-    // Add bank details section
-    const bankSection = document.createElement('div');
-    bankSection.className = "manual-bank-details";
-    bankSection.innerHTML = `
-      <h3>Bank Transfer Details</h3>
-      <p><strong>Bank:</strong> ${escapeHTML(config.bankName)}</p>
-      <p><strong>Account Name:</strong> ${escapeHTML(config.accountName)}</p>
-      <p><strong>Account Number:</strong> ${escapeHTML(config.accountNumber)}</p>
-      <p class="payment-note">
-        Use reference: <strong>${escapeHTML(paymentReference)}</strong>
-      </p>
-    `;
-    container.after(bankSection);
-
-    // ... [rest of modal setup remains similar] ...
-    
-  } catch (error) {
-    showCustomAlert("Payment system unavailable. Contact support.", "Error", "error");
-  }
+  modal.classList.add('active');
+  document.body.style.overflow = "hidden";
+  
+  // [Rest of your existing code remains the same...]
+  // Handle receipt upload, confirm button handlers, etc.
 }
 
-// XSS protection utility
+summary.innerHTML = `<p><strong>Order ID:</strong> ${orderId}</p>`;
+// XSS protection utility (add this globally)
 function escapeHTML(str) {
+  if (!str) return '';
   return str.replace(/[&<>"']/g, 
     m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
 
-async function fetchBankConfig() {
-  const response = await fetch('/api/payment-config');
-  if (!response.ok) throw new Error("Bank config unavailable");
-  return response.json();
+// Secure bank details fetcher
+async function fetchBankDetails() {
+  const response = await fetch('/api/payment-config', {
+    headers: {
+      'Accept': 'application/json',
+      'Cache-Control': 'no-cache'
+    }
+  });
+  
+  if (!response.ok) {
+    throw new Error('Bank configuration unavailable');
+  }
+  
+  const config = await response.json();
+  
+  // Validate required fields
+  if (!config.bankName || !config.accountName || !config.accountNumber) {
+    throw new Error('Invalid bank configuration');
+  }
+  
+  return config;
 }
+
+summary.innerHTML = `<p><strong>Order ID:</strong> ${escapeHTML(orderId)}</p>`;
+const paymentReference = `PHSOLAR-${orderId}`; // Prefix prevents reference collisions
+
 
 function closeManualPaymentModal() {
     const modal = document.getElementById('manualPaymentModal');

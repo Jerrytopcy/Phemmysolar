@@ -355,7 +355,7 @@ function setupCopyButtons(container) {
                 copiedMessage.style.transition = 'opacity 0.5s';
                 
                 // Insert message before the button
-                button.parentNode.insertAfter(copiedMessage, button.nextSibling);
+                button.parentNode.insertBefore(copiedMessage, button.nextSibling);
 
                 // Fade out after 1.5 seconds
                 setTimeout(() => {

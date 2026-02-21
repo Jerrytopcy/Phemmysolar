@@ -1030,20 +1030,17 @@ app.post('/api/auth/check', checkLimiter, async (req, res) => {
     }
 });
 
-
 // --- ORDERS ROUTES (PROTECTED) ---
 app.post('/api/orders', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const { items, total, deliveryAddress, paymentStatus, paymentReference } = req.body;
 
-
     const orderResult = await pool.query(
-      `INSERT INTO orders (user_id, total, delivery_address, payment_status, transaction_id)
-      VALUES ($1, $2, $3, $4, $5)
-
-       RETURNING id, date`,
-      [userId, total, deliveryAddress, paymentStatus || 'paid', paymentReference]
+      `INSERT INTO orders (user_id, total, delivery_address, payment_status, status, transaction_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, date`,
+      [userId, total, deliveryAddress, paymentStatus || 'pending', 'pending', paymentReference]
     );
 
     const orderId = orderResult.rows[0].id;
@@ -1075,6 +1072,7 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
         o.total,
         o.status,
         o.payment_status,
+        o.receipt_url,
         o.delivery_address,
         json_agg(
           json_build_object(

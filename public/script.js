@@ -345,6 +345,15 @@ function openManualPaymentModal(orderId, total) {
         // Disable the upload button after successful upload
         document.getElementById('uploadReceiptBtn').disabled = true;
         fileInput.disabled = true;
+        
+        // Refresh order history to update the button state
+        setTimeout(loadOrderHistory, 2000);
+        
+        // Close the modal after a short delay
+        setTimeout(() => {
+          modal.classList.remove('active');
+          document.body.style.overflow = "";
+        }, 3000);
       } else {
         throw new Error(result.error || 'Failed to upload receipt');
       }
@@ -353,21 +362,21 @@ function openManualPaymentModal(orderId, total) {
     }
   };
   
-document.getElementById('confirmManualPaymentBtn').onclick = function() {
-  const uploadBtn = document.getElementById('uploadReceiptBtn');
-  const statusElement = document.getElementById('receiptUploadStatus');
-  
-  // Check if upload button is still enabled (meaning no receipt was uploaded)
-  if (!uploadBtn.disabled) {
-    statusElement.innerHTML = '<span class="error">Please upload your payment receipt before proceeding.</span>';
-    return;
-  }
-  
-  // Only close modal if receipt was successfully uploaded
-  modal.classList.remove('active');
-  document.body.style.overflow = "";
-  showCustomAlert("Payment receipt upload completed. Your order will be processed once payment is confirmed by admin.", "Receipt Uploaded");
-};
+  document.getElementById('confirmManualPaymentBtn').onclick = function() {
+    const uploadBtn = document.getElementById('uploadReceiptBtn');
+    const statusElement = document.getElementById('receiptUploadStatus');
+    
+    // Check if upload button is still enabled (meaning no receipt was uploaded)
+    if (!uploadBtn.disabled) {
+      statusElement.innerHTML = '<span class="error">Please upload your payment receipt before proceeding.</span>';
+      return;
+    }
+    
+    // Only close modal if receipt was successfully uploaded
+    modal.classList.remove('active');
+    document.body.style.overflow = "";
+    showCustomAlert("Payment receipt upload completed. Your order will be processed once payment is confirmed by admin.", "Receipt Uploaded");
+  };
 }
 
 function closeManualPaymentModal() {

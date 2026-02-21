@@ -346,9 +346,6 @@ function openManualPaymentModal(orderId, total) {
         document.getElementById('uploadReceiptBtn').disabled = true;
         fileInput.disabled = true;
         
-        // Refresh order history to update the button state
-        setTimeout(loadOrderHistory, 2000);
-        
         // Close the modal after a short delay
         setTimeout(() => {
           modal.classList.remove('active');

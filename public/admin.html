@@ -165,7 +165,7 @@
                                 <th>Total</th>
                                 <th>Status</th>
                                 <th>Date</th>
-                                <th>RRR</th>
+                                <th>Receipt</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -698,6 +698,30 @@
     </div>
   </div>
 </div>
+<!-- Receipt View Modal -->
+<div id="receiptModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card receipt-modal-card">
+        <div class="modal-header">
+            <h3>Payment Receipt</h3>
+            <button id="closeReceiptModalBtn" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-content receipt-modal-content">
+            <div id="receiptImageContainer" class="receipt-image-container">
+                <!-- Receipt image will be loaded here -->
+            </div>
+            <div id="receiptNoImage" class="receipt-no-image" style="display: none;">
+                <p>No receipt uploaded for this order.</p>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <a id="downloadReceiptBtn" class="btn btn-primary" style="display: none;" download>
+                📥 Download Receipt
+            </a>
+            <button type="button" id="closeReceiptModalBtn2" class="btn btn-secondary">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Global Loading Overlay -->
 <div id="globalLoader" class="loader-overlay">
     <div class="loader-spinner"></div>

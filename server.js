@@ -161,45 +161,40 @@ const adminOnly = (req, res, next) => {
 
 
 app.get('/api/admin/orders', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT 
-        o.id AS order_id,
-        o.date,
-        o.total,
-        o.status,
-        o.payment_status,
-        o.delivery_address,
-
-        u.id AS user_id,
-        u.username,
-        u.email,
-        u.phone,
-
-        json_agg(
-          json_build_object(
-            'productId', p.id,
-            'name', p.name,
-            'price', oi.price,
-            'quantity', oi.quantity
-          )
-        ) AS items
-
-      FROM orders o
-      JOIN users u ON u.id = o.user_id
-      JOIN order_items oi ON oi.order_id = o.id
-      JOIN products p ON p.id = oi.product_id
-
-      GROUP BY o.id, u.id
-      ORDER BY o.date DESC
-    `);
-
-    res.json(result.rows);
-
-  } catch (err) {
-    console.error('Admin fetch orders error:', err);
-    res.status(500).json({ error: 'Failed to fetch orders' });
-  }
+try {
+const result = await pool.query(`
+SELECT
+o.id AS order_id,
+o.date,
+o.total,
+o.status,
+o.payment_status,
+o.delivery_address,
+o.receipt_url,
+u.id AS user_id,
+u.username,
+u.email,
+u.phone,
+json_agg(
+json_build_object(
+'productId', p.id,
+'name', p.name,
+'price', oi.price,
+'quantity', oi.quantity
+)
+) AS items
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN order_items oi ON oi.order_id = o.id
+JOIN products p ON p.id = oi.product_id
+GROUP BY o.id, u.id
+ORDER BY o.date DESC
+`);
+res.json(result.rows);
+} catch (err) {
+console.error('Admin fetch orders error:', err);
+res.status(500).json({ error: 'Failed to fetch orders' });
+}
 });
 
 app.put('/api/admin/orders/:id/status', authMiddleware, adminOnly, async (req, res) => {

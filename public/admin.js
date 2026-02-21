@@ -594,15 +594,15 @@ async function loadOrders() {
 }
 
 function renderOrders(orders) {
-    const tableBody = document.getElementById("ordersTableBody");
-    if (!orders || orders.length === 0) {
-        tableBody.innerHTML = `
+const tableBody = document.getElementById("ordersTableBody");
+if (!orders || orders.length === 0) {
+tableBody.innerHTML = `
 <tr>
 <td colspan="7" class="empty-state">No orders found</td>
 </tr>`;
-        return;
-    }
-    tableBody.innerHTML = orders.map(order => `
+return;
+}
+tableBody.innerHTML = orders.map(order => `
 <tr>
 <td>#${order.order_id}</td>
 <td>${order.username}</td>
@@ -613,8 +613,12 @@ ${order.status}
 </span>
 </td>
 <td>${new Date(order.date).toLocaleDateString()}</td>
-<!-- Add RRR column -->
-<td>${order.transaction_id || "—"}</td>
+<td>
+${order.receipt_url
+? `<button class="btn-view-receipt" onclick="viewReceipt('${order.receipt_url}', ${order.order_id})">View Receipt</button>`
+: `<span class="no-receipt">No Receipt</span>`
+}
+</td>
 <td>
 <button class="btn-view" onclick="viewOrder(${order.order_id})">
 View
@@ -623,7 +627,40 @@ View
 </tr>
 `).join("");
 }
+// View Receipt Modal
+function viewReceipt(receiptUrl, orderId) {
+const modal = document.getElementById("receiptModal");
+const imageContainer = document.getElementById("receiptImageContainer");
+const noImageMsg = document.getElementById("receiptNoImage");
+const downloadBtn = document.getElementById("downloadReceiptBtn");
 
+if (!receiptUrl) {
+imageContainer.style.display = "none";
+noImageMsg.style.display = "block";
+downloadBtn.style.display = "none";
+} else {
+imageContainer.style.display = "block";
+noImageMsg.style.display = "none";
+downloadBtn.style.display = "inline-block";
+
+// Display receipt image
+imageContainer.innerHTML = `
+<img src="${receiptUrl}" alt="Payment Receipt for Order #${orderId}" class="receipt-image">
+`;
+
+// Set download button
+downloadBtn.href = receiptUrl;
+downloadBtn.setAttribute("download", `receipt-order-${orderId}.jpg`);
+}
+
+modal.style.display = "flex";
+}
+
+// Close Receipt Modal
+function closeReceiptModal() {
+const modal = document.getElementById("receiptModal");
+modal.style.display = "none";
+}
 function applyOrderFilters() {
     const search = document
         .getElementById("orderSearchInput")
@@ -1860,7 +1897,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    
+            // Receipt Modal Event Listeners
+        const closeReceiptModalBtn = document.getElementById("closeReceiptModalBtn");
+        const closeReceiptModalBtn2 = document.getElementById("closeReceiptModalBtn2");
+        const receiptModal = document.getElementById("receiptModal");
+
+        if (closeReceiptModalBtn && receiptModal) {
+        closeReceiptModalBtn.addEventListener("click", closeReceiptModal);
+        }
+
+        if (closeReceiptModalBtn2 && receiptModal) {
+        closeReceiptModalBtn2.addEventListener("click", closeReceiptModal);
+        }
+
+        if (receiptModal) {
+        receiptModal.addEventListener("click", (e) => {
+        if (e.target === receiptModal) {
+        closeReceiptModal();
+        }
+        });
+        }
+
+        // Close on Escape key
+        document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && receiptModal && receiptModal.style.display === "flex") {
+        closeReceiptModal();
+        }
+        });
 });
 // Close View Modal
 document.getElementById('closeViewUserBtn')?.addEventListener('click', () => {

@@ -349,7 +349,7 @@ function setupCopyButtons(container) {
                 // Create temporary "Copied!" message
                 const copiedMessage = document.createElement('span');
                 copiedMessage.textContent = 'Copied!';
-                copiedMessage.style.color = '#0c0c0c70';
+                copiedMessage.style.color = '#0c0c0ce5';
                 copiedMessage.style.marginRight = '6px';
                 copiedMessage.style.opacity = '1';
                 copiedMessage.style.transition = 'opacity 0.5s';

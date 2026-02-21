@@ -3489,19 +3489,16 @@ html {
   padding: 1.5rem;
   border-radius: 8px;
   border: 1px solid var(--border-color);
-  margin: 1.5rem 0;
 }
 
 .manual-bank-details h3 {
   font-size: 1.1rem;
   color: var(--secondary-color);
-  margin-bottom: 1rem;
   border-bottom: 2px solid var(--primary-color);
   padding-bottom: 0.25rem;
 }
 
 .manual-bank-details p {
-  margin-bottom: 0.5rem;
   color: var(--text-dark);
   line-height: 1.6;
 }

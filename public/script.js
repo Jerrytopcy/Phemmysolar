@@ -286,7 +286,7 @@ const orderData = {
 }
 
 function openManualPaymentModal(orderId, total) {
-document.getElementById('accountModal').classList.remove('active');
+    document.getElementById('accountModal').classList.remove('active');
 document.body.style.overflow = '';
   const modal = document.getElementById('manualPaymentModal');
   const summary = document.getElementById('manualOrderSummary');
@@ -347,12 +347,6 @@ document.body.style.overflow = '';
         // Disable the upload button after successful upload
         document.getElementById('uploadReceiptBtn').disabled = true;
         fileInput.disabled = true;
-        
-        // Close the modal after a short delay
-        setTimeout(() => {
-          modal.classList.remove('active');
-          document.body.style.overflow = "";
-        }, 3000);
       } else {
         throw new Error(result.error || 'Failed to upload receipt');
       }

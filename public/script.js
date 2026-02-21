@@ -298,6 +298,9 @@ function openManualPaymentModal(orderId, total) {
 
   const paymentReference = `PHSOLAR-${orderId}`;
 
+  // =============================
+  // ORDER SUMMARY
+  // =============================
   summary.innerHTML = `
     <p><strong>Order ID:</strong> ${escapeHTML(orderId)}</p>
     <p><strong>Total:</strong> ₦${escapeHTML(total.toLocaleString())}</p>
@@ -319,19 +322,62 @@ function openManualPaymentModal(orderId, total) {
     </div>
   `;
 
-  // Fetch bank details securely
+  // =============================
+  // FETCH BANK DETAILS
+  // =============================
   if (bankDetailsContainer) {
     fetchBankDetails()
       .then(config => {
+
         bankDetailsContainer.innerHTML = `
           <h3>Bank Transfer Details</h3>
-          <p><strong>Bank:</strong> ${escapeHTML(config.bankName)}</p>
-          <p><strong>Account Name:</strong> ${escapeHTML(config.accountName)}</p>
-          <p><strong>Account Number:</strong> ${escapeHTML(config.accountNumber)}</p>
-          <p class="payment-note">
-            <strong>Payment Reference:</strong> ${escapeHTML(paymentReference)}
+
+          <p>
+            <strong>Bank:</strong> ${escapeHTML(config.bankName)}
+          </p>
+
+          <p>
+            <strong>Account Name:</strong>
+            ${escapeHTML(config.accountName)}
+            <button class="copy-btn" data-copy="${escapeHTML(config.accountName)}">📋</button>
+          </p>
+
+          <p>
+            <strong>Account Number:</strong>
+            ${escapeHTML(config.accountNumber)}
+            <button class="copy-btn" data-copy="${escapeHTML(config.accountNumber)}">📋</button>
+          </p>
+
+          <p>
+            <strong>Payment Reference:</strong>
+            ${escapeHTML(paymentReference)}
+            <button class="copy-btn" data-copy="${escapeHTML(paymentReference)}">📋</button>
+          </p>
+
+          <p>
+            <strong>Amount:</strong>
+            ₦${escapeHTML(total.toLocaleString())}
+            <button class="copy-btn" data-copy="${escapeHTML(total.toLocaleString())}">📋</button>
           </p>
         `;
+
+        // Attach copy listeners safely
+        document.querySelectorAll('.copy-btn').forEach(button => {
+          button.addEventListener('click', async function () {
+            const textToCopy = this.getAttribute('data-copy');
+
+            try {
+              await navigator.clipboard.writeText(textToCopy);
+              this.textContent = '✅';
+              setTimeout(() => {
+                this.textContent = '📋';
+              }, 1500);
+            } catch (err) {
+              alert('Copy failed. Please copy manually.');
+            }
+          });
+        });
+
       })
       .catch(() => {
         bankDetailsContainer.innerHTML = `
@@ -346,9 +392,8 @@ function openManualPaymentModal(orderId, total) {
   document.body.style.overflow = "hidden";
 
   // =============================
-  // FILE PREVIEW LOGIC
+  // FILE PREVIEW
   // =============================
-
   const fileInput = document.getElementById('paymentReceipt');
 
   fileInput.addEventListener('change', function () {
@@ -358,10 +403,7 @@ function openManualPaymentModal(orderId, total) {
 
     if (!file) return;
 
-    const fileType = file.type;
-
-    // Image preview
-    if (fileType.startsWith('image/')) {
+    if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = function (e) {
         previewContainer.innerHTML = `
@@ -373,14 +415,13 @@ function openManualPaymentModal(orderId, total) {
       reader.readAsDataURL(file);
     }
 
-    // PDF preview
-    else if (fileType === 'application/pdf') {
+    else if (file.type === 'application/pdf') {
       const fileURL = URL.createObjectURL(file);
       previewContainer.innerHTML = `
         <p><strong>PDF Preview:</strong></p>
         <iframe src="${fileURL}" 
                 width="100%" 
-                height="400px" 
+                height="400px"
                 style="margin-top:10px; border-radius:8px;">
         </iframe>
       `;
@@ -396,24 +437,12 @@ function openManualPaymentModal(orderId, total) {
   // =============================
   // UPLOAD LOGIC
   // =============================
-
   document.getElementById('uploadReceiptBtn').onclick = async function () {
     const file = fileInput.files[0];
     const statusElement = document.getElementById('receiptUploadStatus');
 
     if (!file) {
       statusElement.innerHTML = '<span class="error">Please select a file to upload</span>';
-      return;
-    }
-
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-    if (!allowedTypes.includes(file.type)) {
-      statusElement.innerHTML = '<span class="error">Invalid file type. Only images or PDF allowed.</span>';
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      statusElement.innerHTML = '<span class="error">File too large. Maximum 5MB allowed.</span>';
       return;
     }
 
@@ -453,7 +482,6 @@ function openManualPaymentModal(orderId, total) {
   // =============================
   // CONFIRM BUTTON
   // =============================
-
   document.getElementById('confirmManualPaymentBtn').onclick = function () {
     const uploadBtn = document.getElementById('uploadReceiptBtn');
     const statusElement = document.getElementById('receiptUploadStatus');

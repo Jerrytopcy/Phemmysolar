@@ -3530,3 +3530,15 @@ html {
 .receipt-preview iframe {
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
+.copy-btn {
+  margin-left: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.copy-btn:hover {
+  transform: scale(1.2);
+}

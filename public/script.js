@@ -322,9 +322,9 @@ function openManualPaymentModal(orderId, total) {
     </div>
   `;
 
-  // =============================
-  // SECURE COPY HELPER
-  // =============================
+    // =============================
+// SECURE COPY HELPER (Copied Text Version)
+// =============================
     function setupCopyButtons(container) {
     container.querySelectorAll('.copy-btn').forEach(button => {
         button.addEventListener('click', async function () {
@@ -332,11 +332,10 @@ function openManualPaymentModal(orderId, total) {
         const icon = this.querySelector('i');
 
         try {
-            // Modern clipboard
+            // Copy to clipboard
             if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(textToCopy);
             } else {
-            // Fallback for older browsers
             const textarea = document.createElement('textarea');
             textarea.value = textToCopy;
             textarea.style.position = 'fixed';
@@ -348,16 +347,21 @@ function openManualPaymentModal(orderId, total) {
             document.body.removeChild(textarea);
             }
 
-            // Change icon to check and back to copy
+            // Show "Copied!" text
             if (icon) {
-            icon.setAttribute('data-lucide', 'check');
-            lucide.replace(icon); // Replace this icon only
+            const originalHTML = icon.outerHTML; // save original icon
+            icon.replaceWith(document.createTextNode('Copied!'));
 
+            // Switch back after 1.5s
             setTimeout(() => {
-                icon.setAttribute('data-lucide', 'copy');
-                lucide.replace(icon); // Switch back
+                const newIcon = document.createElement('i');
+                newIcon.setAttribute('data-lucide', 'copy');
+                lucide.replace(newIcon);
+                button.innerHTML = ''; // clear button
+                button.appendChild(newIcon);
             }, 1500);
             }
+
         } catch (err) {
             alert('Copy failed. Please copy manually.');
         }

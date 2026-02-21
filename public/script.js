@@ -335,19 +335,54 @@ function openManualPaymentModal(orderId, total) {
     })
     .catch(error => {
       console.error('Bank config error:', error);
-      bankDetailsContainer.innerHTML = `
-        <div class="error-banner">
-          <p>⚠️ Payment system unavailable. Contact support immediately.</p>
-          <p>Do NOT proceed with payment until resolved.</p>
-        </div>
-      `;
     });
 
   modal.classList.add('active');
   document.body.style.overflow = "hidden";
+  // Handle receipt upload
+document.getElementById('uploadReceiptBtn').onclick = async function() {
+  const fileInput = document.getElementById('paymentReceipt');
+  const file = fileInput.files[0];
+  const statusElement = document.getElementById('receiptUploadStatus');
   
-  // [Rest of your existing code remains the same...]
-  // Handle receipt upload, confirm button handlers, etc.
+  if (!file) {
+    statusElement.innerHTML = '<span class="error">Please select a file to upload</span>';
+    return;
+  }
+  
+  try {
+    statusElement.innerHTML = '<span class="info">Uploading receipt...</span>';
+    
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('receipt', file);
+    
+    const response = await fetch(`/api/orders/${orderId}/upload-receipt`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      statusElement.innerHTML = `
+        <span class="success">Receipt uploaded successfully!</span>
+        <p>Your order will be processed once payment is confirmed by admin.</p>
+      `;
+      
+      document.getElementById('uploadReceiptBtn').disabled = true;
+      fileInput.disabled = true;
+    } else {
+      throw new Error(result.error || 'Failed to upload receipt');
+    }
+    
+  } catch (error) {
+    statusElement.innerHTML = `<span class="error">${error.message}</span>`;
+  }
+};
 }
 
 

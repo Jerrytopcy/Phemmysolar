@@ -350,7 +350,7 @@ function openManualPaymentModal(orderId, total) {
   // Handle receipt upload, confirm button handlers, etc.
 }
 
-summary.innerHTML = `<p><strong>Order ID:</strong> ${orderId}</p>`;
+
 // XSS protection utility (add this globally)
 function escapeHTML(str) {
   if (!str) return '';
@@ -381,8 +381,7 @@ async function fetchBankDetails() {
   return config;
 }
 
-summary.innerHTML = `<p><strong>Order ID:</strong> ${escapeHTML(orderId)}</p>`;
-const paymentReference = `PHSOLAR-${orderId}`; // Prefix prevents reference collisions
+
 
 
 function closeManualPaymentModal() {

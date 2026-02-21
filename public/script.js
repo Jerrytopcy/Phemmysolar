@@ -307,8 +307,8 @@ function openManualPaymentModal(orderId, total) {
     <p><strong>Payment Reference:</strong> ${escapeHTML(paymentReference)}</p>
     <p><strong>Payment Instructions:</strong></p>
     <ul>
-      <li>💳 Make payment to the account shown below</li>
-      <li>📸 Upload your payment receipt after payment</li>
+      <li>Make payment to the account shown below</li>
+      <li>Upload your payment receipt after payment</li>
     </ul>
 
     <div class="receipt-upload-section">
@@ -328,7 +328,6 @@ function openManualPaymentModal(orderId, total) {
   if (bankDetailsContainer) {
     fetchBankDetails()
       .then(config => {
-
         bankDetailsContainer.innerHTML = `
           <h3>Bank Transfer Details</h3>
 
@@ -339,38 +338,56 @@ function openManualPaymentModal(orderId, total) {
           <p>
             <strong>Account Name:</strong>
             ${escapeHTML(config.accountName)}
-            <button class="copy-btn" data-copy="${escapeHTML(config.accountName)}">📋</button>
+            <button class="copy-btn" data-copy="${escapeHTML(config.accountName)}">
+              <i data-lucide="copy"></i>
+            </button>
           </p>
 
           <p>
             <strong>Account Number:</strong>
             ${escapeHTML(config.accountNumber)}
-            <button class="copy-btn" data-copy="${escapeHTML(config.accountNumber)}">📋</button>
+            <button class="copy-btn" data-copy="${escapeHTML(config.accountNumber)}">
+              <i data-lucide="copy"></i>
+            </button>
           </p>
 
           <p>
             <strong>Payment Reference:</strong>
             ${escapeHTML(paymentReference)}
-            <button class="copy-btn" data-copy="${escapeHTML(paymentReference)}">📋</button>
+            <button class="copy-btn" data-copy="${escapeHTML(paymentReference)}">
+              <i data-lucide="copy"></i>
+            </button>
           </p>
 
           <p>
             <strong>Amount:</strong>
             ₦${escapeHTML(total.toLocaleString())}
-            <button class="copy-btn" data-copy="${escapeHTML(total.toLocaleString())}">📋</button>
+            <button class="copy-btn" data-copy="${escapeHTML(total.toLocaleString())}">
+              <i data-lucide="copy"></i>
+            </button>
           </p>
         `;
 
-        // Attach copy listeners safely
+        // Activate Lucide icons
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+
+        // Attach copy listeners
         document.querySelectorAll('.copy-btn').forEach(button => {
           button.addEventListener('click', async function () {
             const textToCopy = this.getAttribute('data-copy');
+            const icon = this.querySelector('i');
 
             try {
               await navigator.clipboard.writeText(textToCopy);
-              this.textContent = '✅';
+
+              icon.setAttribute('data-lucide', 'check');
+              lucide.createIcons();
+
               setTimeout(() => {
-                this.textContent = '📋';
+                icon.setAttribute('data-lucide', 'copy');
+                lucide.createIcons();
               }, 1500);
             } catch (err) {
               alert('Copy failed. Please copy manually.');
@@ -413,9 +430,7 @@ function openManualPaymentModal(orderId, total) {
         `;
       };
       reader.readAsDataURL(file);
-    }
-
-    else if (file.type === 'application/pdf') {
+    } else if (file.type === 'application/pdf') {
       const fileURL = URL.createObjectURL(file);
       previewContainer.innerHTML = `
         <p><strong>PDF Preview:</strong></p>
@@ -425,12 +440,8 @@ function openManualPaymentModal(orderId, total) {
                 style="margin-top:10px; border-radius:8px;">
         </iframe>
       `;
-    }
-
-    else {
-      previewContainer.innerHTML = `
-        <span class="error">Unsupported file type.</span>
-      `;
+    } else {
+      previewContainer.innerHTML = `<span class="error">Unsupported file type.</span>`;
     }
   });
 
@@ -455,9 +466,7 @@ function openManualPaymentModal(orderId, total) {
 
       const response = await fetch(`/api/orders/${encodeURIComponent(orderId)}/upload-receipt`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
 

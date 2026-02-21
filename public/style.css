@@ -3531,14 +3531,18 @@ html {
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 .copy-btn {
-  margin-left: 8px;
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 16px;
-  transition: transform 0.2s ease;
+  margin-left: 6px;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  color: #555;
+  transition: all 0.2s ease;
 }
 
 .copy-btn:hover {
-  transform: scale(1.2);
+  color: #000;
+  transform: scale(1.1);
 }

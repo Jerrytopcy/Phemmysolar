@@ -629,10 +629,9 @@ View
 }
 
 // View Receipt Modal
-// View Receipt Modal
 async function viewReceipt(receiptUrl, orderId) {
     const modal = document.getElementById("receiptModal");
-    const imageContainer = document.getElementById("receiptImageContainer"); // Consider renaming to receiptContainer if using iframe
+    const imageContainer = document.getElementById("receiptImageContainer");
     const noImageMsg = document.getElementById("receiptNoImage");
     const downloadBtn = document.getElementById("downloadReceiptBtn");
 
@@ -640,96 +639,79 @@ async function viewReceipt(receiptUrl, orderId) {
         imageContainer.style.display = "none";
         noImageMsg.style.display = "block";
         downloadBtn.style.display = "none";
-        console.warn(`No receipt URL provided for order ${orderId}. Modal updated accordingly.`);
     } else {
         imageContainer.style.display = "block";
         noImageMsg.style.display = "none";
         downloadBtn.style.display = "inline-block";
 
-        // Determine file type based on extension
-        const urlLower = receiptUrl.toLowerCase();
-        const isPdf = urlLower.endsWith('.pdf');
-        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(urlLower); // Added other common image formats
+        const lowerUrl = receiptUrl.toLowerCase();
+        const isPdf = lowerUrl.endsWith(".pdf");
 
-        if (isImage) {
-            // Render as image
+        // Render receipt properly based on file type
+        if (isPdf) {
             imageContainer.innerHTML = `
-                <img src="${receiptUrl}" alt="Payment Receipt for Order #${orderId}" class="receipt-image">
-            `;
-            console.log(`Displaying receipt for order ${orderId} as an image from URL: ${receiptUrl}`);
-        } else if (isPdf) {
-            // Render as embedded PDF using iframe
-            imageContainer.innerHTML = `
-                <iframe src="${receiptUrl}" type="application/pdf" class="receipt-pdf" title="Payment Receipt PDF for Order #${orderId}">
-                    <p>Your browser cannot display PDFs. <a href="${receiptUrl}" target="_blank">Click here to download the receipt (Order #${orderId})</a> to view it.</p>
+                <iframe 
+                    src="${receiptUrl}" 
+                    width="100%" 
+                    height="500px" 
+                    style="border: none; border-radius: 8px;">
                 </iframe>
             `;
-            console.log(`Displaying receipt for order ${orderId} as an embedded PDF from URL: ${receiptUrl}`);
         } else {
-            // If it's neither a recognized image nor PDF, warn and maybe just show a download link?
-            // For now, attempt to show an img tag, which will likely fail and potentially show alt text or broken image icon.
-            // Or, show an error message or just the download link.
-            console.warn(`Receipt URL for order ${orderId} does not seem to be a standard image or PDF: ${receiptUrl}. Attempting to render as image.`);
             imageContainer.innerHTML = `
-                <img src="${receiptUrl}" alt="Receipt for Order #${orderId} (File type may not display correctly)" class="receipt-image">
-                <p class="file-type-warning">File type might not display correctly. Use the Download button if needed.</p>
+                <img 
+                    src="${receiptUrl}" 
+                    alt="Payment Receipt for Order #${orderId}" 
+                    class="receipt-image"
+                    style="max-width: 100%; border-radius: 8px;">
             `;
-            // Alternatively, show an error message:
-            // imageContainer.innerHTML = `<p class="error-message">Unsupported file type for direct viewing. Please use the Download button.</p>`;
         }
 
-        // Handle Download Click - Works for both images and PDFs using the original URL
+        // Handle Download Click
         downloadBtn.onclick = async (e) => {
             e.preventDefault();
-            console.log(`Initiating download for receipt of order ${orderId} from URL: ${receiptUrl}`);
             try {
                 showLoader("Preparing download...");
 
-                // Fetch the file as a blob
                 const response = await fetch(receiptUrl);
                 if (!response.ok) {
-                    throw new Error(`Failed to fetch receipt file: ${response.status} ${response.statusText}`);
+                    throw new Error("Failed to fetch file");
                 }
-                const blob = await response.blob();
 
-                // Create a temporary object URL
+                const blob = await response.blob();
                 const blobUrl = window.URL.createObjectURL(blob);
 
-                // Create a temporary link to trigger download
-                const link = document.createElement('a');
+                const link = document.createElement("a");
                 link.href = blobUrl;
 
-                // Extract filename from URL or default to generic name based on type
-                const urlPath = new URL(receiptUrl).pathname; // Use pathname to avoid query params/hash
-                let fileName = urlPath.split('/').pop(); // Get last part after last '/'
-                if (!fileName || fileName === '') {
-                    // Fallback filename
-                    fileName = isPdf ? `receipt-order-${orderId}.pdf` : `receipt-order-${orderId}.jpg`; // Adjust default extension if needed
+                // Extract filename properly
+                const fileNameFromUrl = receiptUrl.split("/").pop();
+                let extension = "file";
+
+                if (fileNameFromUrl && fileNameFromUrl.includes(".")) {
+                    extension = fileNameFromUrl.split(".").pop();
                 }
+
+                const fileName = fileNameFromUrl || `receipt-order-${orderId}.${extension}`;
                 link.download = fileName;
 
-                // Append, click, and remove
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
 
-                // Clean up the object URL
                 window.URL.revokeObjectURL(blobUrl);
-                console.log(`Download initiated successfully for receipt of order ${orderId}.`);
+
             } catch (err) {
-                console.error("Download error for order", orderId, ":", err);
-                showAdminAlert(`Failed to download receipt for order #${orderId}. Reason: ${err.message}`, "Error");
+                console.error("Download error:", err);
+                showAdminAlert("Failed to download receipt. Please try again.", "Error");
             } finally {
                 hideLoader();
             }
         };
     }
 
-    // Show the modal
     modal.style.display = "flex";
-    console.log(`Receipt modal opened for order ${orderId}. URL: ${receiptUrl || 'N/A'}`);
 }
-
 
 // Close Receipt Modal
 function closeReceiptModal() {

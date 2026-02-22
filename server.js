@@ -66,7 +66,8 @@ const receiptStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'payment-receipts',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf']
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
+    resource_type: 'auto'  // 👈 this is the key fix
   }
 });
 const uploadReceipt = multer({ storage: receiptStorage });

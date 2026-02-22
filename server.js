@@ -13,6 +13,7 @@ const rateLimit = require("express-rate-limit");
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const _ = require('lodash'); 
 
 // Configure Cloudinary with environment variables from Railway
 cloudinary.config({
@@ -1092,44 +1093,180 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/orders/:id/upload-receipt', authMiddleware, uploadReceipt.single('receipt'), async (req, res) => {
-  try {
-    const orderId = req.params.id;
-    const userId = req.user.id;
-    
-    // Verify the order exists and belongs to the user
-    const orderResult = await pool.query(
-      'SELECT id, user_id, status FROM orders WHERE id = $1 AND user_id = $2',
-      [orderId, userId]
-    );
-    
-    if (orderResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Order not found or unauthorized' });
+    try {
+        const orderId = req.params.id;
+        const userId = req.user.id;
+
+        // 1. Verify the order exists and belongs to the user
+        const orderResult = await pool.query(
+            `SELECT o.id, o.date, o.total, o.delivery_address, o.user_id, o.status, o.payment_status,
+                    json_agg(
+                        json_build_object(
+                            'productId', p.id,
+                            'name', p.name,
+                            'price', oi.price,
+                            'quantity', oi.quantity
+                        )
+                    ) AS items
+            FROM orders o
+            JOIN order_items oi ON oi.order_id = o.id
+            JOIN products p ON p.id = oi.product_id
+            WHERE o.id = $1 AND o.user_id = $2
+            GROUP BY o.id`,
+            [orderId, userId]
+        );
+
+        if (orderResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Order not found or unauthorized' });
+        }
+
+        const order = orderResult.rows[0];
+
+        // Check if a file was uploaded
+        if (!req.file) {
+            return res.status(400).json({ error: 'No receipt file provided' });
+        }
+
+        // 2. Update order with receipt information
+        await pool.query(
+            'UPDATE orders SET receipt_url = $1, receipt_public_id = $2 WHERE id = $3',
+            [req.file.path, req.file.filename, orderId]
+        );
+
+        // 3. Fetch User Details (name, email, phone)
+        const userResult = await pool.query(
+            'SELECT username, email, phone FROM users WHERE id = $1',
+            [userId]
+        );
+
+        if (userResult.rows.length === 0) {
+            // This should ideally not happen if authMiddleware works correctly
+            console.error(`User ${userId} not found for order ${orderId}`);
+            return res.status(500).json({ error: 'Failed to fetch user details for notification.' });
+        }
+        const user = userResult.rows[0];
+
+        // 4. Prepare Email Content using the fetched data
+        const subject = `[ACTION REQUIRED] Payment Receipt Uploaded for Order #${order.id}`;
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Payment Receipt Uploaded - Order #${order.id}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; margin: 0; padding: 20px; }
+                    .email-container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+                    .header { background: #007BFF; color: white; padding: 20px; text-align: center; }
+                    .header h2 { margin: 0; font-size: 24px; }
+                    .content { padding: 30px; }
+                    .section { margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-left: 4px solid #007BFF; border-radius: 4px; }
+                    .label { font-weight: bold; color: #007BFF; display: block; margin-bottom: 5px; }
+                    .items-list { background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 4px; }
+                    .item { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+                    .item:last-child { border-bottom: none; }
+                    .item-name { font-weight: bold; }
+                    .item-qty-price { color: #666; }
+                    .receipt-link { display: inline-block; background: #28a745; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; margin-top: 10px; }
+                    .footer { background: #eee; padding: 15px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; }
+                </style>
+            </head>
+            <body>
+                <div class="email-container">
+                    <div class="header">
+                        <h2>💰 Payment Receipt Uploaded</h2>
+                    </div>
+                    <div class="content">
+                        <p>Hello Admin,</p>
+                        <p>A customer has just uploaded a payment receipt for their order. Please review the details below and confirm the payment.</p>
+
+                        <div class="section">
+                            <div class="label">👤 Customer Details:</div>
+                            <p><strong>Name:</strong> ${_.get(user, 'username', 'N/A')}</p>
+                            <p><strong>Email:</strong> ${_.get(user, 'email', 'N/A')}</p>
+                            <p><strong>Phone:</strong> ${_.get(user, 'phone', 'N/A')}</p>
+                        </div>
+
+                        <div class="section">
+                            <div class="label">📦 Order Details:</div>
+                            <p><strong>Order ID:</strong> #${_.get(order, 'id', 'N/A')}</p>
+                            <p><strong>Date:</strong> ${new Date(_.get(order, 'date')).toLocaleString()}</p>
+                            <p><strong>Total Amount:</strong> ₦${parseFloat(_.get(order, 'total', 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            <p><strong>Current Status:</strong> ${_.get(order, 'status', 'N/A')} / ${_.get(order, 'payment_status', 'N/A')}</p>
+                            <p><strong>Delivery Address:</strong> ${_.get(order, 'delivery_address', {}).street || ''}, ${_.get(order, 'delivery_address', {}).city || ''}, ${_.get(order, 'delivery_address', {}).state || ''}, ${_.get(order, 'delivery_address', {}).country || 'Nigeria'}</p>
+                        </div>
+
+                        <div class="section">
+                            <div class="label">🛍️ Items Ordered:</div>
+                            <div class="items-list">
+                                ${_.get(order, 'items', []).map(item => `
+                                    <div class="item">
+                                        <div class="item-name">${_.get(item, 'name', 'N/A')}</div>
+                                        <div class="item-qty-price">Qty: ${_.get(item, 'quantity', 0)}, Price: ₦${parseFloat(_.get(item, 'price', 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="label">📄 Uploaded Receipt:</div>
+                            <p>A receipt file has been uploaded and linked to order #${_.get(order, 'id', 'N/A')}.</p>
+                            <p><strong>File Path (on Cloudinary):</strong> ${_.get(req, 'file.path', 'N/A')}</p>
+                            <!-- Optional: Include a link to view the receipt if publicly accessible -->
+                            <!-- <a href="${req.file.path}" target="_blank" class="receipt-link">View Receipt</a> -->
+                        </div>
+
+                        <div class="section">
+                            <div class="label">⚙️ Next Steps:</div>
+                            <p>Please verify the payment using the provided receipt and update the order status in the <a href="https://www.phemmysolar.com/admin">Admin Panel</a> accordingly (e.g., mark as 'Paid' or 'Confirmed').</p>
+                        </div>
+
+                    </div>
+                    <div class="footer">
+                        🤖 This is an automated message from Phemmy Solar. Please do not reply directly to this email.
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+
+        // 5. Send the email using SendGrid
+        const msg = {
+            to: process.env.ADMIN_EMAIL || 'admin@phemmysolar.com', // Use the verified admin email
+            from: {
+                email: process.env.SENDGRID_FROM_EMAIL || 'info@phemmysolar.com', // Use your verified sender
+                name: "PhemmySolar Notification",
+            },
+            subject: subject,
+            html: htmlContent,
+        };
+
+        try {
+            await sgMail.send(msg);
+            console.log(`✅ Admin notification email sent for order #${order.id}`);
+        } catch (emailError) {
+            console.error('❌ Error sending admin notification email:', emailError.message);
+            // Important: Still return success to the client even if email fails, but log the error.
+            // You might want to implement a retry mechanism or alert system for failed emails.
+        }
+
+
+        // 6. Send successful response to the client
+        res.json({
+            success: true,
+            receiptUrl: req.file.path,
+            message: 'Receipt uploaded successfully. Your order will be processed once payment is confirmed by admin.'
+        });
+
+    } catch (err) {
+        console.error('Receipt upload or notification error:', err);
+        res.status(500).json({ error: 'Failed to upload receipt or send notification' });
     }
-    
-    const order = orderResult.rows[0];
-    
-    // Check if a file was uploaded
-    if (!req.file) {
-      return res.status(400).json({ error: 'No receipt file provided' });
-    }
-    
-    // Update order with receipt information
-    await pool.query(
-      'UPDATE orders SET receipt_url = $1, receipt_public_id = $2 WHERE id = $3',
-      [req.file.path, req.file.filename, orderId]
-    );
-    
-    res.json({
-      success: true,
-      receiptUrl: req.file.path,
-      message: 'Receipt uploaded successfully. Your order will be processed once payment is confirmed.'
-    });
-    
-  } catch (err) {
-    console.error('Receipt upload error:', err);
-    res.status(500).json({ error: 'Failed to upload receipt' });
-  }
 });
+
+
 // Add to your server routes
 app.get('/api/payment-config', (req, res) => {
   // These values should come from environment variables

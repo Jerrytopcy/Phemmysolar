@@ -64,12 +64,16 @@ const uploadNewsImage = multer({ storage: newsStorage });
 // Configure multer specifically for payment receipts
 const receiptStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: 'payment-receipts',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
-    resource_type: 'auto'  // 👈 this is the key fix
+  params: (req, file) => {
+    return {
+      folder: 'payment-receipts',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
+      resource_type: file.mimetype === 'application/pdf' ? 'raw' : 'image',
+      public_id: `receipt_${Date.now()}`
+    };
   }
 });
+
 const uploadReceipt = multer({ storage: receiptStorage });
 
 // Set your SendGrid API key
@@ -1232,17 +1236,22 @@ app.post('/api/orders/:id/upload-receipt', authMiddleware, uploadReceipt.single(
                             </div>
                         </div>
 
+                        <!-- IMPORTANT: Attachment Notice Section -->
                         <div class="section">
                             <div class="label">📄 Uploaded Receipt:</div>
-                            <p>A receipt file has been uploaded and is attached to this email for your review.</p>
-                            <p><strong>Original Filename:</strong> ${req.file.originalname || 'N/A'}</p>
+                             <!-- Prominent notice about the attachment -->
+                            <div class="attachment-notice">
+                                <strong>📋 ATTACHMENT INCLUDED:</strong> A receipt file named "<em>${_.get(req, 'file.originalname', 'N/A')}</em>" has been attached to this email.
+                                <br>
+                                Please look for the attachment icon/paperclip symbol in your email client (e.g., Gmail) above or below this message to download and review it.
+                            </div>
                             <p><strong>File Size:</strong> ${(req.file.size / 1024 / 1024).toFixed(2)} MB</p>
                             <p><strong>File Type:</strong> ${req.file.mimetype || 'N/A'}</p>
                         </div>
 
                         <div class="section">
                             <div class="label">⚙️ Next Steps:</div>
-                            <p>Please review the attached receipt, verify the payment, and update the order status in the <a href="${process.env.ADMIN_PANEL_URL || 'https://www.phemmysolar.com/admin'}">Admin Panel</a> accordingly (e.g., mark as 'Paid' or 'Confirmed').</p>
+                            <p>Please <strong>download and review the attached receipt</strong>, verify the payment, and update the order status in the <a href="${process.env.ADMIN_PANEL_URL || 'https://www.phemmysolar.com/admin'}">Admin Panel</a> accordingly (e.g., mark as 'Paid' or 'Confirmed').</p>
                         </div>
 
                     </div>

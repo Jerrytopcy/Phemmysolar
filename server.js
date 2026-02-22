@@ -61,15 +61,17 @@ const newsStorage = new CloudinaryStorage({
 // Multer middleware (single image per news article)
 const uploadNewsImage = multer({ storage: newsStorage });
 
-// Configure multer specifically for payment receipts
+// Configure multer specifically for payment receipts👇
 const receiptStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: (req, file) => {
+    // Extract extension from original file
+    const ext = file.originalname.split('.').pop(); // pdf, jpg, png
     return {
       folder: 'payment-receipts',
-      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
       resource_type: file.mimetype === 'application/pdf' ? 'raw' : 'image',
-      public_id: `receipt_${Date.now()}`
+      public_id: `receipt_${Date.now()}.${ext}`, 
+      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf']
     };
   }
 });

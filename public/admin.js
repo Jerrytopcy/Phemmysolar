@@ -627,6 +627,7 @@ View
 </tr>
 `).join("");
 }
+
 // View Receipt Modal
 // View Receipt Modal
 async function viewReceipt(receiptUrl, orderId) {
@@ -644,39 +645,63 @@ async function viewReceipt(receiptUrl, orderId) {
         noImageMsg.style.display = "none";
         downloadBtn.style.display = "inline-block";
 
-        // Display receipt image
-        imageContainer.innerHTML = `
-            <img src="${receiptUrl}" alt="Payment Receipt for Order #${orderId}" class="receipt-image">
-        `;
+        const lowerUrl = receiptUrl.toLowerCase();
+        const isPdf = lowerUrl.endsWith(".pdf");
+
+        // Render receipt properly based on file type
+        if (isPdf) {
+            imageContainer.innerHTML = `
+                <iframe 
+                    src="${receiptUrl}" 
+                    width="100%" 
+                    height="500px" 
+                    style="border: none; border-radius: 8px;">
+                </iframe>
+            `;
+        } else {
+            imageContainer.innerHTML = `
+                <img 
+                    src="${receiptUrl}" 
+                    alt="Payment Receipt for Order #${orderId}" 
+                    class="receipt-image"
+                    style="max-width: 100%; border-radius: 8px;">
+            `;
+        }
 
         // Handle Download Click
         downloadBtn.onclick = async (e) => {
             e.preventDefault();
             try {
                 showLoader("Preparing download...");
-                
-                // Fetch the file as a blob
+
                 const response = await fetch(receiptUrl);
+                if (!response.ok) {
+                    throw new Error("Failed to fetch file");
+                }
+
                 const blob = await response.blob();
-                
-                // Create a temporary object URL
                 const blobUrl = window.URL.createObjectURL(blob);
-                
-                // Create a temporary link to trigger download
-                const link = document.createElement('a');
+
+                const link = document.createElement("a");
                 link.href = blobUrl;
-                
-                // Extract filename from URL or default to generic name
-                const fileName = receiptUrl.split('/').pop() || `receipt-order-${orderId}.jpg`;
+
+                // Extract filename properly
+                const fileNameFromUrl = receiptUrl.split("/").pop();
+                let extension = "file";
+
+                if (fileNameFromUrl && fileNameFromUrl.includes(".")) {
+                    extension = fileNameFromUrl.split(".").pop();
+                }
+
+                const fileName = fileNameFromUrl || `receipt-order-${orderId}.${extension}`;
                 link.download = fileName;
-                
-                // Append, click, and remove
+
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                
-                // Clean up the object URL
+
                 window.URL.revokeObjectURL(blobUrl);
+
             } catch (err) {
                 console.error("Download error:", err);
                 showAdminAlert("Failed to download receipt. Please try again.", "Error");

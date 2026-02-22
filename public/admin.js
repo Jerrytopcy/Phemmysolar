@@ -644,14 +644,18 @@ async function viewReceipt(receiptUrl, orderId) {
         noImageMsg.style.display = "none";
         downloadBtn.style.display = "inline-block";
 
+        // Force PDFs to be recognized
         const lowerUrl = receiptUrl.toLowerCase();
-        const isPdf = lowerUrl.endsWith(".pdf");
+        const isPdf = lowerUrl.endsWith(".pdf") || receiptUrl.includes("/raw/upload/");
 
-        // Render receipt properly based on file type
+        // Render receipt based on type
         if (isPdf) {
+            // Append .pdf if missing
+            const pdfUrl = lowerUrl.endsWith(".pdf") ? receiptUrl : `${receiptUrl}.pdf`;
+
             imageContainer.innerHTML = `
                 <iframe 
-                    src="${receiptUrl}" 
+                    src="${pdfUrl}" 
                     width="100%" 
                     height="500px" 
                     style="border: none; border-radius: 8px;">
@@ -673,7 +677,12 @@ async function viewReceipt(receiptUrl, orderId) {
             try {
                 showLoader("Preparing download...");
 
-                const response = await fetch(receiptUrl);
+                // Append .pdf if it's a raw PDF
+                const downloadUrl = isPdf
+                    ? (receiptUrl.toLowerCase().endsWith(".pdf") ? receiptUrl : `${receiptUrl}.pdf`)
+                    : receiptUrl;
+
+                const response = await fetch(downloadUrl);
                 if (!response.ok) {
                     throw new Error("Failed to fetch file");
                 }
@@ -684,15 +693,9 @@ async function viewReceipt(receiptUrl, orderId) {
                 const link = document.createElement("a");
                 link.href = blobUrl;
 
-                // Extract filename properly
-                const fileNameFromUrl = receiptUrl.split("/").pop();
-                let extension = "file";
-
-                if (fileNameFromUrl && fileNameFromUrl.includes(".")) {
-                    extension = fileNameFromUrl.split(".").pop();
-                }
-
-                const fileName = fileNameFromUrl || `receipt-order-${orderId}.${extension}`;
+                // Set proper filename
+                const fileNameFromUrl = downloadUrl.split("/").pop();
+                const fileName = fileNameFromUrl || `receipt-order-${orderId}${isPdf ? ".pdf" : ""}`;
                 link.download = fileName;
 
                 document.body.appendChild(link);

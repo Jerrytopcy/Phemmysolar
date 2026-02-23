@@ -639,81 +639,106 @@ async function viewReceipt(receiptUrl, orderId) {
         imageContainer.style.display = "none";
         noImageMsg.style.display = "block";
         downloadBtn.style.display = "none";
-    } else {
-        imageContainer.style.display = "block";
-        noImageMsg.style.display = "none";
-        downloadBtn.style.display = "inline-block";
+        return;
+    }
 
-        // Force PDFs to be recognized
-        const lowerUrl = receiptUrl.toLowerCase();
-        const isPdf = lowerUrl.endsWith(".pdf") || receiptUrl.includes("/raw/upload/");
+    imageContainer.style.display = "block";
+    noImageMsg.style.display = "none";
+    downloadBtn.style.display = "inline-block";
 
-        // Render receipt based on type
-        if (isPdf) {
-            // Append .pdf if missing
-            const pdfUrl = lowerUrl.endsWith(".pdf") ? receiptUrl : `${receiptUrl}.pdf`;
+    // Detect if the file is a Cloudinary raw PDF
+    const isRawPdf = receiptUrl.includes("/raw/upload/");
+
+    let previewUrl = receiptUrl; // default to direct URL for images
+
+    // =============================
+    // Preview
+    // =============================
+    if (isRawPdf) {
+        try {
+            showLoader("Loading PDF preview...");
+
+            // Fetch the raw PDF from Cloudinary
+            const response = await fetch(receiptUrl);
+            if (!response.ok) throw new Error("Failed to fetch PDF for preview");
+
+            const blob = await response.blob(); // convert file to Blob
+            previewUrl = URL.createObjectURL(blob); // create browser-friendly URL
 
             imageContainer.innerHTML = `
-                <iframe 
-                    src="${pdfUrl}" 
-                    width="100%" 
-                    height="500px" 
+                <iframe
+                    src="${previewUrl}"
+                    width="100%"
+                    height="500px"
                     style="border: none; border-radius: 8px;">
                 </iframe>
             `;
-        } else {
-            imageContainer.innerHTML = `
-                <img 
-                    src="${receiptUrl}" 
-                    alt="Payment Receipt for Order #${orderId}" 
-                    class="receipt-image"
-                    style="max-width: 100%; border-radius: 8px;">
-            `;
+        } catch (err) {
+            console.error("PDF preview error:", err);
+            imageContainer.innerHTML = `<p style="color:red;">Failed to preview PDF</p>`;
+        } finally {
+            hideLoader();
         }
-
-        // Handle Download Click
-        downloadBtn.onclick = async (e) => {
-            e.preventDefault();
-            try {
-                showLoader("Preparing download...");
-
-                // Append .pdf if it's a raw PDF
-                const downloadUrl = isPdf
-                    ? (receiptUrl.toLowerCase().endsWith(".pdf") ? receiptUrl : `${receiptUrl}.pdf`)
-                    : receiptUrl;
-
-                const response = await fetch(downloadUrl);
-                if (!response.ok) {
-                    throw new Error("Failed to fetch file");
-                }
-
-                const blob = await response.blob();
-                const blobUrl = window.URL.createObjectURL(blob);
-
-                const link = document.createElement("a");
-                link.href = blobUrl;
-
-                // Set proper filename
-                const fileNameFromUrl = downloadUrl.split("/").pop();
-                const fileName = fileNameFromUrl || `receipt-order-${orderId}${isPdf ? ".pdf" : ""}`;
-                link.download = fileName;
-
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                window.URL.revokeObjectURL(blobUrl);
-
-            } catch (err) {
-                console.error("Download error:", err);
-                showAdminAlert("Failed to download receipt. Please try again.", "Error");
-            } finally {
-                hideLoader();
-            }
-        };
+    } else {
+        // Image preview
+        imageContainer.innerHTML = `
+            <img 
+                src="${receiptUrl}" 
+                alt="Payment Receipt for Order #${orderId}" 
+                class="receipt-image"
+                style="max-width: 100%; border-radius: 8px;">
+        `;
     }
 
+    // =============================
+    // Download
+    // =============================
+    downloadBtn.onclick = async (e) => {
+        e.preventDefault();
+        try {
+            showLoader("Preparing download...");
+
+            // Fetch the file (both images and PDFs)
+            const response = await fetch(receiptUrl);
+            if (!response.ok) throw new Error("Failed to fetch file");
+
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = blobUrl;
+
+            // Append .pdf to filename only for raw PDFs
+            const urlParts = receiptUrl.split("/");
+            let fileName = urlParts.pop(); // e.g., receipt_1771802139468
+            if (isRawPdf) fileName += ".pdf";
+
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+            console.error("Download error:", err);
+            showAdminAlert("Failed to download receipt. Please try again.", "Error");
+        } finally {
+            hideLoader();
+        }
+    };
+
+    // =============================
+    // Show modal
+    // =============================
     modal.style.display = "flex";
+
+    // Optional: Revoke Blob URL when modal closes to free memory
+    modal.querySelector(".close-modal")?.addEventListener("click", () => {
+        modal.style.display = "none";
+        if (isRawPdf && previewUrl.startsWith("blob:")) {
+            URL.revokeObjectURL(previewUrl);
+        }
+    });
 }
 
 // Close Receipt Modal
@@ -792,7 +817,9 @@ async function viewOrder(orderId) {
         `).join("");
 
         // Summary
-        document.getElementById("od-payment").textContent = order.payment_status;
+        let od_payment = document.getElementById("od-payment")
+         od_payment.textContent = order.status;
+        od_payment.className = `status-badge status-${order.status.toLowerCase()}`;
         document.getElementById("od-total").textContent =
             formatNaira(order.total);
 

@@ -646,22 +646,11 @@ async function viewReceipt(receiptUrl, orderId) {
         downloadBtn.style.display = "inline-block";
 
         const lowerUrl = receiptUrl.toLowerCase();
-       const isCloudinaryPdf = lowerUrl.includes("/raw/upload/");
+        const isImage = lowerUrl.match(/\.(jpeg|jpg|png|gif|webp)$/);
 
-        // Render PDFs using Cloudinary's PDF viewer (bypasses browser issues)
-        if (isCloudinaryPdf) {
-            // Force PDF rendering using Cloudinary's built-in viewer
-            const cloudinaryViewerUrl = `https://res.cloudinary.com/dknjnjh7n/pdf_viewer?file=${encodeURIComponent(receiptUrl)}`;
-            
-            imageContainer.innerHTML = `
-                <iframe 
-                    src="${cloudinaryViewerUrl}" 
-                    width="100%" 
-                    height="500px" 
-                    style="border: none; border-radius: 8px;">
-                </iframe>
-            `;
-        } else {
+        // Render based on type
+        if (isImage) {
+            // Render image
             imageContainer.innerHTML = `
                 <img 
                     src="${receiptUrl}" 
@@ -669,9 +658,17 @@ async function viewReceipt(receiptUrl, orderId) {
                     class="receipt-image"
                     style="max-width: 100%; border-radius: 8px;">
             `;
+        } else {
+            // File is not an image
+            imageContainer.innerHTML = `
+                <p style="text-align: center; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background: #f9f9f9;">
+                    We cannot preview this file. <br>
+                    Please click the download button to download it.
+                </p>
+            `;
         }
 
-        // Handle Download Click (FIXED SECTION)
+        // Handle Download
         downloadBtn.onclick = async (e) => {
             e.preventDefault();
             try {

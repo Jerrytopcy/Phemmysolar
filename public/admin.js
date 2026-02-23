@@ -645,63 +645,28 @@ async function viewReceipt(receiptUrl, orderId) {
         noImageMsg.style.display = "none";
         downloadBtn.style.display = "inline-block";
 
-       const lowerUrl = receiptUrl.toLowerCase();
-const isImage = lowerUrl.match(/\.(jpeg|jpg|png|gif|webp)$/);
-const isPdf = lowerUrl.endsWith(".pdf");
+        const lowerUrl = receiptUrl.toLowerCase();
+        const isImage = lowerUrl.match(/\.(jpeg|jpg|png|gif|webp)$/);
 
-if (isImage) {
-    // Render image normally
-    imageContainer.innerHTML = `
-        <img 
-            src="${receiptUrl}" 
-            alt="Payment Receipt for Order PHSOLAR #${orderId}" 
-            class="receipt-image"
-            style="max-width: 100%; border-radius: 8px;">
-    `;
-} else if (isPdf) {
-    try {
-        showLoader("Loading PDF...");
-        const response = await fetch(receiptUrl);
-        if (!response.ok) throw new Error("Failed to fetch PDF");
-
-        // Get content type for proper rendering
-        const contentType = response.headers.get("content-type") || "application/pdf";
-
-        const blob = await response.blob();
-
-        // Recreate blob with correct MIME type
-        const properBlob = new Blob([blob], { type: contentType });
-        const blobUrl = window.URL.createObjectURL(properBlob);
-
-        // Render in iframe
-        imageContainer.innerHTML = `
-            <iframe 
-                src="${blobUrl}" 
-                width="100%" 
-                height="500px" 
-                style="border: none; border-radius: 8px;">
-            </iframe>
-        `;
-    } catch (err) {
-        console.error("PDF preview error:", err);
-        imageContainer.innerHTML = `
-            <p style="text-align: center; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background: #f9f9f9;">
-                We cannot preview this file. <br>
-                Please click the download button to download it.
-            </p>
-        `;
-    } finally {
-        hideLoader();
-    }
-} else {
-    // Non-image and non-PDF files
-    imageContainer.innerHTML = `
-        <p style="text-align: center; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background: #f9f9f9;">
-            We cannot preview this file. <br>
-            Please click the download button to download it.
-        </p>
-    `;
-}
+        // Render based on type
+        if (isImage) {
+            // Render image
+            imageContainer.innerHTML = `
+                <img 
+                    src="${receiptUrl}" 
+                    alt="Payment Receipt for Order PHSOLAR #${orderId}" 
+                    class="receipt-image"
+                    style="max-width: 100%; border-radius: 8px;">
+            `;
+        } else {
+            // File is not an image
+            imageContainer.innerHTML = `
+                <p style="text-align: center; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background: #f9f9f9;">
+                    We cannot preview this file. <br>
+                    Please click the 📥 Download Receipt button.
+                </p>
+            `;
+        }
 
         // Handle Download
         downloadBtn.onclick = async (e) => {

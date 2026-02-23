@@ -646,13 +646,16 @@ async function viewReceipt(receiptUrl, orderId) {
         downloadBtn.style.display = "inline-block";
 
         const lowerUrl = receiptUrl.toLowerCase();
-        const isPdf = lowerUrl.endsWith(".pdf");
+       const isCloudinaryPdf = lowerUrl.includes("/raw/upload/");
 
-        // Render receipt properly based on file type
-        if (isPdf) {
+        // Render PDFs using Cloudinary's PDF viewer (bypasses browser issues)
+        if (isCloudinaryPdf) {
+            // Force PDF rendering using Cloudinary's built-in viewer
+            const cloudinaryViewerUrl = `https://res.cloudinary.com/dknjnjh7n/pdf_viewer?file=${encodeURIComponent(receiptUrl)}`;
+            
             imageContainer.innerHTML = `
                 <iframe 
-                    src="${receiptUrl}" 
+                    src="${cloudinaryViewerUrl}" 
                     width="100%" 
                     height="500px" 
                     style="border: none; border-radius: 8px;">
@@ -662,7 +665,7 @@ async function viewReceipt(receiptUrl, orderId) {
             imageContainer.innerHTML = `
                 <img 
                     src="${receiptUrl}" 
-                    alt="Payment Receipt for Order #${orderId}" 
+                    alt="Payment Receipt for Order PHSOLAR #${orderId}" 
                     class="receipt-image"
                     style="max-width: 100%; border-radius: 8px;">
             `;
@@ -681,7 +684,7 @@ async function viewReceipt(receiptUrl, orderId) {
 
                 // CRITICAL FIX: Determine extension from Content-Type header
                 const contentType = response.headers.get("content-type") || "";
-                let extension = "file";
+                let extension = "pdf";
 
                 if (contentType.includes("application/pdf")) {
                     extension = "pdf";

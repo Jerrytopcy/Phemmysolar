@@ -629,6 +629,7 @@ View
 }
 
 // View Receipt Modal
+// View Receipt Modal (corrected version)
 async function viewReceipt(receiptUrl, orderId) {
     const modal = document.getElementById("receiptModal");
     const imageContainer = document.getElementById("receiptImageContainer");
@@ -639,106 +640,89 @@ async function viewReceipt(receiptUrl, orderId) {
         imageContainer.style.display = "none";
         noImageMsg.style.display = "block";
         downloadBtn.style.display = "none";
-        return;
-    }
+    } else {
+        imageContainer.style.display = "block";
+        noImageMsg.style.display = "none";
+        downloadBtn.style.display = "inline-block";
 
-    imageContainer.style.display = "block";
-    noImageMsg.style.display = "none";
-    downloadBtn.style.display = "inline-block";
+        const lowerUrl = receiptUrl.toLowerCase();
+        const isPdf = lowerUrl.endsWith(".pdf");
 
-    // Detect if the file is a Cloudinary raw PDF
-    const isRawPdf = receiptUrl.includes("/raw/upload/");
-
-    let previewUrl = receiptUrl; // default to direct URL for images
-
-    // =============================
-    // Preview
-    // =============================
-    if (isRawPdf) {
-        try {
-            showLoader("Loading PDF preview...");
-
-            // Fetch the raw PDF from Cloudinary
-            const response = await fetch(receiptUrl);
-            if (!response.ok) throw new Error("Failed to fetch PDF for preview");
-
-            const blob = await response.blob(); // convert file to Blob
-            previewUrl = URL.createObjectURL(blob); // create browser-friendly URL
-
+        // Render receipt properly based on file type
+        if (isPdf) {
             imageContainer.innerHTML = `
-                <iframe
-                    src="${previewUrl}"
-                    width="100%"
-                    height="500px"
+                <iframe 
+                    src="${receiptUrl}" 
+                    width="100%" 
+                    height="500px" 
                     style="border: none; border-radius: 8px;">
                 </iframe>
             `;
-        } catch (err) {
-            console.error("PDF preview error:", err);
-            imageContainer.innerHTML = `<p style="color:red;">Failed to preview PDF</p>`;
-        } finally {
-            hideLoader();
+        } else {
+            imageContainer.innerHTML = `
+                <img 
+                    src="${receiptUrl}" 
+                    alt="Payment Receipt for Order #${orderId}" 
+                    class="receipt-image"
+                    style="max-width: 100%; border-radius: 8px;">
+            `;
         }
-    } else {
-        // Image preview
-        imageContainer.innerHTML = `
-            <img 
-                src="${receiptUrl}" 
-                alt="Payment Receipt for Order #${orderId}" 
-                class="receipt-image"
-                style="max-width: 100%; border-radius: 8px;">
-        `;
+
+        // Handle Download Click (FIXED SECTION)
+        downloadBtn.onclick = async (e) => {
+            e.preventDefault();
+            try {
+                showLoader("Preparing download...");
+
+                const response = await fetch(receiptUrl);
+                if (!response.ok) {
+                    throw new Error("Failed to fetch file");
+                }
+
+                // CRITICAL FIX: Determine extension from Content-Type header
+                const contentType = response.headers.get("content-type") || "";
+                let extension = "file";
+
+                if (contentType.includes("application/pdf")) {
+                    extension = "pdf";
+                } else if (contentType.includes("image/jpeg")) {
+                    extension = "jpg";
+                } else if (contentType.includes("image/png")) {
+                    extension = "png";
+                } else {
+                    // Fallback to URL extraction only when needed
+                    const fileNameFromUrl = receiptUrl.split("/").pop().split("?")[0];
+                    if (fileNameFromUrl.includes(".")) {
+                        extension = fileNameFromUrl.split(".").pop().toLowerCase();
+                    }
+                }
+
+                // Create standardized filename with correct extension
+                const baseName = `receipt-order-${orderId}`;
+                const fileName = `${baseName}.${extension}`;
+
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+
+                const link = document.createElement("a");
+                link.href = blobUrl;
+                link.download = fileName;
+
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(blobUrl);
+
+            } catch (err) {
+                console.error("Download error:", err);
+                showAdminAlert("Failed to download receipt. Please try again.", "Error");
+            } finally {
+                hideLoader();
+            }
+        };
     }
 
-    // =============================
-    // Download
-    // =============================
-    downloadBtn.onclick = async (e) => {
-        e.preventDefault();
-        try {
-            showLoader("Preparing download...");
-
-            // Fetch the file (both images and PDFs)
-            const response = await fetch(receiptUrl);
-            if (!response.ok) throw new Error("Failed to fetch file");
-
-            const blob = await response.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
-
-            const link = document.createElement("a");
-            link.href = blobUrl;
-
-            // Append .pdf to filename only for raw PDFs
-            const urlParts = receiptUrl.split("/");
-            let fileName = urlParts.pop(); // e.g., receipt_1771802139468
-            if (isRawPdf) fileName += ".pdf";
-
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            window.URL.revokeObjectURL(blobUrl);
-        } catch (err) {
-            console.error("Download error:", err);
-            showAdminAlert("Failed to download receipt. Please try again.", "Error");
-        } finally {
-            hideLoader();
-        }
-    };
-
-    // =============================
-    // Show modal
-    // =============================
     modal.style.display = "flex";
-
-    // Optional: Revoke Blob URL when modal closes to free memory
-    modal.querySelector(".close-modal")?.addEventListener("click", () => {
-        modal.style.display = "none";
-        if (isRawPdf && previewUrl.startsWith("blob:")) {
-            URL.revokeObjectURL(previewUrl);
-        }
-    });
 }
 
 // Close Receipt Modal

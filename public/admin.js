@@ -629,7 +629,6 @@ View
 }
 
 // View Receipt Modal
-// View Receipt Modal (corrected version)
 async function viewReceipt(receiptUrl, orderId) {
     const modal = document.getElementById("receiptModal");
     const imageContainer = document.getElementById("receiptImageContainer");

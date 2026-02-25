@@ -21,6 +21,229 @@ function hideLoader() {
     document.body.style.overflow = "";
 }
 
+// ===== NOTIFICATION SYSTEM =====
+let notifications = [];
+let isNotificationsPanelOpen = false;
+
+// Initialize notifications system
+function initNotifications() {
+    const notificationsBtn = document.getElementById('notificationsBtn');
+    const notificationsPanel = document.getElementById('notificationsPanel');
+    const markAllReadBtn = document.getElementById('markAllReadBtn');
+    
+    if (notificationsBtn) {
+        notificationsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleNotificationsPanel();
+        });
+    }
+    
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
+    }
+    
+    // Close panel when clicking outside
+    document.addEventListener('click', (e) => {
+        if (isNotificationsPanelOpen && 
+            !notificationsPanel.contains(e.target) && 
+            !notificationsBtn.contains(e.target)) {
+            closeNotificationsPanel();
+        }
+    });
+    
+    // Close panel on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isNotificationsPanelOpen) {
+            closeNotificationsPanel();
+        }
+    });
+}
+
+// Toggle notifications panel
+function toggleNotificationsPanel() {
+    if (isNotificationsPanelOpen) {
+        closeNotificationsPanel();
+    } else {
+        openNotificationsPanel();
+    }
+}
+
+// Open notifications panel
+function openNotificationsPanel() {
+    const notificationsPanel = document.getElementById('notificationsPanel');
+    notificationsPanel.classList.add('active');
+    isNotificationsPanelOpen = true;
+    
+    // Fetch notifications if not already loaded
+    if (notifications.length === 0) {
+        fetchNotifications();
+    }
+}
+
+// Close notifications panel
+function closeNotificationsPanel() {
+    const notificationsPanel = document.getElementById('notificationsPanel');
+    notificationsPanel.classList.remove('active');
+    isNotificationsPanelOpen = false;
+}
+
+// Fetch notifications from server
+async function fetchNotifications() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    showLoader("Loading notifications...");
+    try {
+        const response = await fetch('/api/notifications', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to fetch notifications');
+        
+        notifications = await response.json();
+        displayNotifications(notifications);
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+    } finally {
+        hideLoader();
+    }
+}
+
+// Display notifications in the panel
+function displayNotifications(notifications) {
+    const notificationsList = document.getElementById('notificationsList');
+    const notificationCount = document.getElementById('notificationCount');
+    
+    // Count unread notifications
+    const unreadCount = notifications.filter(n => !n.read).length;
+    
+    // Update badge
+    notificationCount.textContent = unreadCount;
+    notificationCount.style.display = unreadCount > 0 ? 'inline-block' : 'none';
+    
+    // Display notifications
+    if (notifications.length === 0) {
+        notificationsList.innerHTML = '<div class="no-notifications">No notifications</div>';
+        return;
+    }
+    
+    notificationsList.innerHTML = notifications.map(notification => `
+        <div class="notification-item ${notification.read ? '' : 'unread'}" data-id="${notification.id}">
+            <div class="notification-icon">
+                ${getNotificationIcon(notification.type)}
+            </div>
+            <div class="notification-content">
+                <h4>${escapeHTML(notification.title)}</h4>
+                <p>${escapeHTML(notification.message)}</p>
+                <small>${formatDate(notification.created_at)}</small>
+            </div>
+        </div>
+    `).join('');
+    
+    // Add click handlers to mark as read
+    document.querySelectorAll('.notification-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const id = item.dataset.id;
+            markNotificationAsRead(id);
+        });
+    });
+    
+    // Initialize Lucide icons
+    if (window.lucide) lucide.createIcons();
+}
+
+// Get appropriate icon for notification type
+function getNotificationIcon(type) {
+    switch (type) {
+        case 'order_status':
+            return '<i data-lucide="shopping-cart"></i>';
+        case 'receipt_verified':
+            return '<i data-lucide="check-circle"></i>';
+        case 'new_product':
+            return '<i data-lucide="package"></i>';
+        case 'new_news':
+            return '<i data-lucide="newspaper"></i>';
+        case 'new_testimonial':
+            return '<i data-lucide="message-square"></i>';
+        default:
+            return '<i data-lucide="bell"></i>';
+    }
+}
+
+// Mark a notification as read
+async function markNotificationAsRead(id) {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    try {
+        const response = await fetch(`/api/notifications/${id}/read`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to mark notification as read');
+        
+        // Refresh notifications
+        fetchNotifications();
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+    }
+}
+
+// Mark all notifications as read
+async function markAllNotificationsAsRead() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    try {
+        const response = await fetch('/api/notifications/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to mark all notifications as read');
+        
+        // Refresh notifications
+        fetchNotifications();
+    } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+    }
+}
+
+// Fetch notification count (for badge)
+async function fetchNotificationsCount() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    try {
+        const response = await fetch('/api/notifications/count', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to fetch notification count');
+        
+        const { count } = await response.json();
+        const notificationCount = document.getElementById('notificationCount');
+        
+        notificationCount.textContent = count;
+        notificationCount.style.display = count > 0 ? 'inline-block' : 'none';
+    } catch (error) {
+        console.error('Error fetching notification count:', error);
+    }
+}
+
+// ===== END NOTIFICATION SYSTEM =====
+
+
+
 // Add item to cart
 // Add item to cart - ONLY if user is logged in
 async function addToCart(productId) {
@@ -888,25 +1111,33 @@ function updateUIBasedOnUser() {
     const logoutBtn = document.getElementById('logoutBtn');
     const accountLink = document.getElementById('accountLink');
     const cartCountElement = document.getElementById('cartCount');
-
+    const notificationsBtn = document.getElementById('notificationsBtn');
     const isLoggedIn = !!localStorage.getItem('token');
     const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
+    
     if (isLoggedIn) {
         // User is logged in
         if (loginBtn) loginBtn.style.display = 'none';
         if (logoutBtn) {
             logoutBtn.style.display = 'inline-block';
-            logoutBtn.onclick = handleLogout; // Ensure event handler is attached
+            logoutBtn.onclick = handleLogout;
         }
         if (accountLink) accountLink.style.display = 'inline-block';
         if (cartCountElement) cartCountElement.textContent = cartCount;
+        if (notificationsBtn) notificationsBtn.style.display = 'inline-block';
+        
+        // Load notifications count
+        fetchNotificationsCount();
     } else {
         // User is not logged in
         if (loginBtn) loginBtn.style.display = 'inline-block';
         if (logoutBtn) logoutBtn.style.display = 'none';
         if (accountLink) accountLink.style.display = 'none';
         if (cartCountElement) cartCountElement.textContent = '0';
+        if (notificationsBtn) {
+            notificationsBtn.style.display = 'none';
+            document.getElementById('notificationCount').textContent = '0';
+        }
     }
 }
 
@@ -1954,6 +2185,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
     });
+
+    // Initialize notifications
+    initNotifications();
+    
+    // Check if user is logged in and load notifications count
+    if (localStorage.getItem('token')) {
+        fetchNotificationsCount();
+    }
 });
 
 // Load and display featured products

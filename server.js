@@ -209,20 +209,88 @@ res.status(500).json({ error: 'Failed to fetch orders' });
 
 app.put('/api/admin/orders/:id/status', authMiddleware, adminOnly, async (req, res) => {
   const { status } = req.body;
-
   try {
+    // Get current order details to check user_id and previous status
+    const orderResult = await pool.query(
+      'SELECT user_id, status FROM orders WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    const { user_id, status: currentStatus } = orderResult.rows[0];
+    
+    // Check if status is actually changing
+    if (currentStatus.toLowerCase() === status.toLowerCase()) {
+      return res.json({ success: true, message: 'Status unchanged' });
+    }
+    
+    // Update the order status
     await pool.query(
       'UPDATE orders SET status = $1 WHERE id = $2',
       [status, req.params.id]
     );
-
+    
+    // Send notification based on the new status
+    let notificationType, notificationTitle, notificationMessage;
+    
+    switch (status.toLowerCase()) {
+      case 'paid':
+        notificationType = 'payment_confirmed';
+        notificationTitle = 'Payment Confirmed';
+        notificationMessage = `Your payment for order #${req.params.id} has been confirmed. Your order is now being processed.`;
+        break;
+      case 'processing':
+        notificationType = 'order_processing';
+        notificationTitle = 'Order Processing';
+        notificationMessage = `Your order #${req.params.id} is now being processed and prepared for shipment.`;
+        break;
+      case 'shipped':
+        notificationType = 'order_shipped';
+        notificationTitle = 'Order Shipped';
+        notificationMessage = `Your order #${req.params.id} has been shipped. It's on its way to you!`;
+        break;
+      case 'delivered':
+        notificationType = 'order_delivered';
+        notificationTitle = 'Order Delivered';
+        notificationMessage = `Your order #${req.params.id} has been successfully delivered. Thank you for shopping with us!`;
+        break;
+      case 'cancelled':
+        notificationType = 'order_cancelled';
+        notificationTitle = 'Order Cancelled';
+        notificationMessage = `Your order #${req.params.id} has been cancelled. If this was a mistake, please contact our support team.`;
+        break;
+      default:
+        // For 'pending' or any other status, we don't send a notification
+        notificationType = null;
+    }
+    
+    // Only send notification if we have a valid notification type
+    if (notificationType) {
+      await pool.query(`
+        INSERT INTO notifications (user_id, type, title, message, data, created_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+      `, [
+        user_id,
+        notificationType,
+        notificationTitle,
+        notificationMessage,
+        JSON.stringify({ 
+          orderId: req.params.id,
+          previousStatus: currentStatus,
+          newStatus: status
+        })
+      ]);
+    }
+    
     res.json({ success: true });
   } catch (err) {
     console.error('Update order status error:', err);
     res.status(500).json({ error: 'Failed to update order status' });
   }
 });
-
 
 // --- CURRENT USER PROFILE ROUTE  ---
 
@@ -535,32 +603,46 @@ app.post('/api/products', (req, res) => {
       console.error("Multer error object:", err);
       return res.status(500).json({ error: "Image upload failed: " + (err.message || JSON.stringify(err)) });
     }
-
     try {
       const { name, price, description, category } = req.body;
       if (!name || !price || !description || !category) {
         return res.status(400).json({ error: "All fields are required." });
       }
-
       const imageUrls = req.files ? req.files.map(file => file.secure_url || file.path) : [];
       const publicIds = req.files ? req.files.map(file => file.filename) : [];
 
       const result = await pool.query(
-        `INSERT INTO products (name, price, description, images, public_ids, category, active) 
-         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, TRUE) RETURNING *`,
+        `INSERT INTO products (name, price, description, images, public_ids, category, active)
+        VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, TRUE) RETURNING *`,
         [name, price, description, JSON.stringify(imageUrls), JSON.stringify(publicIds), category]
       );
-
+      
+      // --- NEW: Send notification to all users about new product ---
+      const usersResult = await pool.query(`
+        SELECT id FROM users WHERE role = 'user'
+      `);
+      
+      for (const user of usersResult.rows) {
+        await pool.query(`
+          INSERT INTO notifications (user_id, type, title, message, data)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [
+          user.id,
+          'new_product',
+          'New Product Available',
+          `Check out our new product: ${name}`,
+          JSON.stringify({ productId: result.rows[0].id })
+        ]);
+      }
+      // --- END NEW: Send notification ---
+      
       res.json({ success: true, product: result.rows[0] });
-
     } catch (error) {
       console.error('FULL ERROR:', error);
       res.status(500).json({ error: error.message });
     }
   });
 });
-
-
 
 
 
@@ -594,16 +676,33 @@ app.get('/api/testimonials/:id', async (req, res) => {
 app.post('/api/testimonials', uploadTestimonial.single('image'), async (req, res) => {
   try {
     const { name, role, text, rating } = req.body;
-
-      const imageUrl = req.file ? req.file.path : null;
+    const imageUrl = req.file ? req.file.path : null;
     const imagePublicId = req.file ? req.file.filename : null;
 
-
-   const result = await pool.query(
-  'INSERT INTO testimonials (name, role, text, rating, image, image_public_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-  [name, role, text, rating, imageUrl, imagePublicId]
-  );
-
+    const result = await pool.query(
+      'INSERT INTO testimonials (name, role, text, rating, image, image_public_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [name, role, text, rating, imageUrl, imagePublicId]
+    );
+    
+    // --- NEW: Send notification to all users about new testimonial ---
+    const usersResult = await pool.query(`
+      SELECT id FROM users WHERE role = 'user'
+    `);
+    
+    for (const user of usersResult.rows) {
+      await pool.query(`
+        INSERT INTO notifications (user_id, type, title, message, data)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [
+        user.id,
+        'new_testimonial',
+        'New Testimonial Added',
+        `Check out what ${name} said about us!`,
+        JSON.stringify({ testimonialId: result.rows[0].id })
+      ]);
+    }
+    // --- END NEW: Send notification ---
+    
     res.json({ success: true, testimonial: result.rows[0] });
   } catch (err) {
     console.error('Error creating testimonial:', err);
@@ -705,19 +804,34 @@ app.get('/api/news/:id', async (req, res) => {
 app.post('/api/news', uploadNewsImage.single('image'), async (req, res) => {
   try {
     const { title, description, fullContent, date } = req.body;
-
     const imageUrl = req.file ? req.file.path : null;
-const imagePublicId = req.file ? req.file.filename : null;
-
+    const imagePublicId = req.file ? req.file.filename : null;
 
     const result = await pool.query(
       'INSERT INTO news ("title", "description", "fullContent", "image", "image_public_id", "date") VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [title, description, fullContent, imageUrl, imagePublicId, date]
-
     );
-
+    
+    // --- NEW: Send notification to all users about new news article ---
+    const usersResult = await pool.query(`
+      SELECT id FROM users WHERE role = 'user'
+    `);
+    
+    for (const user of usersResult.rows) {
+      await pool.query(`
+        INSERT INTO notifications (user_id, type, title, message, data)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [
+        user.id,
+        'new_news',
+        'New News Article',
+        `Check out our latest news: ${title}`,
+        JSON.stringify({ newsId: result.rows[0].id })
+      ]);
+    }
+    // --- END NEW: Send notification ---
+    
     res.json({ success: true, news: result.rows[0] });
-
   } catch (err) {
     console.error('Error creating news:', err);
     res.status(500).json({ error: err.message });
@@ -1347,7 +1461,77 @@ app.get('/api/payment-config', (req, res) => {
   res.json(config);
 });
 
+// --- NOTIFICATIONS ROUTES (PROTECTED) ---
+app.get('/api/notifications', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const result = await pool.query(`
+            SELECT * FROM notifications 
+            WHERE user_id = $1 
+            ORDER BY created_at DESC
+        `, [userId]);
+        
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Fetch notifications error:', err);
+        res.status(500).json({ error: 'Failed to fetch notifications' });
+    }
+});
 
+app.get('/api/notifications/count', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const result = await pool.query(`
+            SELECT COUNT(*) AS count FROM notifications 
+            WHERE user_id = $1 AND read = FALSE
+        `, [userId]);
+        
+        res.json({ count: parseInt(result.rows[0].count) });
+    } catch (err) {
+        console.error('Fetch notification count error:', err);
+        res.status(500).json({ error: 'Failed to fetch notification count' });
+    }
+});
+
+app.post('/api/notifications/:id/read', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const notificationId = req.params.id;
+        
+        const result = await pool.query(`
+            UPDATE notifications 
+            SET read = TRUE 
+            WHERE id = $1 AND user_id = $2
+            RETURNING *
+        `, [notificationId, userId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Notification not found' });
+        }
+        
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Mark notification as read error:', err);
+        res.status(500).json({ error: 'Failed to mark notification as read' });
+    }
+});
+
+app.post('/api/notifications/mark-all-read', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        await pool.query(`
+            UPDATE notifications 
+            SET read = TRUE 
+            WHERE user_id = $1
+        `, [userId]);
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Mark all notifications as read error:', err);
+        res.status(500).json({ error: 'Failed to mark all notifications as read' });
+    }
+});
 
 // --- REQUERY PAYMENT STATUS (v1 API) ---
 
@@ -2309,21 +2493,6 @@ app.post('/api/admin/messages/:id/reply', authMiddleware, adminOnly, async (req,
   } catch (err) {
     console.error('Error sending reply:', err);
     res.status(500).json({ error: 'Failed to send reply', details: err.message });
-  }
-});
-
-// --- REMITA WEBHOOK ROUTE ---
-app.post('/api/webhook/remita', async (req, res) => {
-  const { transactionId, status } = req.body;
-  try {
-    await pool.query(
-      'UPDATE orders SET status = $1 WHERE transaction_id = $2',
-      [status, transactionId]
-    );
-    res.status(200).send('OK');
-  } catch (err) {
-    console.error('Error handling Remita webhook:', err);
-    res.status(500).json({ error: 'Failed to update order status' });
   }
 });
 

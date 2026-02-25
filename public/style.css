@@ -3551,3 +3551,132 @@ html {
   color: #000;
   transform: scale(1.1);
 }
+
+
+/* Notifications */
+.notifications-link {
+    position: relative;
+    margin-left: 15px;
+    display: inline-block;
+    color: var(--text-color);
+    text-decoration: none;
+}
+
+.notifications-link i {
+    font-size: 1.2em;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #ff6b6b;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 0.7em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.notifications-panel {
+    position: fixed;
+    top: 60px;
+    right: -350px;
+    width: 350px;
+    height: calc(100vh - 60px);
+    background-color: white;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    transition: right 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.notifications-panel.active {
+    right: 0;
+}
+
+.notifications-header {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notifications-header h3 {
+    margin: 0;
+    font-size: 1.2em;
+}
+
+#markAllReadBtn {
+    background: none;
+    border: none;
+    color: #007bff;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.notifications-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 0;
+}
+
+.notification-item {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fa;
+}
+
+.notification-item.unread {
+    background-color: #f8f9fa;
+    font-weight: 500;
+}
+
+.notification-icon {
+    margin-right: 15px;
+    color: #007bff;
+}
+
+.notification-content h4 {
+    margin: 0 0 5px 0;
+    font-size: 1em;
+}
+
+.notification-content p {
+    margin: 0 0 5px 0;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.notification-content small {
+    font-size: 0.8em;
+    color: #999;
+}
+
+.notifications-footer {
+    padding: 15px;
+    border-top: 1px solid #eee;
+    text-align: center;
+}
+
+.notifications-footer a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.no-notifications {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+}

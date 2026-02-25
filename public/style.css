@@ -3560,6 +3560,7 @@ html {
     display: inline-block;
     color: var(--text-color);
     text-decoration: none;
+    z-index:10002;
 }
 
 .notifications-link i {

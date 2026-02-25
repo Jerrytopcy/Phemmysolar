@@ -2188,7 +2188,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initialize notifications
     initNotifications();
-    
+    displayNotifications(notifications);
     // Check if user is logged in and load notifications count
     if (localStorage.getItem('token')) {
         fetchNotificationsCount();

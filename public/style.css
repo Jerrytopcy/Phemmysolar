@@ -3616,7 +3616,7 @@ html {
 #markAllReadBtn {
     background: none;
     border: none;
-    color: #007bff;
+    color: #915e00;
     cursor: pointer;
     font-size: 0.9em;
 }
@@ -3646,7 +3646,7 @@ html {
 
 .notification-icon {
     margin-right: 15px;
-    color: #007bff;
+    color: #915e00;
 }
 
 .notification-content h4 {
@@ -3672,7 +3672,7 @@ html {
 }
 
 .notifications-footer a {
-    color: #007bff;
+    color: #915e00;
     text-decoration: none;
 }
 

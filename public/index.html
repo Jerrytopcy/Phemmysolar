@@ -25,13 +25,6 @@
                     <img src="images/logo.jpg" alt="PhemmySolar Logo">
                     <span>PhemmySolar</span>
                 </a>
-                <!-- Add this inside the nav-auth-section div, right after the cart link -->
-                <a href="#" id="notificationsBtn" class="notifications-link" style="display: none;">
-                    <i data-lucide="bell"></i>
-                    <span class="notification-badge" id="notificationCount">0</span>
-                </a>
-
-
                 <nav class="nav" id="navMenu">
                     <a href="/" class="nav-link active">Home</a> <!-- ✅ -->
                     <div class="nav-dropdown">
@@ -63,6 +56,11 @@
                         <a href="#" id="logoutBtn" style="display: none;">Logout</a>
                         <a href="/account" id="accountLink" style="display: none;">Account</a> <!-- ✅ -->
                         <a href="#" id="viewCartBtn" class="cart-link">🛒Cart (<span id="cartCount">0</span>)</a>
+                        <!-- notification -->
+                        <a href="#" id="notificationsBtn" class="notifications-link" style="display: none;">
+                            <i data-lucide="bell"></i>
+                            <span class="notification-badge" id="notificationCount">0</span>
+                        </a>
                     </div>
                 </nav>
                 <button class="mobile-menu-btn" id="mobileMenuBtn">

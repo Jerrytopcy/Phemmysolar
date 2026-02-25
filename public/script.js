@@ -233,8 +233,12 @@ async function fetchNotificationsCount() {
         const { count } = await response.json();
         const notificationCount = document.getElementById('notificationCount');
         
-        notificationCount.textContent = count;
-        notificationCount.style.display = count > 0 ? 'inline-block' : 'none';
+        // Always ensure the count element exists before updating
+        if (notificationCount) {
+            notificationCount.textContent = count;
+            // Only hide the count badge when count is 0, NOT the entire button
+            notificationCount.style.display = count > 0 ? 'inline-block' : 'none';
+        }
     } catch (error) {
         console.error('Error fetching notification count:', error);
     }
@@ -2188,9 +2192,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initialize notifications
     initNotifications();
-    displayNotifications(notifications);
-    // Check if user is logged in and load notifications count
+
+    // Check if user is logged in
     if (localStorage.getItem('token')) {
+        const notificationsBtn = document.getElementById('notificationsBtn');
+        if (notificationsBtn) {
+            // Make sure the notification button is ALWAYS visible when user is logged in
+            notificationsBtn.style.display = 'inline-block';
+            
+            // Initialize Lucide icons if needed
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+        
+        // Load notifications count
         fetchNotificationsCount();
     }
 });

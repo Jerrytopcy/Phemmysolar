@@ -3569,7 +3569,7 @@ html {
 
 .notification-badge {
     position: absolute;
-    top: -px;
+    top: -2px;
     right: -5px;
     /* background-color: #ff6b6b; */
     color: #ff6b6b;

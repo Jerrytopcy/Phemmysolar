@@ -240,7 +240,7 @@ async function fetchNotificationsCount() {
         
         // Always ensure the count element exists before updating
         if (notificationCount) {
-            notificationCount.textContent = count;
+            notificationCount.innerText = count;
             // Only hide the count badge when count is 0, NOT the entire button
             notificationCount.style.display = count > 0 ? 'inline-block' : 'none';
         }

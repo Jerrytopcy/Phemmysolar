@@ -3571,8 +3571,8 @@ html {
     position: absolute;
     top: -2px;
     right: -5px;
-    /* background-color: #ff6b6b; */
-    color: #ff6b6b;
+    background-color: #ff6b6b;
+    color: white;
     border-radius: 50%;
     width: 15px;          /* Slightly wider to accommodate narrow digits */
     min-width: 15px;      /* Ensure consistent width for single digits */

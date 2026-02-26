@@ -3576,7 +3576,7 @@ html {
     border-radius: 999px;
     min-width: 15px;      /* allow flexibility */
     height: 15px;
-    padding: 0px 7px;       /* horizontal padding instead of fixed width */
+    padding: 0px 5px;       /* horizontal padding instead of fixed width */
 
     font-size: 0.75em;
     display: flex;

@@ -3576,7 +3576,7 @@ html {
     border-radius: 999px;
     min-width: 15px;      /* allow flexibility */
     height: 15px;
-    padding: 0 6px;       /* horizontal padding instead of fixed width */
+    padding:6px;       /* horizontal padding instead of fixed width */
 
     font-size: 0.75em;
     display: flex;
@@ -3698,5 +3698,5 @@ html {
 }
 #markAllReadBtn{
   font-size: x-small;
-  font-weight:400;
+  font-weight:500;
 }

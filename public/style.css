@@ -3676,9 +3676,21 @@ html {
     text-align: center;
 }
 
-.notifications-footer a {
-    color: #c59102;
-    text-decoration: none;
+#closeNotification
+ {
+    background-color: #ffc107;
+    color: #212529;
+    border: none;
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+}
+
+#closeNotification:hover {
+    background-color: #e0a800;
 }
 
 .no-notifications {

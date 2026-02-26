@@ -47,9 +47,9 @@
                         </div>
                     </div>
                     <a href="/about" class="nav-link">About</a> <!-- ✅ -->
-                    <a href="/news" class="nav-link">News & Blog</a> <!-- ✅ -->
+                    <a href="/news" class="nav-link">News</a> <!-- ✅ -->
                     <a href="/contact" class="nav-link">Contact</a> <!-- ✅ -->
-                    <a href="/admin" class="nav-link admin-link pro-badge">Pro Dashboard</a> <!-- ✅ -->
+                    <a href="/admin" class="nav-link admin-link pro-badge">Admin</a> <!-- ✅ -->
                     <!-- NEW: Authentication and Cart Links -->
                     <div class="nav-auth-section" id="authSection">
                         <a href="#" id="loginBtn" style="display: none;">Login</a>
@@ -238,13 +238,14 @@
 <div class="notifications-panel" id="notificationsPanel">
     <div class="notifications-header">
         <h3>Notifications</h3>
-        <button id="markAllReadBtn">Mark all as read</button>
+        <button id="markAllReadBtn" class="pro-badge">Mark all as read</button>
     </div>
     <div class="notifications-list" id="notificationsList">
         <!-- Notifications will be populated here -->
     </div>
     <div class="notifications-footer">
-        <a href="/account">View all</a>
+        <button id="closeNotification">Close</button>
+        
     </div>
 </div>
 <!-- Manual Payment Modal -->

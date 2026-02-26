@@ -86,6 +86,11 @@ function closeNotificationsPanel() {
     notificationsPanel.classList.remove('active');
     isNotificationsPanelOpen = false;
 }
+document.addEventListener("DOMContentLoaded", () => {
+  const closeBtn = document.getElementById("closeNotification");
+
+  closeBtn?.addEventListener("click", closeNotificationsPanel);
+});
 
 // Fetch notifications from server
 async function fetchNotifications() {

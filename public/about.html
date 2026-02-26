@@ -24,6 +24,11 @@
                     <img src="images/logo.jpg" alt="PhemmySolar Logo">
                     <span>PhemmySolar</span>
                 </a>
+                  <!-- notifications -->
+                <a href="#" id="notificationsBtn" class="notifications-link" style="display: none;">
+                    <i data-lucide="bell"></i>
+                    <span class="notification-badge" id="notificationCount">0</span>
+                </a>
                 <nav class="nav" id="navMenu">
                     <a href="/" class="nav-link">Home</a> <!-- ✅ -->
                     <div class="nav-dropdown">
@@ -290,6 +295,19 @@
             </div>
         </div>
     </div>
+    <!-- Notifications Panel -->
+<div class="notifications-panel" id="notificationsPanel">
+    <div class="notifications-header">
+        <h3>Notifications</h3>
+        <button id="markAllReadBtn">Mark all as read</button>
+    </div>
+    <div class="notifications-list" id="notificationsList">
+        <!-- Notifications will be populated here -->
+    </div>
+    <div class="notifications-footer">
+        <a href="/account">View all</a>
+    </div>
+</div>
       <!-- Manual Payment Modal -->
 <div class="modal-overlay" id="manualPaymentModal">
     <div class="modal-container">

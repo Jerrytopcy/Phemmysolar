@@ -3569,17 +3569,19 @@ html {
 
 .notification-badge {
     position: absolute;
-    top: -5px;
+    top: -2px;
     right: -5px;
     background-color: #ff6b6b;
     color: white;
     border-radius: 50%;
-    width: 18px;
-    height: 18px;
+    width: 15px;
+    height: 15px;
     font-size: 0.7em;
     display: flex;
     align-items: center;
     justify-content: center;
+    justify-items: center;
+    align-content: center;
 }
 
 .notifications-panel {
@@ -3616,7 +3618,7 @@ html {
 #markAllReadBtn {
     background: none;
     border: none;
-    color: #915e00;
+    color: #c59102;
     cursor: pointer;
     font-size: 0.9em;
 }
@@ -3646,7 +3648,7 @@ html {
 
 .notification-icon {
     margin-right: 15px;
-    color: #915e00;
+    color: #c59102;
 }
 
 .notification-content h4 {
@@ -3672,7 +3674,7 @@ html {
 }
 
 .notifications-footer a {
-    color: #915e00;
+    color: #c59102;
     text-decoration: none;
 }
 

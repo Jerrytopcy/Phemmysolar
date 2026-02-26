@@ -3569,15 +3569,15 @@ html {
 
 .notification-badge {
     position: absolute;
-    top: -5px;
+    top: -px;
     right: -5px;
-    background-color: #ff6b6b;
-    color: white;
+    /* background-color: #ff6b6b; */
+    color: #ff6b6b;
     border-radius: 50%;
     width: 15px;          /* Slightly wider to accommodate narrow digits */
     min-width: 15px;      /* Ensure consistent width for single digits */
     height: 15px;         /* Slightly taller for better visual balance */
-    font-size: 0.75em;
+    font-size: 0.80em;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3699,5 +3699,5 @@ html {
 }
 #markAllReadBtn{
   font-size: x-small;
-  font-weight: 300;
+  font-weight:lighter;
 }

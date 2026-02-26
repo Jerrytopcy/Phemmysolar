@@ -3697,3 +3697,7 @@ html {
     padding: 20px;
     color: #999;
 }
+#markAllReadBtn{
+  font-size: x-small;
+  font-weight: 300;
+}

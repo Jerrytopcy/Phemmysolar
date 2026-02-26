@@ -3574,14 +3574,17 @@ html {
     background-color: #ff6b6b;
     color: white;
     border-radius: 50%;
-    width: 15px;
-    height: 15px;
-    font-size: 0.7em;
+    width: 18px;          /* Slightly wider to accommodate narrow digits */
+    min-width: 18px;      /* Ensure consistent width for single digits */
+    height: 18px;         /* Slightly taller for better visual balance */
+    font-size: 0.75em;
     display: flex;
     align-items: center;
     justify-content: center;
-    justify-items: center;
-    align-content: center;
+    font-family: monospace; /* Ensures all digits have same width */
+    line-height: 1;       /* Prevents font rendering issues */
+    box-sizing: border-box; /* Ensures padding doesn't affect size */
+    padding: 0 1px;       /* Small padding for visual centering */
 }
 
 .notifications-panel {

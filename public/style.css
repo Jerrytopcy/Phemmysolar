@@ -3569,8 +3569,8 @@ html {
 
 .notification-badge {
     position: absolute;
-    top: -5px;
-    right: -5px;
+    top: -4px;
+    right: -6px;
     background-color: #ff6b6b;
     color: white;
     border-radius: 999px;
@@ -3578,7 +3578,7 @@ html {
     height: 15px;
     padding: 0 6px;       /* horizontal padding instead of fixed width */
 
-    font-size: 0.70em;
+    font-size: 0.65em;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3698,5 +3698,5 @@ html {
 }
 #markAllReadBtn{
   font-size: x-small;
-  font-weight:lighter;
+  font-weight:400;
 }

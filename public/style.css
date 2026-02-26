@@ -3578,7 +3578,7 @@ html {
     height: 15px;
     padding: 0 6px;       /* horizontal padding instead of fixed width */
 
-    font-size: 0.65em;
+    font-size: 0.75em;
     display: flex;
     align-items: center;
     justify-content: center;
